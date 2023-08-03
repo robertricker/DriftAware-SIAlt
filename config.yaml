@@ -41,7 +41,7 @@ user:
 
 # Processing options
 options:
-  proc_step: stacking # Available options: stacking, gridding, and visualization
+  proc_step: gridding # Available options: stacking, gridding, and visualization
   sensor: icesat2 # Available options: envisat, cryosat2 and icesat2
   ice_conc_product: osi430b
   ice_drift_product: osi405
@@ -81,7 +81,7 @@ options:
 
     # Processing step: gridding
     gridding:
-      sub_dir: test123
+      sub_dir: 'sea_ice_thickness-nh-16fr-epsg6931_100-2023-08-02_16-54-27'
       mode: drift-aware
       multiproc: False
       netcdf_grid:
