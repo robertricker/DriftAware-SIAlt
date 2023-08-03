@@ -1,16 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="2d75d2d3-258d-45a7-914e-610e4269b429" name="Default Changelist" comment="start of the project">
-      <change afterPath="$PROJECT_DIR$/config.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/generate_grids.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/generate_plots.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/generate_stacks.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gridding_lib.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stacking_lib.py" afterDir="false" />
+    <list default="true" id="2d75d2d3-258d-45a7-914e-610e4269b429" name="Default Changelist" comment="Improved stacking, implementation of basic gridding, and generation of netcdfs, for ICESat-2 and CryoSat-2">
+      <change afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/config.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data_handler/sea_ice_concentration_products.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data_handler/sea_ice_drift_products.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data_handler/sea_ice_thickness_products.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gridding/gridding.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gridding/gridding_lib.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gridding/prepare_netcdf.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/io_tools.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/ICESat2_TARDIS-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/Untitled-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/create-is2dirs-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/test_classes-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/test_snow_retrieval-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/visu_test-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/visualization_tools-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/ICESat2_TARDIS.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/Untitled.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/create-is2dirs.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/test_classes.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/test_snow_retrieval.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/visu_test.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sandbox/visualization_tools.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/stacking/drift_aware_processor.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/stacking/drift_aware_uncertainties.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/stacking/interpolate_growth.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/stacking/stack_structure.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/stacking/stacking.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/visualization/visualization.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/visualization/visualization_tools.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/atl10_stack.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/generate_grids.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/generate_plots.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/generate_stacks.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gridding_lib.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL03.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL06.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL07.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL08.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL10.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL11.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL12.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/stacking_lib.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,7 +64,7 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/stacking_lib.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/stacking/drift_aware_processor.py" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -49,8 +85,8 @@
     &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/rricker/GitLab/projects/chione&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;reference.idesettings.debugger.python&quot;
+    &quot;last_opened_file_path&quot;: &quot;/Users/rricker/GitLab/projects/chione/cryosat2_lib&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   },
   &quot;keyToStringList&quot;: {
     &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
@@ -71,20 +107,43 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/cryosat2_lib" />
       <recent name="$PROJECT_DIR$" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/testdir" />
+      <recent name="$PROJECT_DIR$/gridding" />
+      <recent name="$PROJECT_DIR$/visualization" />
+      <recent name="$PROJECT_DIR$/data_handler" />
+      <recent name="$PROJECT_DIR$/stacking" />
+      <recent name="$PROJECT_DIR$/cryosat2_lib" />
     </key>
   </component>
   <component name="RunManager" selected="Python.main">
-    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="drift_aware_processor" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="chione" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/stacking/drift_aware_processor.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true" show_console_on_std_err="true" show_console_on_std_out="true">
+      <module name="chione" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -112,27 +171,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL10.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="true" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="stacking_lib" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="chione" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/stacking_lib.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -184,7 +222,7 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.stacking_lib" />
+      <item itemvalue="Python.drift_aware_processor" />
       <item itemvalue="Python.main" />
       <item itemvalue="Python.read_ICESat2_ATL10" />
       <item itemvalue="Python.test" />
@@ -193,7 +231,7 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.main" />
-        <item itemvalue="Python.stacking_lib" />
+        <item itemvalue="Python.drift_aware_processor" />
         <item itemvalue="Python.read_ICESat2_ATL10" />
         <item itemvalue="Python.test" />
         <item itemvalue="Python.testmath" />
@@ -223,7 +261,21 @@
       <option name="project" value="LOCAL" />
       <updated>1654931504281</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Update for json structure">
+      <created>1661257414705</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1661257414705</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Improved stacking, implementation of basic gridding, and generation of netcdfs, for ICESat-2 and CryoSat-2">
+      <created>1661257630434</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1661257630434</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -240,7 +292,9 @@
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="start of the project" />
-    <option name="LAST_COMMIT_MESSAGE" value="start of the project" />
+    <MESSAGE value="Update for json structure" />
+    <MESSAGE value="Improved stacking, implementation of basic gridding, and generation of netcdfs, for ICESat-2 and CryoSat-2" />
+    <option name="LAST_COMMIT_MESSAGE" value="Improved stacking, implementation of basic gridding, and generation of netcdfs, for ICESat-2 and CryoSat-2" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>
