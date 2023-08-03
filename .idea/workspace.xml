@@ -1,52 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="2d75d2d3-258d-45a7-914e-610e4269b429" name="Default Changelist" comment="Improved stacking, implementation of basic gridding, and generation of netcdfs, for ICESat-2 and CryoSat-2">
-      <change afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/config.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data_handler/sea_ice_concentration_products.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data_handler/sea_ice_drift_products.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/data_handler/sea_ice_thickness_products.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gridding/gridding.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gridding/gridding_lib.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gridding/prepare_netcdf.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/io_tools.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/ICESat2_TARDIS-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/Untitled-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/create-is2dirs-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/test_classes-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/test_snow_retrieval-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/visu_test-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/.ipynb_checkpoints/visualization_tools-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/ICESat2_TARDIS.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/Untitled.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/create-is2dirs.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/test_classes.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/test_snow_retrieval.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/visu_test.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sandbox/visualization_tools.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stacking/drift_aware_processor.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stacking/drift_aware_uncertainties.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stacking/interpolate_growth.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stacking/stack_structure.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stacking/stacking.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/visualization/visualization.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/visualization/visualization_tools.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/generate_grids.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/generate_plots.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/generate_stacks.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gridding_lib.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL03.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL06.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL07.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL08.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL10.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL11.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL12.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/stacking_lib.py" beforeDir="false" />
+    <list default="true" id="2d75d2d3-258d-45a7-914e-610e4269b429" name="Default Changelist" comment="Substantial modifications: parallel processing, new options, added uncertainty estimation">
+      <change beforePath="$PROJECT_DIR$/../DriftAware-SIAlt/.idea/chione.iml" beforeDir="false" afterPath="$PROJECT_DIR$/../DriftAware-SIAlt/.idea/DriftAware-SIAlt.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DriftAware-SIAlt/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../DriftAware-SIAlt/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DriftAware-SIAlt/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/../DriftAware-SIAlt/config.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,10 +19,10 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../DriftAware-SIAlt" />
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/stacking/drift_aware_processor.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/../DriftAware-SIAlt/stacking/drift_aware_processor.py" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -73,27 +31,27 @@
     <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectId" id="28KVLi2TI8wNDD0aigF1t6smo29" />
-  <component name="ProjectLevelVcsManager">
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <ConfirmationsSetting value="2" id="Add" />
   </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/rricker/GitLab/projects/chione/cryosat2_lib&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "last_opened_file_path": "/Users/rricker/GitLab/projects/chione/cryosat2_lib",
+    "settings.editor.selected.configurable": "file.status.colors"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
-      &quot;Python&quot;
+  "keyToStringList": {
+    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
+      "Python"
     ]
   }
-}</component>
+}]]></component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
       <console-settings module-name="chione" sdk-home="$USER_HOME$/miniforge3/envs/is2snow-env/bin/python">
@@ -119,8 +77,29 @@
     </key>
   </component>
   <component name="RunManager" selected="Python.main">
+    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
+      <module name="DriftAware-SIAlt" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="drift_aware_processor" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="chione" />
+      <module name="DriftAware-SIAlt" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -141,7 +120,7 @@
       <method v="2" />
     </configuration>
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true" show_console_on_std_err="true" show_console_on_std_out="true">
-      <module name="chione" />
+      <module name="DriftAware-SIAlt" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -159,7 +138,7 @@
       <method v="2" />
     </configuration>
     <configuration name="read_ICESat2_ATL10" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="chione" />
+      <module name="DriftAware-SIAlt" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -180,7 +159,7 @@
       <method v="2" />
     </configuration>
     <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="chione" />
+      <module name="DriftAware-SIAlt" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -201,7 +180,7 @@
       <method v="2" />
     </configuration>
     <configuration name="testmath" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="chione" />
+      <module name="DriftAware-SIAlt" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -219,6 +198,81 @@
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
       <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="Tox" factoryName="Tox">
+      <module name="DriftAware-SIAlt" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docs" factoryName="Docutils task">
+      <module name="DriftAware-SIAlt" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="docutils_input_file" value="" />
+      <option name="docutils_output_file" value="" />
+      <option name="docutils_params" value="" />
+      <option name="docutils_task" value="" />
+      <option name="docutils_open_in_browser" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docs" factoryName="Sphinx task">
+      <module name="DriftAware-SIAlt" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="docutils_input_file" value="" />
+      <option name="docutils_output_file" value="" />
+      <option name="docutils_params" value="" />
+      <option name="docutils_task" value="" />
+      <option name="docutils_open_in_browser" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Autodetect">
+      <module name="DriftAware-SIAlt" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Doctests">
+      <module name="DriftAware-SIAlt" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="CLASS_NAME" value="" />
+      <option name="METHOD_NAME" value="" />
+      <option name="FOLDER_NAME" value="" />
+      <option name="TEST_TYPE" value="TEST_SCRIPT" />
+      <option name="PATTERN" value="" />
+      <option name="USE_PATTERN" value="false" />
       <method v="2" />
     </configuration>
     <list>
@@ -275,7 +329,14 @@
       <option name="project" value="LOCAL" />
       <updated>1661257630434</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Substantial modifications: parallel processing, new options, added uncertainty estimation">
+      <created>1691057913438</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1691057913438</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -291,10 +352,14 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+    <ignored-roots>
+      <path value="$PROJECT_DIR$" />
+    </ignored-roots>
     <MESSAGE value="start of the project" />
     <MESSAGE value="Update for json structure" />
     <MESSAGE value="Improved stacking, implementation of basic gridding, and generation of netcdfs, for ICESat-2 and CryoSat-2" />
-    <option name="LAST_COMMIT_MESSAGE" value="Improved stacking, implementation of basic gridding, and generation of netcdfs, for ICESat-2 and CryoSat-2" />
+    <MESSAGE value="Substantial modifications: parallel processing, new options, added uncertainty estimation" />
+    <option name="LAST_COMMIT_MESSAGE" value="Substantial modifications: parallel processing, new options, added uncertainty estimation" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>

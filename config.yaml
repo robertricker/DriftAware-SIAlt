@@ -5,34 +5,34 @@ version: v100
 dir:
   cryosat2:
     level2:
-      sea_ice_freeboard: "/Volumes/data2/projects/chione/data/cryosat2/l2p_cci/"
-      sea_ice_thickness: "/Volumes/data2/projects/chione/data/cryosat2/l2p_cci/"
-    geojson: "/Volumes/data2/projects/chione/product/cryosat2/geojson_ex/"
-    netcdf: "/Volumes/data2/projects/chione/product/cryosat2/netcdf_ex2/"
-    visu: "/Volumes/data2/projects/chione/analysis/cryosat2/plots/"
+      sea_ice_freeboard: "/Volumes/data2/projects/DriftAware-SIAlt/data/cryosat2/l2p_cci/"
+      sea_ice_thickness: "/Volumes/data2/projects/DriftAware-SIAlt/data/cryosat2/l2p_cci/"
+    geojson: "/Volumes/data2/projects/DriftAware-SIAlt/product/cryosat2/geojson_ex/"
+    netcdf: "/Volumes/data2/projects/DriftAware-SIAlt/product/cryosat2/netcdf_ex2/"
+    visu: "/Volumes/data2/projects/DriftAware-SIAlt/analysis/cryosat2/plots/"
   envisat:
     level2:
-      sea_ice_freeboard: "/Volumes/data2/projects/chione/data/envisat/l2p_cci/"
-      sea_ice_thickness: "/Volumes/data2/projects/chione/data/envisat/l2p_cci/"
-    geojson: "/Volumes/data2/projects/chione/product/envisat/geojson/"
-    netcdf: "/Volumes/data2/projects/chione/product/envisat/netcdf/"
-    visu: "/Volumes/data2/projects/chione/analysis/envisat/plots/"
+      sea_ice_freeboard: "/Volumes/data2/projects/DriftAware-SIAlt/data/envisat/l2p_cci/"
+      sea_ice_thickness: "/Volumes/data2/projects/DriftAware-SIAlt/data/envisat/l2p_cci/"
+    geojson: "/Volumes/data2/projects/DriftAware-SIAlt/product/envisat/geojson/"
+    netcdf: "/Volumes/data2/projects/DriftAware-SIAlt/product/envisat/netcdf/"
+    visu: "/Volumes/data2/projects/DriftAware-SIAlt/analysis/envisat/plots/"
   icesat2:
     level2:
-      total_freeboard: "/Volumes/data2/projects/chione/data/icesat2/ATL10.005/"
-      sea_ice_thickness: "/Volumes/data2/projects/chione/data/icesat2/is2sitdata/"
-    geojson: "/Volumes/data2/projects/chione/product/icesat2/geojson/"
-    netcdf: "/Volumes/data2/projects/chione/product/icesat2/netcdf/"
-    visu: "/Volumes/data2/projects/chione/analysis/icesat2/plots/"
+      total_freeboard: "/Volumes/data2/projects/DriftAware-SIAlt/data/icesat2/ATL10.005/"
+      sea_ice_thickness: "/Volumes/data2/projects/DriftAware-SIAlt/data/icesat2/is2sitdata/"
+    geojson: "/Volumes/data2/projects/DriftAware-SIAlt/product/icesat2/geojson/"
+    netcdf: "/Volumes/data2/projects/DriftAware-SIAlt/product/icesat2/netcdf/"
+    visu: "/Volumes/data2/projects/DriftAware-SIAlt/analysis/icesat2/plots/"
   auxiliary:
     ice_conc:
-      osi450: "/Volumes/data2/projects/chione/auxiliary/OSI450/" #v3.0: 1978-2020
-      osi430b: "/Volumes/data2/projects/chione/auxiliary/OSI430b/" #v3.0: 2021-
+      osi450: "/Volumes/data2/projects/DriftAware-SIAlt/auxiliary/OSI450/" #v3.0: 1978-2020
+      osi430b: "/Volumes/data2/projects/DriftAware-SIAlt/auxiliary/OSI430b/" #v3.0: 2021-
     ice_drift:
-      osi455: "/Volumes/data2/projects/chione/auxiliary/OSI455/" #1991-2020
-      osi405: "/Volumes/data2/projects/chione/auxiliary/OSI405/" #2009-
-    reg_mask: "/Volumes/data2/projects/chione/auxiliary/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc"
-  logging: "/Volumes/data2/projects/chione/logging/"
+      osi455: "/Volumes/data2/projects/DriftAware-SIAlt/auxiliary/OSI455/" #1991-2020
+      osi405: "/Volumes/data2/projects/DriftAware-SIAlt/auxiliary/OSI405/" #2009-
+    reg_mask: "/Volumes/data2/projects/DriftAware-SIAlt/auxiliary/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc"
+  logging: "/Volumes/data2/projects/DriftAware-SIAlt/logging/"
 
 
 # User settings
