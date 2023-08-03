@@ -96,7 +96,6 @@ def visualization(config):
             label = 'Total freeboard growth in cm/day'
 
         else:
-            print("variable not found")
             break
 
         if not os.path.exists(out_dir + target_var):
