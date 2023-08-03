@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="2d75d2d3-258d-45a7-914e-610e4269b429" name="Default Changelist" comment="Substantial modifications: parallel processing, new options, added uncertainty estimation">
-      <change beforePath="$PROJECT_DIR$/../DriftAware-SIAlt/.idea/chione.iml" beforeDir="false" afterPath="$PROJECT_DIR$/../DriftAware-SIAlt/.idea/DriftAware-SIAlt.iml" afterDir="false" />
+    <list default="true" id="2d75d2d3-258d-45a7-914e-610e4269b429" name="Default Changelist" comment="Renaming of the project">
       <change beforePath="$PROJECT_DIR$/../DriftAware-SIAlt/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../DriftAware-SIAlt/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../DriftAware-SIAlt/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/../DriftAware-SIAlt/config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DriftAware-SIAlt/data_handler/sea_ice_thickness_products.py" beforeDir="false" afterPath="$PROJECT_DIR$/../DriftAware-SIAlt/data_handler/sea_ice_thickness_products.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -76,7 +76,7 @@
       <recent name="$PROJECT_DIR$/cryosat2_lib" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.main">
+  <component name="RunManager">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="DriftAware-SIAlt" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -98,102 +98,18 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="drift_aware_processor" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true" show_console_on_std_err="true" show_console_on_std_out="true">
       <module name="DriftAware-SIAlt" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../DriftAware-SIAlt" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/stacking/drift_aware_processor.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../DriftAware-SIAlt/main.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="true" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true" show_console_on_std_err="true" show_console_on_std_out="true">
-      <module name="DriftAware-SIAlt" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="true" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="read_ICESat2_ATL10" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="DriftAware-SIAlt" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/read_icesat2" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/read_icesat2/read_ICESat2_ATL10.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="true" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="DriftAware-SIAlt" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="testmath" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="DriftAware-SIAlt" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/testdir/testmath.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
@@ -275,22 +191,6 @@
       <option name="USE_PATTERN" value="false" />
       <method v="2" />
     </configuration>
-    <list>
-      <item itemvalue="Python.drift_aware_processor" />
-      <item itemvalue="Python.main" />
-      <item itemvalue="Python.read_ICESat2_ATL10" />
-      <item itemvalue="Python.test" />
-      <item itemvalue="Python.testmath" />
-    </list>
-    <recent_temporary>
-      <list>
-        <item itemvalue="Python.main" />
-        <item itemvalue="Python.drift_aware_processor" />
-        <item itemvalue="Python.read_ICESat2_ATL10" />
-        <item itemvalue="Python.test" />
-        <item itemvalue="Python.testmath" />
-      </list>
-    </recent_temporary>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -336,7 +236,14 @@
       <option name="project" value="LOCAL" />
       <updated>1691057913438</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Renaming of the project">
+      <created>1691060472381</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1691060472381</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -359,7 +266,8 @@
     <MESSAGE value="Update for json structure" />
     <MESSAGE value="Improved stacking, implementation of basic gridding, and generation of netcdfs, for ICESat-2 and CryoSat-2" />
     <MESSAGE value="Substantial modifications: parallel processing, new options, added uncertainty estimation" />
-    <option name="LAST_COMMIT_MESSAGE" value="Substantial modifications: parallel processing, new options, added uncertainty estimation" />
+    <MESSAGE value="Renaming of the project" />
+    <option name="LAST_COMMIT_MESSAGE" value="Renaming of the project" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>
