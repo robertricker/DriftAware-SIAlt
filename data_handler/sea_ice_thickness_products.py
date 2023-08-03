@@ -88,7 +88,7 @@ class SeaIceThicknessProducts:
             for gtx in [k for k in fileid.keys() if bool(re.match(r'gt\d[lr]', k))]:
                 try:
                     fileid[gtx]['freeboard_beam_segment']['beam_freeboard']['height_segment_id']
-                except keyerror:
+                except KeyError:
                     pass
                 else:
                     atl10_beams.append(gtx)
