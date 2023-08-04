@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="2d75d2d3-258d-45a7-914e-610e4269b429" name="Default Changelist" comment="bug fix due to renaming of project">
+    <list default="true" id="2d75d2d3-258d-45a7-914e-610e4269b429" name="Default Changelist" comment="bug fix">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -170,17 +170,61 @@
       <option name="project" value="LOCAL" />
       <updated>1691090702753</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="bug fix due to renaming of project">
+      <created>1691091411720</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1691091411720</updated>
+    </task>
+    <task id="LOCAL-00011" summary="bug fix">
+      <created>1691098926641</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1691098926641</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
       <map>
+        <entry key="91884d8f-d649-4736-9123-6d9309d47ee7">
+          <value>
+            <State>
+              <option name="SHOW_ONLY_AFFECTED_CHANGES" value="true" />
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="HEAD" />
+                      </list>
+                    </value>
+                  </entry>
+                  <entry key="roots">
+                    <value>
+                      <list>
+                        <option value="$PROJECT_DIR$" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
         <entry key="MAIN">
           <value>
             <State />
           </value>
         </entry>
+      </map>
+    </option>
+    <option name="OPEN_GENERIC_TABS">
+      <map>
+        <entry key="91884d8f-d649-4736-9123-6d9309d47ee7" value="TOOL_WINDOW" />
       </map>
     </option>
   </component>
@@ -196,7 +240,8 @@
     <MESSAGE value="Renaming of the project" />
     <MESSAGE value="KeyError fix" />
     <MESSAGE value="bug fix due to renaming of project" />
-    <option name="LAST_COMMIT_MESSAGE" value="bug fix due to renaming of project" />
+    <MESSAGE value="bug fix" />
+    <option name="LAST_COMMIT_MESSAGE" value="bug fix" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>
