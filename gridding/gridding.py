@@ -158,6 +158,7 @@ def gridding(config):
                                       config['options']['out_epsg'])
 
     if multiproc:
+        logger.info('start multiprocessing')
         pool = mp.Pool()
         for file in file_list:
             pool.apply_async(process_file, args=(config, file, grid, region_grid))
