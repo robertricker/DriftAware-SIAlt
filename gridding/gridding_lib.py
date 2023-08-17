@@ -30,7 +30,7 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
     if agg_mode is None:
         agg_mode = ['mean', 'std']
     tmp_grid = grid.copy()
-    merged = gpd.sjoin(gdf[var + ['geometry']].copy(), grid, how='left', op='within')
+    merged = gpd.sjoin(gdf[var + ['geometry']].copy(), grid, how='left', predicate='within')
     if 'mean' in agg_mode:
         dissolve_mean = merged.dissolve(by='index_right', aggfunc=np.mean)
         for i in range(0, len(var)):

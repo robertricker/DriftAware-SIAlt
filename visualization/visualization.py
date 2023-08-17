@@ -11,10 +11,12 @@ from loguru import logger
 
 def visualization(config):
     sensor = config['options']['sensor']
-    target_var = config['options']['proc_step_options']['visualization']['variable']
-    make_gif = config['options']['proc_step_options']['visualization']['make_gif']
     hem = config["options"]["hemisphere"]
     out_epsg = config["options"]["out_epsg"]
+    visu_opt = config['options']['proc_step_options']['visualization']
+    target_var = visu_opt['variable']
+    make_gif = visu_opt['make_gif']
+    config['dir'][sensor]['netcdf'] = config['dir'][sensor]['netcdf'] + visu_opt['sub_dir']
     file_list = sorted(glob.glob(config['dir'][sensor]['netcdf'] + "/" + '*.nc'))
 
     out_dir = config['dir'][sensor]['visu']

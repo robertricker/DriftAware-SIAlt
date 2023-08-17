@@ -9,27 +9,28 @@ import matplotlib
 import seaborn as sns
 import os
 import subprocess
+from pyproj.crs import CRS
 
 
 def visu_xarray(x, y, z, figsize, vmin, vmax, n_level, cmap, time_string, label, outfile, iceconc=None):
-    crs = ccrs.Stereographic(central_latitude=90.0, central_longitude=-45.0,
-                             false_easting=0.0, false_northing=0.0,
-                             true_scale_latitude=70.0)
-
+    crs = ccrs.LambertAzimuthalEqualArea(central_longitude=0.0, central_latitude=90.0, false_easting=0.0,
+                                         false_northing=0.0)
     fig = plt.figure(figsize=figsize)
+
     xc, yc = np.meshgrid(x, y)
+
     bounds = list(np.linspace(vmin, vmax, num=n_level))
     norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N, extend='neither')
     ax = plt.subplot(projection=crs)
 
-    ax.set_extent([0, 180, 45, 90])
+    ax.set_extent([-3000000, 3000000, -3000000, 3000000], crs=crs)
     if iceconc:
         if len(iceconc) > 0:
             iceconc["ice_conc"][iceconc["ice_conc"] < 15.0] = np.nan
             iceconc["ice_conc"][iceconc["ice_conc"] >= 15.0] = 1.0
             ax.pcolormesh(xc, -yc, iceconc["ice_conc"], cmap='Greys', vmin=1, vmax=2, alpha=0.4)
 
-    im = ax.pcolormesh(xc, yc, z, cmap=cmap, vmin=vmin, vmax=vmax, norm=norm)
+    im = ax.pcolormesh(xc, yc, z, cmap=cmap, norm=norm)
     ax.add_feature(cartopy.feature.OCEAN, facecolor=[(0.16, 0.22, 0.33)])
     ax.add_feature(cartopy.feature.LAND, facecolor=[(0.05, 0.07, 0.14)], zorder=2)
     ax.coastlines(linewidth=0.15, color='white', zorder=3)
