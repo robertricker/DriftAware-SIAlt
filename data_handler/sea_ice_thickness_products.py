@@ -149,6 +149,7 @@ class SeaIceThicknessProducts:
         return atl10_data, atl10_attrs, atl10_beams
 
     def atl10_to_gdf(self):
+        atlas_sdp_gps_epoch = 1198800018.0
         gdf_list = list()
         for file in self.target_files:
             atl10_data, atl10_attrs, atl10_beams = self.read_atl10(file, attributes=True)
@@ -168,6 +169,7 @@ class SeaIceThicknessProducts:
 
         gdf_final = pd.concat(gdf_list).pipe(gpd.GeoDataFrame)
         gdf_final.crs = gdf_list[0].crs
+        gdf_final['time'] = Time(gdf_final['delta_time'] + atlas_sdp_gps_epoch, format='gps').to_datetime()
 
         gdf_final.rename(columns={"beam_fb_confidence": "total_freeboard_confidence",
                                   "beam_fb_height": "total_freeboard",
@@ -201,6 +203,7 @@ class SeaIceThicknessProducts:
             gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
             gdf = gdf.to_crs(self.out_epsg)
             gdf = gdf[gdf['latitude'] > 50.0]
+            gdf['time'] = (gdf['time'] - datetime.datetime(1970, 1, 1)).dt.total_seconds()
             gdf_list.append(gdf)
 
         gdf_final = pd.concat(gdf_list).pipe(gpd.GeoDataFrame)

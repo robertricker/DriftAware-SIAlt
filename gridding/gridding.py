@@ -14,15 +14,25 @@ from io_tools import create_out_dir
 from gridding.prepare_netcdf import PrepareNetcdf
 from gridding import gridding_lib
 from loguru import logger
+from io_tools import init_logger
+
+
+def get_deformation(row):
+    mean_tot = [np.linalg.norm([a, b]) for a, b in zip(row['shear'], row['divergence'])]
+    return np.mean(mean_tot)
+
+
+def get_row_mean(row):
+    return np.mean(row)
 
 
 def process_file(config, file, grid, region_grid):
-    cday = datetime.datetime.strptime(re.split('-', os.path.basename(file))[3], '%Y%m%d')
+    init_logger(config)
     sensor = config['options']['sensor']
     target_var = config['options']['target_variable']
-    target_var_r = config['options']['target_variable_range']["freeboard" if "freeboard" in target_var else "thickness"]
     out_epsg = config["options"]["out_epsg"]
     stk_opt = config['options']['proc_step_options']['stacking']
+    grd_opt = config['options']['proc_step_options']['gridding']
 
     # declare histogram options
     hist_n_bins = stk_opt['hist']['n_bins']
@@ -30,47 +40,38 @@ def process_file(config, file, grid, region_grid):
     hist_bin_size = (hist_range[1] - hist_range[0]) / hist_n_bins
 
     # declare gridding options
-    gridding_mode = config["options"]['proc_step_options']['gridding']['mode']
+    gridding_mode = grd_opt['mode']
+    var_range = grd_opt['target_variable_range']["freeboard" if "freeboard" in target_var else "thickness"]
     out_dir = config['dir'][sensor]['netcdf']
 
-    logger.remove()
-    logger.add(sys.stdout, colorize=True,
-               format="<green>{time:YYYY-MM-DDTHH:mm:ss}</green> "
-                      "<blue>{module}</blue> "
-                      "<cyan>{function}</cyan> {message}",
-               enqueue=True)
-    logger.add(config['dir']['logging'],
-               format="{time:YYYY-MM-DDTHH:mm:ss} {module} {function} {message}", enqueue=True)
-
-    logger.info('process geojson file: ' + os.path.basename(file))
+    logger.info('process geosjson file: ' + os.path.basename(file))
 
     data = gpd.read_file(file)
     data.crs = "epsg:" + re.findall(r'epsg(\d{4})', os.path.basename(file))[0]
     data.to_crs(crs=out_epsg, inplace=True)
-
-    # take last point of multipoint geometry for start location and first point for target location
     start_location = data["geometry"].apply(lambda g: g.geoms[0])
     target_location = data["geometry"].apply(lambda g: g.geoms[-1])
     data['dist_acquisition'] = start_location.distance(target_location) / 1000.0
+    data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])
+    data['shear'] = data['shear'].apply(lambda x: [float(val) for val in x.split()])
 
     gridding_modes = {
         'drift-aware': ('daware', target_location),
-        'conventional': ('conf', start_location)}
+        'conventional': ('conv', start_location)}
 
     if gridding_mode in gridding_modes:
         file_prefix, data["geometry"] = gridding_modes[gridding_mode]
     else:
         logger.error('Gridding mode does not exist: %s', gridding_mode)
         sys.exit()
-
     data['ice_conc'] = data['ice_conc'] * 100.0
-    data[(data[target_var] > target_var_r[1]) |
-         (data[target_var] < target_var_r[0])] = np.nan
-    data = data.dropna()
+    data[(data[target_var] > var_range[1]) |
+         (data[target_var] < var_range[0])] = np.nan
+    data = data.dropna(subset=data.columns.difference(['growth']))
     data = data.reset_index()
-    dt_days_range = [np.min(data['dt_days']), np.max(data['dt_days'])]
-    time_bnds = [cday - datetime.timedelta(days=dt_days_range[0]), cday + datetime.timedelta(days=dt_days_range[1])]
-
+    time_bnds = np.array([[data['t0'].min(), data['t0'].max()]])
+    time_center = datetime.datetime.strptime(
+        re.split('-', os.path.basename(file))[3], '%Y%m%d') + datetime.timedelta(hours=12)
     # extract histogram
     data_hist = data[target_var + '_hist'].str.split(expand=True).astype(int)
     data_hist.columns = np.arange(hist_n_bins).astype(str)
@@ -84,6 +85,7 @@ def process_file(config, file, grid, region_grid):
 
     geo = merged.groupby(['index_right', 'dt_days'], as_index=False).first()['geometry']
     tmp_hist = merged_hist.groupby(['index_right', 'dt_days'], as_index=False).sum().assign(geometry=geo)
+    tmp_hist = gpd.GeoDataFrame(tmp_hist)
 
     tmp_hist_grid = gridding_lib.grid_data(tmp_hist, grid,
                                            np.arange(hist_n_bins).astype('str').tolist(),
@@ -97,27 +99,30 @@ def process_file(config, file, grid, region_grid):
                                             data[target_var+'_drift_unc']**2 +
                                             data[target_var+'_unc']**2)
 
+    data['deformation'] = data.apply(get_deformation, axis=1)
+    data['divergence'] = data["divergence"].apply(get_row_mean)
+    data['shear'] = data["shear"].apply(get_row_mean)
     prepare_netcdf = PrepareNetcdf(config)
     var, var_rename = prepare_netcdf.set_field_names()
     master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True)
     master = master.join(tmp_hist_grid.drop(columns=['geometry']))
     master = prepare_netcdf.drop_fields(master)
-
     centroidseries = master['geometry'].centroid
     master['yc'], master['xc'] = centroidseries.x, centroidseries.y
+    master['time'] = (time_center - datetime.datetime(1970, 1, 1, 0, 0)).total_seconds()
     master['longitude'], master['latitude'] = transform_coords(master['yc'], master['xc'], out_epsg, 'EPSG:4326')
-    master = master.set_index(['xc', 'yc'])
+    master = master.set_index(['time', 'xc', 'yc'])
     master.drop(columns=['geometry'], inplace=True)
     master = xr.Dataset.from_dataframe(master)
     master = master.set_coords(("longitude", "latitude"))
     master = prepare_netcdf.add_projection_field(master)
-    master = prepare_netcdf.add_time_bnds_field(master, time_bnds)
-    master['region_flag'] = (['xc', 'yc'], region_grid)
+    master["time_bnds"] = xr.DataArray(time_bnds, dims=("time", "nv"), coords={"time": master.time})
+    master['region_flag'] = (['time', 'xc', 'yc'], region_grid[np.newaxis, :, :])
     hist_arr = xr.concat([master[str(i) + '_sum'] for i in np.arange(hist_n_bins)], dim='zc').values
     master = master.drop_vars([str(i) + '_sum' for i in np.arange(hist_n_bins)])
 
     master = master.assign_coords(zc=("zc", zc))
-    master[target_var + '_hist'] = (['xc', 'yc', 'zc'], np.transpose(hist_arr, (1, 2, 0)))
+    master[target_var + '_hist'] = (['time', 'xc', 'yc', 'zc'], np.transpose(hist_arr, (1, 2, 3, 0)))
 
     master = prepare_netcdf.set_var_attrbs(master)
     master = prepare_netcdf.set_glob_attrbs(master)
@@ -139,21 +144,20 @@ def process_file(config, file, grid, region_grid):
 def gridding(config):
 
     # declare sensor and target variable options
-
     sensor = config['options']['sensor']
     target_var = config['options']['target_variable']
     grd_opt = config['options']['proc_step_options']['gridding']
     multiproc = grd_opt['multiproc']
     netcdf_bounds = grd_opt['netcdf_grid']['bounds']
-    config['dir'][sensor]['geojson'] = config['dir'][sensor]['geojson'] + grd_opt['sub_dir']
-    file_list = sorted(glob.glob(config['dir'][sensor]['geojson'] + "/" + target_var + '*.geojson'))
+    geojson_dir = config['dir'][sensor]['geojson'] + grd_opt['geojson_dir']
+    file_list = sorted(glob.glob(geojson_dir + "/" + target_var + '*.geojson'))
 
     grid, cell_width = gridding_lib.define_grid(
         netcdf_bounds,
         grd_opt['netcdf_grid']['dim'],
         config['options']['out_epsg'])
 
-    config['dir'][sensor]['netcdf'] = create_out_dir(config, config['dir'][sensor]['netcdf'], grid)
+    config['dir'][sensor]['netcdf'] = create_out_dir(config, config['dir'][sensor]['netcdf'], cell_width)
     region_grid = get_sea_ice_regions(config['dir']['auxiliary']['reg_mask'], netcdf_bounds, cell_width,
                                       config['options']['out_epsg'])
 

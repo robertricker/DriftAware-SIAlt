@@ -7,6 +7,7 @@ from visualization import visualization
 from typing import Dict
 from loguru import logger
 from stacking import stacking
+from io_tools import init_logger
 
 
 def main(configure: Dict[str, object]) -> None:
@@ -40,7 +41,7 @@ def main(configure: Dict[str, object]) -> None:
 if __name__ == '__main__':
     start_time = time.time()
     # Load the configuration settings from a YAML file
-    with open('config.yaml', 'r') as f:
+    with open('config/config.yaml', 'r') as f:
         config = yaml.safe_load(f)
 
     # Set up the logging configuration
@@ -48,14 +49,5 @@ if __name__ == '__main__':
                f"{config['options']['proc_step']}{'_'}"\
                f"{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
     config['dir']['logging'] = log_file
-
-    logger.remove()
-    logger.add(sys.stdout,
-               colorize=True,
-               format=("<green>{time:YYYY-MM-DDTHH:mm:ss}</green> "
-                       "<blue>{module}</blue> "
-                       "<cyan>{function}</cyan> {message}"),
-               enqueue=True)
-    logger.add(log_file, format="{time:YYYY-MM-DDTHH:mm:ss} {module} {function} {message}", enqueue=True)
-
+    init_logger(config)
     main(config)

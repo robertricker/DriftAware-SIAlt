@@ -6,6 +6,8 @@ from shapely.geometry import Point
 from typing import Tuple
 from scipy.interpolate import griddata
 from datetime import datetime
+from loguru import logger
+import sys
 
 
 def transform_coords(x: float, y: float, in_epsg: str, out_epsg: str) -> Tuple[float, float]:
@@ -50,30 +52,14 @@ def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg):
     return region
 
 
-def create_subdir(config, parent_directory, grid):
+def create_out_dir(config, parent_directory, cell_width):
     target_variable = config["options"]["target_variable"]
     hem = config["options"]["hemisphere"]
     stk_opt = config['options']['proc_step_options']['stacking']
     t_window = stk_opt['t_window']
     mode = stk_opt['mode']
     epsg = 'epsg' + config['options']['out_epsg'].split(":")[1]
-    res = "{:.0f}".format(grid.geometry[0].length / 4 / 100.0)
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-
-    sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}-{timestamp}'
-    sub_dir_path = os.path.join(parent_directory, sub_dir_name)
-    os.makedirs(sub_dir_path)
-    return sub_dir_path
-
-
-def create_out_dir(config, parent_directory, grid):
-    target_variable = config["options"]["target_variable"]
-    hem = config["options"]["hemisphere"]
-    stk_opt = config['options']['proc_step_options']['stacking']
-    t_window = stk_opt['t_window']
-    mode = stk_opt['mode']
-    epsg = 'epsg' + config['options']['out_epsg'].split(":")[1]
-    res = "{:.0f}".format(grid.geometry[0].length / 4 / 100.0)
+    res = "{:.0f}".format(cell_width / 100.0)
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
     sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}-{timestamp}'
@@ -82,3 +68,12 @@ def create_out_dir(config, parent_directory, grid):
     return sub_dir_path + '/'
 
 
+def init_logger(config):
+    logger.remove()
+    logger.add(sys.stdout, colorize=True,
+               format=("<green>{time:YYYY-MM-DDTHH:mm:ss}</green> "
+                       "<blue>{module}</blue> "
+                       "<cyan>{function}</cyan> {message}"),
+               enqueue=True)
+    logger.add(config['dir']['logging'],
+               format="{time:YYYY-MM-DDTHH:mm:ss} {module} {function} {message}", enqueue=True)
