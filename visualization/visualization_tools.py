@@ -1,15 +1,10 @@
 import numpy as np
-import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy
-import glob
-import sys
 import matplotlib
-import seaborn as sns
 import os
 import subprocess
-from pyproj.crs import CRS
 
 
 def visu_xarray(x, y, z, figsize, vmin, vmax, n_level, cmap, time_string, label, outfile, iceconc=None):

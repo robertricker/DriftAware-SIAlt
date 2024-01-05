@@ -202,14 +202,14 @@ def stacking(config):
     else:
         years = [stk_opt['t_start'].year]
 
+    t_length = stk_opt['t_length']
     out_dir = config['dir'][sensor]['geojson']
     for yr in years:
         config['dir'][sensor]['geojson'] = create_out_dir(config, out_dir, cell_width)
         stk_opt['t_start'] = stk_opt['t_start'].replace(year=yr)
-        t_length = stk_opt['t_length']
 
         if t_length in ['season', 'all']:
-            t_length = (datetime.datetime(stk_opt['t_start'].year + 1, 5, 1, 0, 0) - stk_opt['t_start']).days
+            stk_opt['t_length'] = (datetime.datetime(stk_opt['t_start'].year + 1, 5, 1, 0, 0) - stk_opt['t_start']).days
 
         if multiproc:
             logger.info('start multiprocessing')
@@ -227,12 +227,12 @@ def stacking(config):
         list_r = sorted(glob.glob(os.path.join(config['dir'][sensor]['geojson'], f'*-r-*.geojson')))
         if multiproc:
             pool = mp.Pool()
-            for j in range(t_length):
+            for j in range(stk_opt['t_length']):
                 pool.apply_async(
                     merge_forward_reverse_stacks, args=(
                         config, growth_grid, growth_cell_width, cell_width, list_f, list_r, j))
             pool.close()
             pool.join()
         else:
-            for j in range(t_length):
+            for j in range(stk_opt['t_length']):
                 merge_forward_reverse_stacks(config, growth_grid, growth_cell_width, cell_width, list_f, list_r, j)

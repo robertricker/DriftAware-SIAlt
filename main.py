@@ -1,5 +1,4 @@
 import datetime
-import sys
 import time
 import yaml
 from gridding import gridding
