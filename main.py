@@ -1,6 +1,7 @@
 import datetime
 import time
 import yaml
+import argparse
 from gridding import gridding
 from visualization import visualization
 from typing import Dict
@@ -38,9 +39,14 @@ def main(configure: Dict[str, object]) -> None:
 
 
 if __name__ == '__main__':
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Process configuration file.')
+    parser.add_argument('config_file', type=str, help='Path to the configuration YAML file')
+    args = parser.parse_args()
+
     start_time = time.time()
     # Load the configuration settings from a YAML file
-    with open('config/config.yaml', 'r') as f:
+    with open(args.config_file, 'r') as f:
         config = yaml.safe_load(f)
 
     # Set up the logging configuration
