@@ -1,8 +1,11 @@
 import pyproj
 import netCDF4
 import numpy as np
+import pandas as pd
+import geopandas as gpd
 import os
 from shapely.geometry import Point
+from shapely.wkt import loads
 from typing import Tuple
 from scipy.interpolate import griddata
 from datetime import datetime
@@ -77,3 +80,10 @@ def init_logger(config):
                enqueue=True)
     logger.add(config['dir']['logging'],
                format="{time:YYYY-MM-DDTHH:mm:ss} {module} {function} {message}", enqueue=True)
+
+
+def read_dasit_csv(file):
+    data = pd.read_csv(file)
+    data['geometry'] = data['geometry'].apply(loads)
+    data = gpd.GeoDataFrame(data, geometry='geometry')
+    return data
