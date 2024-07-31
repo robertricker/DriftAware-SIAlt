@@ -27,7 +27,7 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     init_logger(config)
     nbs = 260  # empirical estimate
     target_var = config["options"]["target_variable"]
-    geojson_dir = config["dir"][config["options"]["sensor"]]["geojson"]
+    csv_dir = config["dir"][config["options"]["sensor"]]["csv"]
     out_epsg = config['options']['out_epsg']
     stk_opt = config['options']['proc_step_options']['stacking']
     start_date = stk_opt['t_start']
@@ -35,22 +35,22 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     min_n_tps = stk_opt['growth_estimation']['min_n_tiepoints']
     cday = start_date + datetime.timedelta(days=j)
     subs = cday.strftime("%Y%m%d")
-    logger.info("finalizing geojson file on day: " + subs)
+    logger.info("finalizing csv file on day: " + subs)
     if stk_opt['mode'] == 'fr':
-        file_f = [i for i in list_f if subs in re.search('-(.+?)-*.geojson', os.path.basename(i)).group(1)]
-        file_r = [i for i in list_r if subs in re.search('-(.+?)-*.geojson', os.path.basename(i)).group(1)]
-        stack_f = gpd.read_file(file_f[0])
-        stack_r = gpd.read_file(file_r[0])
+        file_f = [i for i in list_f if subs in re.search('-(.+?)-*.csv', os.path.basename(i)).group(1)]
+        file_r = [i for i in list_r if subs in re.search('-(.+?)-*.csv', os.path.basename(i)).group(1)]
+        stack_f = read_dasit_csv(file_f[0])
+        stack_r = read_dasit_csv(file_f[0])
         stack_r = stack_r[stack_r.dt_days != 0].reset_index(drop=True)
         data = pd.concat([stack_f, stack_r], ignore_index=True)
-        out_file = os.path.basename(file_f[0]).replace("-f-", "-")
+        outfile = os.path.basename(file_f[0]).replace("-f-", "-")
         os.remove(file_f[0])
         os.remove(file_r[0])
     else:
         listfr = list_f + list_r
-        file = [i for i in listfr if subs in re.search('-(.+?)-*.geojson', os.path.basename(i)).group(1)]
-        data = gpd.read_file(file[0])
-        out_file = os.path.basename(file[0])
+        file = [i for i in listfr if subs in re.search('-(.+?)-*.csv', os.path.basename(i)).group(1)]
+        data = read_dasit_csv(file[0])
+        outfile = os.path.basename(file[0])
         os.remove(file[0])
 
     data.crs = out_epsg
@@ -77,7 +77,7 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     data["sea_ice_thickness_drift_unc"] = data.apply(
         get_neighbor_dyn_range, args=(data, target_var, tree, cell_width/2), axis=1)
     data["geometry"] = traj_geom
-    data.to_file(os.path.join(geojson_dir, out_file), driver="GeoJSON")
+    data.to_csv(os.path.join(csv_dir, outfile), index=False)
 
 
 def stack_proc(config, direct, grid, cell_width):
@@ -165,15 +165,19 @@ def stack_proc(config, direct, grid, cell_width):
         outfile = (
             f"{target_var}-{sensor}-{hem}-{t0.strftime('%Y%m%d')}-"
             f"{config['version']}-{direct}-epsg{out_epsg.split(':')[1]}_"
-            f"{cell_width / 100.0:.0f}.geojson")
+            f"{cell_width / 100.0:.0f}.csv")
 
-        logger.info(t0.strftime("%Y%m%d")+': generated geojson file: ' + outfile)
+        logger.info(t0.strftime("%Y%m%d")+': generated csv file: ' + outfile)
         gdf_final['divergence'] = gdf_final['divergence'].apply(
             lambda s: s.replace('[', '').replace(']', '').replace(',', ''))
         gdf_final['shear'] = gdf_final['shear'].apply(
             lambda s: s.replace('[', '').replace(']', '').replace(',', ''))
 
-        gdf_final.to_file(config['dir'][sensor]['geojson'] + outfile, driver="GeoJSON")
+        # optional for Luisa, save only last file
+        # if abs(gdf_final['dt_days']).max()+1 == config['options']['proc_step_options']['stacking']['t_window']:
+
+        # gdf_final.to_file(config['dir'][sensor]['geojson'] + outfile, driver="GeoJSON")
+        gdf_final.to_csv(config['dir'][sensor]['csv'] + outfile, index=False)
 
     return scheme
 
@@ -203,9 +207,8 @@ def stacking(config):
         years = [stk_opt['t_start'].year]
 
     t_length = stk_opt['t_length']
-    out_dir = config['dir'][sensor]['geojson']
     for yr in years:
-        config['dir'][sensor]['geojson'] = create_out_dir(config, out_dir, cell_width)
+        config['dir'][sensor]['csv'] = create_out_dir(config, config['dir'][sensor]['csv'], cell_width)
         stk_opt['t_start'] = stk_opt['t_start'].replace(year=yr)
 
         if t_length in ['season', 'all']:
@@ -223,8 +226,8 @@ def stacking(config):
                 stack_proc(config, mode, grid, cell_width)
 
         logger.info('start merging forward and reverse stacks')
-        list_f = sorted(glob.glob(os.path.join(config['dir'][sensor]['geojson'], f'*-f-*.geojson')))
-        list_r = sorted(glob.glob(os.path.join(config['dir'][sensor]['geojson'], f'*-r-*.geojson')))
+        list_f = sorted(glob.glob(os.path.join(config['dir'][sensor]['csv'], f'*-f-*.csv')))
+        list_r = sorted(glob.glob(os.path.join(config['dir'][sensor]['csv'], f'*-r-*.csv')))
         if multiproc:
             pool = mp.Pool()
             for j in range(stk_opt['t_length']):
