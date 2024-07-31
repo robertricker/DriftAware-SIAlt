@@ -3,10 +3,20 @@ from data_handler.sea_ice_concentration_products import SeaIceConcentrationProdu
 import xarray as xr
 import datetime
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import glob
 import re
 import os
 from loguru import logger
+
+
+def create_diverging_colormap():
+    colors = [
+        (0.4, 0, 0.4),
+        (1.00, 1.00, 1.00),
+        (1.00, 0.4, 0.05)]
+    cmap = LinearSegmentedColormap.from_list('PuOr', colors, N=256)
+    return cmap
 
 
 def visualization(config):
@@ -17,8 +27,7 @@ def visualization(config):
     target_var = visu_opt['variable']
     make_gif = visu_opt['make_gif']
     config['dir'][sensor]['netcdf'] = config['dir'][sensor]['netcdf'] + visu_opt['sub_dir']
-    file_list = sorted(glob.glob(config['dir'][sensor]['netcdf'] + "/" + '*.nc'))
-
+    file_list = sorted(glob.glob(os.path.join(config['dir'][sensor]['netcdf'], '**', '*.nc'), recursive=True))
     out_dir = config['dir'][sensor]['visu']
 
     sic_product = SeaIceConcentrationProducts(hem=hem, product_id=config['options']['ice_conc_product'],
@@ -39,63 +48,69 @@ def visualization(config):
 
         if target_var in ['sea_ice_thickness', 'sea_ice_thickness_corrected']:
             vmin, vmax, n_level = 0, 5, 11
-            cmap = plt.cm.plasma
+            cmap = plt.cm.cool
             scaling = 1.0
             label = 'Sea ice thickness in m'
 
-        elif target_var in ['sea_ice_thickness_unc', 'sea_ice_thickness_total_unc', 'sea_ice_thickness_drift_unc']:
-            vmin, vmax, n_level = 0, 0.6, 13
-            cmap = plt.cm.plasma
+        elif target_var in ['sea_ice_thickness_l2_unc', 'sea_ice_thickness_total_unc', 'sea_ice_thickness_drift_unc']:
+            vmin, vmax, n_level = 0, 1.0, 13
+            cmap = plt.cm.cool
             scaling = 1.0
             label = 'Sea ice thickness uncertainty in m'
 
         elif target_var in ['sea_ice_freeboard', 'sea_ice_freeboard_corrected']:
             vmin, vmax, n_level = 0, 60, 13
-            cmap = plt.cm.plasma
+            cmap = plt.cm.cool
             scaling = 100.0
             label = 'Sea ice freeboard in cm'
 
-        elif target_var in ['sea_ice_freeboard_unc', 'sea_ice_freeboard_total_unc', 'sea_ice_freeboard_drift_unc']:
+        elif target_var in ['sea_ice_freeboard_l2_unc', 'sea_ice_freeboard_total_unc', 'sea_ice_freeboard_drift_unc']:
             vmin, vmax, n_level = 0, 6, 13
-            cmap = plt.cm.plasma
+            cmap = plt.cm.cool
             scaling = 100.0
             label = 'Sea ice freeboard uncertainty in cm'
 
         elif target_var in ['total_freeboard', 'total_freeboard_corrected']:
             vmin, vmax, n_level = 0, 60, 13
-            cmap = plt.cm.plasma
+            cmap = plt.cm.cool
             scaling = 100.0
             label = 'Total freeboard in cm'
 
-        elif target_var in ['total_freeboard_unc', 'total_freeboard_total_unc', 'total_freeboard_drift_unc']:
+        elif target_var in ['total_freeboard_l2_unc', 'total_freeboard_total_unc', 'total_freeboard_drift_unc']:
             vmin, vmax, n_level = 0, 6, 13
-            cmap = plt.cm.plasma
+            cmap = plt.cm.cool
             scaling = 100.0
             label = 'Total freeboard uncertainty in cm'
 
         elif target_var == "dist_acquisition":
             vmin, vmax, n_level = 0, 160, 17
-            cmap = plt.cm.plasma
+            cmap = plt.cm.cool
             scaling = 1.0
             label = 'Distance to data aquisition in km'
 
         elif target_var == "time_offset_acquisition":
             vmin, vmax, n_level = -15, 15, 13
-            cmap = plt.cm.bwr
+            cmap = create_diverging_colormap()
             scaling = 1.0
             label = 'time offfset to data aquisition in days'
 
         elif target_var == "sea_ice_freeboard_growth_interpolated":
             vmin, vmax, n_level = -0.5, 0.5, 20
-            cmap = plt.cm.bwr
+            cmap = create_diverging_colormap()
             scaling = 100.0
             label = 'Sea ice freeboard growth in cm/day'
 
         elif target_var == "sea_ice_thickness_growth_interpolated":
             vmin, vmax, n_level = -5, 5, 20
-            cmap = plt.cm.bwr
+            cmap = create_diverging_colormap()
             scaling = 100.0
-            label = 'Total freeboard growth in cm/day'
+            label = 'Sea ice thickness growth in cm/day'
+
+        elif target_var in ["shear","divergence"]:
+            vmin, vmax, n_level = -0.1, 0.1, 20
+            cmap = create_diverging_colormap()
+            scaling = -1.0
+            label = 'Convergence in day$^{-1}$'
 
         else:
             break
@@ -107,7 +122,8 @@ def visualization(config):
                 print(error)
 
         outfile = out_dir + target_var + os.sep + re.split('.nc', os.path.basename(file))[0] + '_' + target_var + '.png'
-        visualization_tools.visu_xarray(data.xc, data.yc, data[target_var] * scaling,
+        print(outfile)
+        visualization_tools.visu_xarray(data.xc, data.yc, data[target_var][0] * scaling,
                                         (8, 8),
                                         vmin, vmax, n_level,
                                         cmap,
