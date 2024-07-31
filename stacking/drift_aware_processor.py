@@ -27,7 +27,7 @@ class DriftAwareProcessor:
         if self.sensor == 'icesat2':
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
             for beam in sit.beam.unique():
-                tmp = (sit[[self.target_var, self.target_var + '_unc', 'geometry', 'time', 'beam'] + self.add_variable]
+                tmp = (sit[[self.target_var, self.target_var + '_l2_unc', 'geometry', 'time', 'beam'] + self.add_variable]
                        .copy()
                        .loc[sit['beam'] == beam]
                        .drop(columns=['beam'])
@@ -36,13 +36,13 @@ class DriftAwareProcessor:
                 tmp_grid = gridding_lib.grid_data(tmp, self.grid, [self.target_var], [self.target_var],
                                                   hist_n_bins=hist_n_bins, hist_range=hist_range,
                                                   agg_mode=['mean', 'std', 'hist'])
-                unc_grid = gridding_lib.grid_data(tmp, self.grid, [self.target_var+'_unc'],
-                                                  [self.target_var+'_unc'], agg_mode=['mean', 'cnt'])
+                unc_grid = gridding_lib.grid_data(tmp, self.grid, [self.target_var+'_l2_unc'],
+                                                  [self.target_var+'_l2_unc'], agg_mode=['mean', 'cnt'])
                 add_grid = gridding_lib.grid_data(tmp, self.grid, self.add_variable+['time'],
                                                   self.add_variable+['time'], agg_mode=['mean'])
 
-                tmp_grid[self.target_var+'_unc'] = unc_grid[self.target_var+'_unc'] / np.sqrt(
-                    unc_grid[self.target_var+'_unc_cnt'])
+                tmp_grid[self.target_var+'_l2_unc'] = unc_grid[self.target_var+'_l2_unc'] / np.sqrt(
+                    unc_grid[self.target_var+'_l2_unc_cnt'])
                 tmp_grid[self.add_variable] = add_grid[self.add_variable]
                 tmp_grid['t0'] = add_grid['time']
                 tmp_grid['xu'] = tmp_grid.index.get_level_values('x')
@@ -66,13 +66,13 @@ class DriftAwareProcessor:
             tmp_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var], [self.target_var],
                                               hist_n_bins=hist_n_bins, hist_range=hist_range,
                                               agg_mode=['mean', 'std', 'hist'])
-            unc_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var + '_unc'],
-                                              [self.target_var + '_unc'], agg_mode=['mean', 'cnt'])
+            unc_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var + '_l2_unc'],
+                                              [self.target_var + '_l2_unc'], agg_mode=['mean', 'cnt'])
             add_grid = gridding_lib.grid_data(sit, self.grid, self.add_variable+['time'],
                                               self.add_variable+['time'], agg_mode=['mean'])
 
-            tmp_grid[self.target_var + '_unc'] = unc_grid[self.target_var+'_unc'] / np.sqrt(
-                unc_grid[self.target_var+'_unc' + '_cnt'])
+            tmp_grid[self.target_var + '_l2_unc'] = unc_grid[self.target_var+'_l2_unc'] / np.sqrt(
+                unc_grid[self.target_var+'_l2_unc' + '_cnt'])
             tmp_grid[self.add_variable] = add_grid[self.add_variable]
             tmp_grid['t0'] = add_grid['time']
             tmp_grid['xu'] = tmp_grid.index.get_level_values('x')
