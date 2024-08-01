@@ -132,7 +132,7 @@ class DriftAwareProcessor:
         if self.sensor == 'icesat2':
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
             m = 0
-            for beam in beams:
+            for beam in beams.tolist():
                 m = 0
                 end = self.i + 2 if direct == 1 else day0 - self.i + 2
                 for j in range(1, end):
@@ -170,7 +170,7 @@ class DriftAwareProcessor:
         for j in range(0, row_lim + 1):
             if self.sensor == 'icesat2':
                 beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
-                for beam in beams:
+                for beam in beams.tolist():
                     if len(self.master[beam][gdf_array_index][j]) != 0:
                         gdf_list.append(self.master[beam][gdf_array_index][j])
                         del self.master[beam][gdf_array_index][j]
