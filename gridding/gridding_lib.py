@@ -13,8 +13,8 @@ def define_grid(bounds, n_cells, epsg, grid_type='rectangular'):
     if grid_type == 'rectangular':
         cell_size = (xmax - xmin) / n_cells
         grid_cells = []
-        for x0 in np.arange(xmin, xmax, cell_size):
-            for y0 in np.arange(ymin, ymax, cell_size):
+        for x0 in np.arange(xmin, xmax, cell_size).tolist():
+            for y0 in np.arange(ymin, ymax, cell_size).tolist():
                 # bounds
                 x1 = x0 + cell_size
                 y1 = y0 + cell_size
@@ -25,8 +25,8 @@ def define_grid(bounds, n_cells, epsg, grid_type='rectangular'):
         cell_spacing = (xmax - xmin) / n_cells
         radius = cell_spacing * np.sqrt(2) / 2
         grid_cells = []
-        for x_center in np.arange(xmin + cell_spacing/2, xmax, cell_spacing):
-            for y_center in np.arange(ymin + cell_spacing/2, ymax, cell_spacing):
+        for x_center in np.arange(xmin + cell_spacing/2, xmax, cell_spacing).tolist():
+            for y_center in np.arange(ymin + cell_spacing/2, ymax, cell_spacing).tolist():
                 # Create a circular cell centered at (x_center, y_center)
                 cell = Point(x_center, y_center).buffer(radius)
                 grid_cells.append(cell)

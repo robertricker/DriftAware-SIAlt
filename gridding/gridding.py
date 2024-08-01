@@ -106,11 +106,15 @@ def process_file(config, file, grid, region_grid):
     # add modal value to main data frame
     zc, data[target_var + '_mode'] = gridding_lib.modal_var(data_hist, hist_n_bins, hist_bin_size, hist_range)
 
-    merged = gpd.sjoin(data, grid, how='left', op='within')
-    merged_hist = gpd.sjoin(data_hist, grid, how='left', op='within')
+    merged = gpd.sjoin(data, grid, how='left', predicate='within')
+    merged_hist = gpd.sjoin(data_hist, grid, how='left', predicate='within')
 
     geo = merged.groupby(['index_right', 'dt_days'], as_index=False).first()['geometry']
-    tmp_hist = merged_hist.groupby(['index_right', 'dt_days'], as_index=False).sum().assign(geometry=geo)
+
+    tmp_hist_grouped = merged_hist.drop(columns='geometry').groupby(['index_right', 'dt_days'], as_index=False).sum()
+    tmp_hist_grouped['geometry'] = geo
+    tmp_hist = gpd.GeoDataFrame(tmp_hist_grouped, geometry='geometry')
+
     tmp_hist = gpd.GeoDataFrame(tmp_hist)
 
     tmp_hist_grid = gridding_lib.grid_data(tmp_hist, grid,
@@ -145,8 +149,8 @@ def process_file(config, file, grid, region_grid):
     master = prepare_netcdf.add_projection_field(master)
     master["time_bnds"] = xr.DataArray(time_bnds, dims=("time", "nv"), coords={"time": master.time})
     master['region_flag'] = (['time', 'yc', 'xc'], region_grid[np.newaxis, :, :])
-    hist_arr = xr.concat([master[str(i) + '_sum'] for i in np.arange(hist_n_bins)], dim='zc').values
-    master = master.drop_vars([str(i) + '_sum' for i in np.arange(hist_n_bins)])
+    hist_arr = xr.concat([master[str(i) + '_sum'] for i in range(hist_n_bins)], dim='zc').values
+    master = master.drop_vars([str(i) + '_sum' for i in range(hist_n_bins)])
 
     master = master.assign_coords(zc=("zc", zc))
     master[target_var + '_hist'] = (['time', 'yc', 'xc', 'zc'], np.transpose(hist_arr, (1, 2, 3, 0)))

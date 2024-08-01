@@ -15,24 +15,24 @@ class StackStructure:
         master = {}
         if self.sensor == 'icesat2':
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
-            for beam in beams:
+            for beam in beams.tolist():
                 master[beam] = {}
-                for day1 in self.days1:
+                for day1 in self.days1.tolist():
                     master[beam][day1] = {}
-                    for day2 in self.days2:
+                    for day2 in self.days2.tolist():
                         master[beam][day1][day2] = {}
         else:
-            for day1 in self.days1:
+            for day1 in self.days1.tolist():
                 master[day1] = {}
-                for day2 in self.days2:
+                for day2 in self.days2.tolist():
                     master[day1][day2] = {}
         return master
 
     def initialize_scheme(self):
         if self.sensor == 'icesat2':
-            self.scheme = np.zeros([len(self.master), len(self.days1), len(self.days2)])
+            self.scheme = np.zeros([len(self.master), len(self.days1.tolist()), len(self.days2.tolist())])
         else:
-            self.scheme = np.zeros([len(self.days1), len(self.days2)])
+            self.scheme = np.zeros([len(self.days1.tolist()), len(self.days2.tolist())])
         return self.scheme
 
     def get_master(self):
