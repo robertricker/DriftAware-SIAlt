@@ -1,0 +1,98 @@
+# Drift-aware algorithm and product version
+version: v100
+
+# Data repositories
+dir:
+  cryosat2:
+    level2:
+      sea_ice_freeboard: "/cluster/work/users/rori/data/cryosat2/l2p_cci/"
+      sea_ice_thickness: "/cluster/work/users/rori/data/cryosat2/l2p_cci/"
+    csv: "/cluster/work/users/rori/product/cryosat2/csv/"
+    netcdf: "/cluster/work/users/rori/product/cryosat2/netcdf/"
+    visu: "/cluster/work/users/rori/analysis/cryosat2/plots/"
+  envisat:
+    level2:
+      sea_ice_freeboard: "/cluster/work/users/rori/data/envisat/l2p_cci/"
+      sea_ice_thickness: "/cluster/work/users/rori/data/envisat/l2p_cci/"
+    csv: "/cluster/work/users/rori/product/envisat/csv/"
+    netcdf: "/cluster/work/users/rori/product/envisat/netcdf/"
+    visu: "/cluster/work/users/rori/analysis/envisat/plots/"
+  icesat2:
+    level2:
+      total_freeboard: "/cluster/work/users/rori/data/icesat2/ATL10.005/"
+      sea_ice_thickness: "/cluster/work/users/rori/data/icesat2/is2sitdata/"
+    csv: "/cluster/work/users/rori/product/icesat2/csv/"
+    netcdf: "/cluster/work/users/rori/product/icesat2/netcdf/"
+    visu: "/cluster/work/users/rori/analysis/icesat2/plots/"
+  auxiliary:
+    ice_conc:
+      osi450: "/cluster/work/users/rori/auxiliary/OSI450/" #v3.0: 1978-2020
+      osi430b: "/cluster/work/users/rori/auxiliary/OSI430b/" #v3.0: 2021-
+    ice_drift:
+      osi455: "/cluster/work/users/rori/auxiliary/OSI455/" #1991-2020
+      osi405: "/cluster/work/users/rori/auxiliary/OSI405/" #2009-
+    reg_mask: "/cluster/work/users/rori/auxiliary/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc"
+  logging: "/cluster/work/users/rori/logging/"
+
+
+# User settings
+user:
+  name: rricker
+
+# Processing options
+options:
+  proc_step: stacking # Available options: stacking, gridding, and visualization
+  sensor: cryosat2 # Available options: envisat, cryosat2 and icesat2
+  ice_conc_product: osi450
+  ice_drift_product: osi455
+  target_variable: 'sea_ice_thickness' # Available options: sea_ice_freeboard (cryosat2), total_freeboard (icesat2), and sea_ice_thickness (cryosat2, icesat2)
+  add_variable: ['snow_depth']
+  hemisphere: nh # Available options: nh
+  out_epsg: 'EPSG:6931' # EASE2: 'EPSG:6931', NSIDC Polar-Stereo: 'EPSG:3411'
+
+  # Processing options for each processing step
+  proc_step_options:
+    # Processing step: stacking
+    stacking:
+      mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
+      t_start: 2011-10-01 00:00:00
+      t_length: all
+      t_window: 16
+      multiproc: False
+      num_cpus: 16
+      parcel_grid:
+        bounds: [-5400000, -5400000, 5400000, 5400000]
+        dim: 1080
+      hist:
+        n_bins: 40
+        range:
+          freeboard: [0, 1]
+          thickness: [0, 10]
+      growth_estimation:
+        growth_grid:
+          bounds: [ -5400000, -5400000, 5400000, 5400000 ]
+          dim: 432
+        min_n_tiepoints: 3
+        growth_range:
+          freeboard: [ -0.25, 0.25 ]
+          thickness: [ -2.5, 2.5 ]
+
+    # Processing step: gridding
+    gridding:
+      csv_dir: 'all'
+      mode: drift-aware
+      multiproc: True
+      num_cpus: 16
+      organize_files: False
+      netcdf_grid:
+        bounds: [-5400000, -5400000, 5400000, 5400000]
+        dim: 432
+      target_variable_range:
+        freeboard: [ 0, 1 ]
+        thickness: [ 0, 10 ]
+
+    # Processing step: visualization
+    visualization:
+      sub_dir: 'crdp_figs'
+      variable: "sea_ice_thickness_growth_interpolated"
+      make_gif: False
