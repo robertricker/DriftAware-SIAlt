@@ -70,9 +70,8 @@ def process_file(config, file, grid, region_grid):
 
     logger.info('process csv file: ' + os.path.basename(file))
 
-    data = gpd.read_file(file)
+    data = read_dasit_csv(file)
     data.rename(columns={'sea_ice_thickness_unc': 'sea_ice_thickness_l2_unc'}, inplace=True)
-    # data = read_dasit_csv(file)
     data.crs = "epsg:" + re.findall(r'epsg(\d{4})', os.path.basename(file))[0]
     data.to_crs(crs=out_epsg, inplace=True)
     start_location = data["geometry"].apply(lambda g: g.geoms[0])
@@ -186,12 +185,10 @@ def gridding(config):
         file_list = sorted([os.path.join(root, file)
                             for root, _, files in os.walk(config['dir'][sensor]['csv'])
                             for file in files
-                            if file.endswith('.geojson')])
-                            # if file.endswith('.csv')])
+                            if file.endswith('.csv')])
     else:
         csv_dir = config['dir'][sensor]['csv'] + grd_opt['csv_dir']
-        file_list = sorted(glob.glob(csv_dir + "/" + target_var + '*.geojson'))
-        # file_list = sorted(glob.glob(csv_dir + "/" + target_var + '*.csv'))
+        file_list = sorted(glob.glob(csv_dir + "/" + target_var + '*.csv'))
 
     grid, cell_width = gridding_lib.define_grid(
         netcdf_bounds,
@@ -206,7 +203,7 @@ def gridding(config):
 
     if grd_opt['multiproc']:
         logger.info('start multiprocessing')
-        pool = mp.Pool()
+        pool = mp.Pool(grd_opt['num_cpus'])
         for file in file_list:
             pool.apply_async(process_file, args=(config, file, grid, region_grid))
         pool.close()

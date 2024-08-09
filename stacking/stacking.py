@@ -231,7 +231,7 @@ def stacking(config):
         list_f = sorted(glob.glob(os.path.join(config['dir'][sensor]['csv'], f'*-f-*.csv')))
         list_r = sorted(glob.glob(os.path.join(config['dir'][sensor]['csv'], f'*-r-*.csv')))
         if multiproc:
-            pool = mp.Pool()
+            pool = mp.Pool(stk_opt['num_cpus'])
             for j in range(stk_opt['t_length']):
                 pool.apply_async(
                     merge_forward_reverse_stacks, args=(
