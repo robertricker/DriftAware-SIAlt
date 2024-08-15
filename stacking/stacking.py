@@ -73,9 +73,10 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     data[target_var + "_growth_unc"] = growth_unc_interp * abs(data.dt_days.to_numpy())
     data["growth_interpolated"] = growth_interp
     data["growth"] = growth
+    data["drift_unc"] = data[target_var + '_drift_unc']
     points = np.array([data['geometry'].x, data['geometry'].y]).transpose()
     tree = cKDTree(points)
-    data["sea_ice_thickness_drift_unc"] = data.apply(
+    data[target_var + '_drift_unc'] = data.apply(
         get_neighbor_dyn_range, args=(data, target_var, tree, cell_width/2), axis=1)
     data["geometry"] = traj_geom
     data.to_csv(os.path.join(csv_dir, outfile), index=False)
