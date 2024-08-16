@@ -191,6 +191,7 @@ def stacking(config):
     multiproc = stk_opt['multiproc']
     parcel_grid_opt = stk_opt['parcel_grid']
     growth_grid_opt = stk_opt['growth_estimation']['growth_grid']
+    csv_dir = config['dir'][sensor]['csv']
     grid, cell_width = gridding_lib.define_grid(parcel_grid_opt["bounds"],
                                                 parcel_grid_opt["dim"],
                                                 config['options']['out_epsg'],
@@ -211,7 +212,7 @@ def stacking(config):
 
     t_length = stk_opt['t_length']
     for yr in years:
-        config['dir'][sensor]['csv'] = create_out_dir(config, config['dir'][sensor]['csv'], cell_width)
+        config['dir'][sensor]['csv'] = create_out_dir(config, csv_dir, cell_width)
         stk_opt['t_start'] = stk_opt['t_start'].replace(year=yr)
 
         if t_length in ['season', 'all']:
