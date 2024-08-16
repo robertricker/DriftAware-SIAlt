@@ -41,7 +41,7 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
         file_f = [i for i in list_f if subs in re.search('-(.+?)-*.csv', os.path.basename(i)).group(1)]
         file_r = [i for i in list_r if subs in re.search('-(.+?)-*.csv', os.path.basename(i)).group(1)]
         stack_f = read_dasit_csv(file_f[0])
-        stack_r = read_dasit_csv(file_f[0])
+        stack_r = read_dasit_csv(file_r[0])
         stack_r = stack_r[stack_r.dt_days != 0].reset_index(drop=True)
         data = pd.concat([stack_f, stack_r], ignore_index=True)
         outfile = os.path.basename(file_f[0]).replace("-f-", "-")
