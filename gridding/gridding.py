@@ -132,7 +132,7 @@ def process_file(config, file, grid, region_grid):
     data['divergence'] = data["divergence"].apply(get_row_mean)
     data['shear'] = data["shear"].apply(get_row_mean)
     prepare_netcdf = PrepareNetcdf(config)
-    var, var_rename = prepare_netcdf.set_field_names()
+    var, var_rename = prepare_netcdf.set_variables()
     master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True)
     master = master.join(tmp_hist_grid.drop(columns=['geometry']))
     master = prepare_netcdf.drop_fields(master)

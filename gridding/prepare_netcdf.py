@@ -15,15 +15,16 @@ class PrepareNetcdf:
         self.sid_product = config['options']['ice_conc_product']
         self.sic_product = config['options']['ice_drift_product']
 
-    def set_field_names(self):
+    def set_variables(self):
         if self.mode == 'drift-aware':
-            var = [self.target_var, 'dist_acquisition', 'dt_days', 'ice_conc', # 'deformation', 'shear', 'divergence',
+            var = [self.target_var, 'dist_acquisition', 'dt_days', 'ice_conc', 'deformation', 'shear', 'divergence',
+                   'snow_depth', 'drift_unc',
                    self.target_var + '_l2_unc', self.target_var + '_drift_unc',
                    self.target_var + '_growth_unc', self.target_var + '_total_unc',
                    self.target_var + '_mode', self.target_var + '_corr', 'growth', 'growth_interpolated']
 
             var_rename = [self.target_var, 'dist_acquisition', 'time_offset_acquisition', 'sea_ice_concentration',
-                          #'deformation', 'shear', 'divergence',
+                          'deformation', 'shear', 'divergence', 'snow_depth', 'drift_unc',
                           self.target_var + '_l2_unc', self.target_var+'_drift_unc',
                           self.target_var+'_growth_unc', self.target_var+'_total_unc',
                           self.target_var+'_mode', self.target_var+'_corrected',
@@ -31,10 +32,11 @@ class PrepareNetcdf:
 
         elif self.mode == 'conventional':
             var = [self.target_var, 'dist_acquisition', 'dt_days', 'ice_conc', 'deformation',  'shear', 'divergence',
-                   self.target_var + '_unc', self.target_var + '_mode']
+                   'snow_depth',
+                   self.target_var + '_l2_unc', self.target_var + '_mode']
             var_rename = [self.target_var, 'dist_acquisition', 'time_offset_acquisition',
-                          'sea_ice_concentration', 'deformation',  'shear', 'divergence', self.target_var + '_l2_unc',
-                          self.target_var+'_mode']
+                          'sea_ice_concentration', 'deformation',  'shear', 'divergence', 'snow_depth',
+                          self.target_var + '_l2_unc', self.target_var+'_mode']
         else:
             logger.error('Gridding mode does not exist: %s', self.mode)
             sys.exit()
@@ -60,7 +62,7 @@ class PrepareNetcdf:
     def drop_fields(self, master):
         if self.mode == 'drift-aware':
             master.drop(columns=['dist_acquisition_std', 'time_offset_acquisition_std', 'sea_ice_concentration_std',
-                                 #'deformation_std', 'shear_std', 'divergence_std',
+                                 'deformation_std', 'shear_std', 'divergence_std', 'snow_depth_std', 'drift_unc_std',
                                  self.target_var + '_mode_std', self.target_var + '_corrected_std',
                                  self.target_var + '_l2_unc_std', self.target_var+'_drift_unc_std',
                                  self.target_var+'_growth_unc_std', self.target_var+'_total_unc_std',
@@ -68,7 +70,7 @@ class PrepareNetcdf:
                                  self.target_var + '_growth_interpolated_std'], inplace=True)
         elif self.mode == 'conventional':
             master.drop(columns=['dist_acquisition_std', 'time_offset_acquisition_std', 'sea_ice_concentration_std',
-                                 'deformation_std', 'shear_std', 'divergence_std',
+                                 'deformation_std', 'shear_std', 'divergence_std', 'snow_depth_std',
                                  self.target_var + '_l2_unc_std',
                                  self.target_var + '_mode_std'], inplace=True)
         else:
@@ -158,6 +160,8 @@ class PrepareNetcdf:
                                                             'units': 'm'}
             xarray[self.target_var + "_total_unc"].attrs = {'long_name': long_name["target_var_total_unc"],
                                                             'units': 'm'}
+            xarray.drift_unc.attrs = {'long_name': 'drift uncertainty',
+                                      'units': 'm'}
 
         xarray.time.attrs = {'long_name': 'reference time of product',
                              'axis': "T",
@@ -191,14 +195,17 @@ class PrepareNetcdf:
         xarray.sea_ice_concentration.attrs = {'long_name': 'sea ice concentraion',
                                               'units': 'percentage'}
 
-        #xarray.deformation.attrs = {'long_name': 'mean deformation accumulated along the trajectory',
-        #                            'units': '1/day'}
+        xarray.deformation.attrs = {'long_name': 'mean deformation accumulated along the trajectory',
+                                    'units': '1/day'}
 
-        #xarray.shear.attrs = {'long_name': 'mean shear accumulated along the trajectory',
-        #                            'units': '1/day'}
+        xarray.shear.attrs = {'long_name': 'mean shear accumulated along the trajectory',
+                                    'units': '1/day'}
 
-        #xarray.divergence.attrs = {'long_name': 'mean divergence accumulated along the trajectory',
-        #                            'units': '1/day'}
+        xarray.divergence.attrs = {'long_name': 'mean divergence accumulated along the trajectory',
+                                    'units': '1/day'}
+
+        xarray.snow_depth.attrs = {'long_name': 'snow depth',
+                                    'units': 'm'}
 
         xarray.region_flag.attrs = {'long_name': 'NSIDC region mask v2',
                                     'description': "National Snow and Ice Data Center (NSIDC) Northern Hemisphere"
