@@ -147,7 +147,7 @@ def process_file(config, file, grid, region_grid):
     master = master.set_coords(("longitude", "latitude"))
     master = prepare_netcdf.add_projection_field(master)
     master["time_bnds"] = xr.DataArray(time_bnds, dims=("time", "nv"), coords={"time": master.time})
-    master['region_flag'] = (['time', 'yc', 'xc'], region_grid[np.newaxis, :, :])
+    master['region_flag'] = (['time', 'yc', 'xc'], np.flip(region_grid, axis=0)[np.newaxis, :, :])
     hist_arr = xr.concat([master[str(i) + '_sum'] for i in range(hist_n_bins)], dim='zc').values
     master = master.drop_vars([str(i) + '_sum' for i in range(hist_n_bins)])
 
