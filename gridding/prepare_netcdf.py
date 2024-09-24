@@ -215,7 +215,6 @@ class PrepareNetcdf:
                                              " 7: Barents Sea, 8: East Greenland Sea, 9: Baffin Bay and Davis Strait,"
                                              " 10: Gulf of St. Lawrence, 11: Hudson Bay, 12: Canadian Archipelago,"
                                              " 13: Bering Sea, 14: Sea of Okhotsk, 15: Sea of Japan, 16: Bohai Sea,"
-                                             " 17: Gulf of Bothnia, Baltic Sea, 18: Gulf of Alaska, 30: Land,"
-                                             " 31: Coast, 32: Lakes",
+                                             " 17: Gulf of Bothnia, Baltic Sea, 18: Gulf of Alaska"
                                     }
         return xarray
