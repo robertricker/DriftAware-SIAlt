@@ -59,6 +59,10 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
         dissolve_cnt = merged.dissolve(by='index_right', aggfunc='count')
         for i in range(0, len(var)):
             tmp_grid.loc[dissolve_cnt.index, var_str[i] + '_cnt'] = dissolve_cnt[var[i]].values
+    if 'mode' in agg_mode:
+        dissolve_mode = merged.dissolve(by='index_right', aggfunc=lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan)
+        for i in range(len(var)):
+            tmp_grid.loc[dissolve_mode.index, var_str[i]] = dissolve_mode[var[i]].values
     if 'hist' in agg_mode:
         dissolve_hist = merged.dissolve(by='index_right', aggfunc=np.mean)
         dissolve_hist.reset_index(inplace=True)
