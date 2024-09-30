@@ -54,9 +54,9 @@ options:
   proc_step_options:
     # Processing step: stacking
     stacking:
-      mode: r # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
-      t_start: 2011-10-01 00:00:00
-      t_length: 183
+      mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
+      t_start: 2023-10-01 00:00:00
+      t_length: season
       t_window: 16
       multiproc: True
       num_cpus: 8
