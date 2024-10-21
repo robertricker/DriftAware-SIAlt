@@ -95,7 +95,7 @@ class SeaIceConcentrationProducts:
         file = [file_list[dates.index(d)] for d in dates if t0 <= d < t1]
         if len(file) == 0:
             t0i, t1i = t0, t1
-            while file and (abs(t0i - t0) < datetime.timedelta(days=10)):
-                file = (file_list[dates.index(d)] for d in dates if t0i <= d < t1i)
+            while not file and (abs(t0i - t0) < datetime.timedelta(days=5)):
+                file = [file_list[dates.index(d)] for d in dates if t0i <= d < t1i]
                 t0i, t1i = t0i - dt1d, t1i - dt1d
         return file[0]
