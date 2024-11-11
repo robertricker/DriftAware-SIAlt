@@ -1,8 +1,9 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy
-import matplotlib
 import os
 import subprocess
 from matplotlib.colors import ListedColormap
@@ -23,34 +24,27 @@ def visu_xarray(x, y, z, figsize, vmin, vmax, n_level, cmap, time_string, label,
         if len(iceconc) > 0:
             iceconc["ice_conc"][iceconc["ice_conc"] < 15.0] = np.nan
             iceconc["ice_conc"][iceconc["ice_conc"] >= 15.0] = 1.0
-            ax.pcolormesh(xc, -yc, iceconc["ice_conc"], cmap=ListedColormap([(1,1,1)]))
+            ax.pcolormesh(xc, yc, iceconc["ice_conc"], cmap=ListedColormap([(1, 1, 1)]))
 
     im = ax.pcolormesh(xc, yc, z, cmap=cmap, norm=norm)
-    # ax.add_feature(cartopy.feature.OCEAN, facecolor=[(0.16, 0.22, 0.33)])
-    # ax.add_feature(cartopy.feature.LAND, facecolor=[(0.05, 0.07, 0.14)], zorder=2)
     ax.add_feature(cartopy.feature.OCEAN, facecolor=(0.86, 0.87, 0.9))
     ax.add_feature(cartopy.feature.LAND, facecolor=(0.73, 0.74, 0.75), zorder=2)
     ax.coastlines(linewidth=0.15, color='black', zorder=3)
     ax.axis("off")
-    cax = ax.inset_axes([0.51, 0.93, 0.45, 0.02], transform=ax.transAxes)
-    cb = plt.colorbar(im, ax=ax, shrink=0.7, orientation='horizontal', cax=cax)
-    # plt.annotate(time_string[6:8] + '.' + time_string[4:6] + '.' + time_string[0:4],
-    #              xy=(0.51, 0.965), fontsize=12, xycoords='axes fraction', color='white')
     plt.annotate(time_string[6:8] + '.' + time_string[4:6] + '.' + time_string[0:4],
-                 xy=(0.51, 0.965), fontsize=12, xycoords='axes fraction', color='black')
+                 xy=(0.01, 0.955), fontsize=15, xycoords='axes fraction', color='black')
 
     # lon = np.linspace(0, 2 * np.pi, 100) * 180 / np.pi
     # ax.plot(lon, 88.0 * np.ones_like(lon), transform=ccrs.Geodetic(), linestyle='--', color='black', linewidth=1.0)
-
-    # cb.set_label(label=label, size=12, color='white')
-    # cb.ax.tick_params(labelsize=12, color='white', labelcolor='white')
-    cb.set_label(label=label, size=12, color='black')
-    cb.ax.tick_params(labelsize=12, color='black', labelcolor='black')
+    cax = ax.inset_axes([0, -0.05, 1, 0.025], transform=ax.transAxes)
+    cb = plt.colorbar(im, ax=ax, orientation='horizontal', cax=cax)
+    cb.set_label(label=label, size=15, color='black')
+    cb.ax.tick_params(labelsize=15, color='black', labelcolor='black')
+    cb.ax.tick_params(which='both', length=0)
     cb.outline.set_linewidth(0)
-    max_ticks = 2
-    cb.ax.xaxis.set_major_locator(plt.MaxNLocator(max_ticks))
-    plt.close(fig)
+    cb.ax.xaxis.set_major_locator(plt.MaxNLocator(2))
     fig.savefig(outfile, bbox_inches='tight', pad_inches=0, dpi=180)
+    plt.close(fig)
 
 
 def make_gif(out_dir, var):

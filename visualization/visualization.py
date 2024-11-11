@@ -2,6 +2,7 @@ from visualization import visualization_tools
 from data_handler.sea_ice_concentration_products import SeaIceConcentrationProducts
 import xarray as xr
 import datetime
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import glob
@@ -50,25 +51,26 @@ def visualization(config):
             vmin, vmax, n_level = 0, 5, 11
             cmap = plt.cm.cool
             scaling = 1.0
-            label = 'Sea ice thickness in m'
+            label = 'Sea ice thickness (m)'
 
-        elif target_var in ['sea_ice_thickness_l2_unc', 'sea_ice_thickness_total_unc', 'sea_ice_thickness_drift_unc']:
+        elif target_var in ['sea_ice_thickness_l2_unc', 'sea_ice_thickness_total_unc',
+                            'sea_ice_thickness_growth_unc', 'sea_ice_thickness_drift_unc']:
             vmin, vmax, n_level = 0, 1.0, 13
             cmap = plt.cm.cool
             scaling = 1.0
-            label = 'Sea ice thickness uncertainty in m'
+            label = 'Sea ice thickness uncertainty (m)'
 
         elif target_var in ['sea_ice_freeboard', 'sea_ice_freeboard_corrected']:
             vmin, vmax, n_level = 0, 60, 13
             cmap = plt.cm.cool
             scaling = 100.0
-            label = 'Sea ice freeboard in cm'
+            label = 'Sea ice freeboard (cm)'
 
         elif target_var in ['sea_ice_freeboard_l2_unc', 'sea_ice_freeboard_total_unc', 'sea_ice_freeboard_drift_unc']:
             vmin, vmax, n_level = 0, 6, 13
             cmap = plt.cm.cool
             scaling = 100.0
-            label = 'Sea ice freeboard uncertainty in cm'
+            label = 'Sea ice freeboard uncertainty (cm)'
 
         elif target_var in ['total_freeboard', 'total_freeboard_corrected']:
             vmin, vmax, n_level = 0, 60, 13
@@ -80,37 +82,37 @@ def visualization(config):
             vmin, vmax, n_level = 0, 6, 13
             cmap = plt.cm.cool
             scaling = 100.0
-            label = 'Total freeboard uncertainty in cm'
+            label = 'Total freeboard uncertainty (cm)'
 
         elif target_var == "dist_acquisition":
             vmin, vmax, n_level = 0, 160, 17
             cmap = plt.cm.cool
             scaling = 1.0
-            label = 'Distance to data aquisition in km'
+            label = 'Distance to data aquisition (km)'
 
         elif target_var == "time_offset_acquisition":
             vmin, vmax, n_level = -15, 15, 13
             cmap = create_diverging_colormap()
             scaling = 1.0
-            label = 'time offfset to data aquisition in days'
+            label = 'time offfset to data aquisition (days)'
 
         elif target_var == "sea_ice_freeboard_growth_interpolated":
             vmin, vmax, n_level = -0.5, 0.5, 20
             cmap = create_diverging_colormap()
             scaling = 100.0
-            label = 'Sea ice freeboard growth in cm/day'
+            label = 'Sea ice freeboard growth (cm day$^{-1}$)'
 
         elif target_var == "sea_ice_thickness_growth_interpolated":
             vmin, vmax, n_level = -5, 5, 20
             cmap = create_diverging_colormap()
             scaling = 100.0
-            label = 'Sea ice thickness growth in cm/day'
+            label = 'Sea ice thickness growth (cm day$^{-1}$)'
 
-        elif target_var in ["shear","divergence"]:
+        elif target_var in ["shear", "divergence"]:
             vmin, vmax, n_level = -0.1, 0.1, 20
             cmap = create_diverging_colormap()
             scaling = -1.0
-            label = 'Convergence in day$^{-1}$'
+            label = 'Convergence (day$^{-1}$)'
 
         else:
             break
@@ -124,7 +126,7 @@ def visualization(config):
         outfile = out_dir + target_var + os.sep + re.split('.nc', os.path.basename(file))[0] + '_' + target_var + '.png'
         print(outfile)
         visualization_tools.visu_xarray(data.xc, data.yc, data[target_var][0] * scaling,
-                                        (8, 8),
+                                        (6, 6),
                                         vmin, vmax, n_level,
                                         cmap,
                                         time_str,
