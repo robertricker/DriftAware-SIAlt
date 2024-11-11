@@ -165,7 +165,7 @@ def stack_proc(config, direct, grid, cell_width):
         gdf_final['shear'] = gdf_final['shear'].apply(json.dumps)
 
         outfile = (
-            f"{target_var}-{sensor}-{hem}-{t0.strftime('%Y%m%d')}-"
+            f"daware-{target_var}-{sensor}-{hem}-{t0.strftime('%Y%m%d')}-"
             f"{config['version']}-{direct}-epsg{out_epsg.split(':')[1]}_"
             f"{cell_width / 100.0:.0f}.csv")
 
