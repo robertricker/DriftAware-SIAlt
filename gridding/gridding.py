@@ -9,7 +9,6 @@ import os
 import shutil
 import sys
 import multiprocessing as mp
-from shapely.geometry import Point
 from io_tools import transform_coords
 from io_tools import get_sea_ice_regions
 from io_tools import create_out_dir
@@ -23,6 +22,9 @@ from io_tools import init_logger
 def organize_files_by_date(source_dir, target_dir):
     files = [f for f in os.listdir(source_dir) if f.endswith('.nc')]
     for file in files:
+        if os.path.basename(file).startswith("._"):
+            os.remove(os.path.join(source_dir, file))
+            continue
         match = re.search(r'(\d{8})', file)
         if match:
             date_str = match.group(1)
@@ -94,7 +96,6 @@ def process_file(config, file, grid, region_grid):
          (data[target_var] < var_range[0])] = np.nan
     data = data.dropna(subset=data.columns.difference(['growth']))
     data = data.reset_index()
-    time_bnds = np.array([[data['t0'].min(), data['t0'].max()]])
     time_center = datetime.datetime.strptime(
         re.split('-', os.path.basename(file))[3], '%Y%m%d') + datetime.timedelta(hours=12)
     # extract histogram
@@ -131,11 +132,12 @@ def process_file(config, file, grid, region_grid):
     data['deformation'] = data.apply(get_deformation, axis=1)
     data['divergence'] = data["divergence"].apply(get_row_mean)
     data['shear'] = data["shear"].apply(get_row_mean)
-    prepare_netcdf = PrepareNetcdf(config)
-    var, var_rename = prepare_netcdf.set_variables()
-    master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True)
+    prepare_netcdf = PrepareNetcdf(config, file, region_grid)
+    var, var_rename = prepare_netcdf.select_variables()
+    master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
+    master[target_var + '_std'] = gridding_lib.grid_data(
+        data, grid, [target_var], [target_var], fill_nan=True, agg_mode=['std'])[target_var + '_std']
     master = master.join(tmp_hist_grid.drop(columns=['geometry']))
-    master = prepare_netcdf.drop_fields(master)
     centroidseries = master['geometry'].centroid
     master['xc'], master['yc'] = round(centroidseries.x), round(centroidseries.y)
     master['time'] = (time_center - datetime.datetime(1970, 1, 1, 0, 0)).total_seconds()
@@ -146,28 +148,12 @@ def process_file(config, file, grid, region_grid):
     master = master.reindex(yc=list(reversed(master.yc)))
     master = master.set_coords(("longitude", "latitude"))
     master = prepare_netcdf.add_projection_field(master)
-    master["time_bnds"] = xr.DataArray(time_bnds, dims=("time", "nv"), coords={"time": master.time})
-    master['region_flag'] = (['time', 'yc', 'xc'], np.flip(region_grid, axis=0)[np.newaxis, :, :])
-    hist_arr = xr.concat([master[str(i) + '_sum'] for i in range(hist_n_bins)], dim='zc').values
-    master = master.drop_vars([str(i) + '_sum' for i in range(hist_n_bins)])
-
-    master = master.assign_coords(zc=("zc", zc))
-    master[target_var + '_hist'] = (['time', 'yc', 'xc', 'zc'], np.transpose(hist_arr, (1, 2, 3, 0)))
-
+    master = prepare_netcdf.add_time_bnds(master, data['t0'].min(), data['t0'].max())
+    master = prepare_netcdf.add_region_flag(master)
+    master = prepare_netcdf.add_histogram(master)
     master = prepare_netcdf.set_var_attrbs(master)
     master = prepare_netcdf.set_glob_attrbs(master)
-
-    centr = grid['geometry'][0].centroid
-    distances = [centr.distance(Point(vertex)) for vertex in list(grid['geometry'][0].exterior.coords)]
-
-    outfile = (re.split('-', os.path.basename(file))[0] + "-" +
-               re.split('-', os.path.basename(file))[1] + "-" +
-               re.split('-', os.path.basename(file))[2] + "-" +
-               re.split('-', os.path.basename(file))[3] + "-" +
-               re.split('-', os.path.basename(file))[4] + "-" +
-               'epsg' + out_epsg.split(":")[1] + "_" +
-               "{:.0f}".format(round(min(distances) * np.sqrt(2))/100.0) + '.nc')
-
+    outfile = prepare_netcdf.make_filename(grid)
     comp = dict(zlib=True, complevel=1)
     encoding = {var: comp for var in master.data_vars}
     master.to_netcdf(path=out_dir + file_prefix + '-' + outfile, encoding=encoding, format="NETCDF4")
@@ -175,8 +161,6 @@ def process_file(config, file, grid, region_grid):
 
 
 def gridding(config):
-
-    # declare sensor and target variable options
     sensor = config['options']['sensor']
     target_var = config['options']['target_variable']
     grd_opt = config['options']['proc_step_options']['gridding']
