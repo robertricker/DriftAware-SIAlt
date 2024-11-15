@@ -57,10 +57,11 @@ class PrepareNetcdf:
     def add_histogram(self, xarray):
         if self.netcdf_config['variables'][self.mode]['histogram']:
             bin_size = (self.hist_range[1] - self.hist_range[0]) / self.hist_n_bins
-            zc = np.arange(self.hist_range[0] + bin_size / 2, self.hist_range[1] + bin_size / 2, bin_size)
-            hist_arr = xr.concat([xarray[str(i) + '_sum'] for i in range(self.hist_n_bins)], dim='zc').values
-            xarray = xarray.assign_coords(zc=("zc", zc))
-            xarray[self.target_var + '_hist'] = (['time', 'yc', 'xc', 'zc'], np.transpose(hist_arr, (1, 2, 3, 0)))
+            hist_bins = np.arange(self.hist_range[0] + bin_size / 2, self.hist_range[1] + bin_size / 2, bin_size)
+            hist_arr = xr.concat([xarray[str(i) + '_sum'] for i in range(self.hist_n_bins)], dim='hist_bins').values
+            xarray = xarray.assign_coords(hist_bins=("hist_bins", hist_bins))
+            xarray[self.target_var + '_hist'] = (['time', 'yc', 'xc', 'hist_bins'],
+                                                 np.transpose(hist_arr, (1, 2, 3, 0)))
         xarray = xarray.drop_vars([str(i) + '_sum' for i in range(self.hist_n_bins)])
         return xarray
 

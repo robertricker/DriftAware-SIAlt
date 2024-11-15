@@ -15,11 +15,12 @@ def visu_xarray(x, y, z, figsize, vmin, vmax, n_level, cmap, time_string, label,
     fig = plt.figure(figsize=figsize)
 
     xc, yc = np.meshgrid(x, y)
+    fontsize = 18
 
     bounds = list(np.linspace(vmin, vmax, num=n_level))
     norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N, extend='neither')
     ax = plt.subplot(projection=crs)
-    ax.set_extent([-3800000, 3000000, -3000000, 3800000], crs=crs)
+    ax.set_extent([-3850000, 3000000, -3000000, 3850000], crs=crs)
     if iceconc:
         if len(iceconc) > 0:
             iceconc["ice_conc"][iceconc["ice_conc"] < 15.0] = np.nan
@@ -29,17 +30,21 @@ def visu_xarray(x, y, z, figsize, vmin, vmax, n_level, cmap, time_string, label,
     im = ax.pcolormesh(xc, yc, z, cmap=cmap, norm=norm)
     ax.add_feature(cartopy.feature.OCEAN, facecolor=(0.86, 0.87, 0.9))
     ax.add_feature(cartopy.feature.LAND, facecolor=(0.73, 0.74, 0.75), zorder=2)
-    ax.coastlines(linewidth=0.15, color='black', zorder=3)
+    ax.coastlines(linewidth=0.15, color='black', zorder=3, resolution='50m')
     ax.axis("off")
-    plt.annotate(time_string[6:8] + '.' + time_string[4:6] + '.' + time_string[0:4],
-                 xy=(0.01, 0.955), fontsize=15, xycoords='axes fraction', color='black')
+    plt.annotate(
+        f"{time_string[0:4]}-{time_string[4:6]}-{time_string[6:8]}",
+        xy=(0.01, 0.95),
+        fontsize=fontsize,
+        xycoords='axes fraction',
+        color='black')
 
-    # lon = np.linspace(0, 2 * np.pi, 100) * 180 / np.pi
-    # ax.plot(lon, 88.0 * np.ones_like(lon), transform=ccrs.Geodetic(), linestyle='--', color='black', linewidth=1.0)
+    lon = np.linspace(0, 2 * np.pi, 100) * 180 / np.pi
+    ax.plot(lon, 88.0 * np.ones_like(lon), transform=ccrs.Geodetic(), linestyle='--', color='black', linewidth=1.0)
     cax = ax.inset_axes([0, -0.05, 1, 0.025], transform=ax.transAxes)
     cb = plt.colorbar(im, ax=ax, orientation='horizontal', cax=cax)
-    cb.set_label(label=label, size=15, color='black')
-    cb.ax.tick_params(labelsize=15, color='black', labelcolor='black')
+    cb.set_label(label=label, size=fontsize, color='black')
+    cb.ax.tick_params(labelsize=fontsize, color='black', labelcolor='black')
     cb.ax.tick_params(which='both', length=0)
     cb.outline.set_linewidth(0)
     cb.ax.xaxis.set_major_locator(plt.MaxNLocator(2))

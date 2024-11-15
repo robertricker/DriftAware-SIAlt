@@ -73,7 +73,6 @@ def process_file(config, file, grid, region_grid):
     logger.info('process csv file: ' + os.path.basename(file))
 
     data = read_dasit_csv(file)
-    data.rename(columns={'sea_ice_thickness_unc': 'sea_ice_thickness_l2_unc'}, inplace=True)
     data.crs = "epsg:" + re.findall(r'epsg(\d{4})', os.path.basename(file))[0]
     data.to_crs(crs=out_epsg, inplace=True)
     start_location = data["geometry"].apply(lambda g: g.geoms[0])
@@ -104,7 +103,7 @@ def process_file(config, file, grid, region_grid):
     data_hist = gpd.GeoDataFrame(pd.concat([data_hist, data.geometry, data.dt_days], axis=1))
 
     # add modal value to main data frame
-    zc, data[target_var + '_mode'] = gridding_lib.modal_var(data_hist, hist_n_bins, hist_bin_size, hist_range)
+    data[target_var + '_mode'] = gridding_lib.modal_var(data_hist, hist_n_bins, hist_bin_size, hist_range)
 
     merged = gpd.sjoin(data, grid, how='left', predicate='within')
     merged_hist = gpd.sjoin(data_hist, grid, how='left', predicate='within')

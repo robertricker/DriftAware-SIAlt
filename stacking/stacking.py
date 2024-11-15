@@ -69,7 +69,8 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     else:
         growth, growth_interp, growth_unc_interp = np.nan, np.nan, np.nan
 
-    data[target_var + "_corr"] = growth_interp * (-data.dt_days.to_numpy()) + data[target_var].to_numpy()
+    data = data.rename(columns={target_var: target_var + "_uncorrected"})
+    data[target_var] = growth_interp * (-data.dt_days.to_numpy()) + data[target_var + "_uncorrected"].to_numpy()
     data[target_var + "_growth_unc"] = growth_unc_interp * abs(data.dt_days.to_numpy())
     data["growth_interpolated"] = growth_interp
     data["growth"] = growth
@@ -177,8 +178,6 @@ def stack_proc(config, direct, grid, cell_width):
 
         # optional for Luisa, save only last file
         # if abs(gdf_final['dt_days']).max()+1 == config['options']['proc_step_options']['stacking']['t_window']:
-
-        # gdf_final.to_file(config['dir'][sensor]['geojson'] + outfile, driver="GeoJSON")
         gdf_final.to_csv(config['dir'][sensor]['csv'] + outfile, index=False)
 
     return scheme

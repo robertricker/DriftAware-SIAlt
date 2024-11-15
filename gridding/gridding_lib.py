@@ -91,4 +91,4 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
 def modal_var(df, n_bins, bin_size, hist_range):
     bin_center = np.arange(hist_range[0] + bin_size / 2, hist_range[1] + bin_size / 2, bin_size)
     id_mode = df.loc[:, '0':str(n_bins-1)].idxmax(axis=1)
-    return bin_center, bin_center[np.array(id_mode.astype(int))]
+    return bin_center[np.array(id_mode.astype(int))]

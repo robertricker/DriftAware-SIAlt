@@ -47,7 +47,7 @@ def visualization(config):
 
         data = xr.open_dataset(file, decode_times=False)
 
-        if target_var in ['sea_ice_thickness', 'sea_ice_thickness_corrected']:
+        if target_var in ['sea_ice_thickness', 'sea_ice_thickness_uncorrected']:
             vmin, vmax, n_level = 0, 5, 11
             cmap = plt.cm.cool
             scaling = 1.0
@@ -60,7 +60,7 @@ def visualization(config):
             scaling = 1.0
             label = 'Sea ice thickness uncertainty (m)'
 
-        elif target_var in ['sea_ice_freeboard', 'sea_ice_freeboard_corrected']:
+        elif target_var in ['sea_ice_freeboard', 'sea_ice_freeboard_uncorrected']:
             vmin, vmax, n_level = 0, 60, 13
             cmap = plt.cm.cool
             scaling = 100.0
@@ -88,13 +88,13 @@ def visualization(config):
             vmin, vmax, n_level = 0, 160, 17
             cmap = plt.cm.cool
             scaling = 1.0
-            label = 'Distance to data aquisition (km)'
+            label = 'Distance to data acquisition (km)'
 
         elif target_var == "time_offset_acquisition":
             vmin, vmax, n_level = -15, 15, 13
             cmap = create_diverging_colormap()
             scaling = 1.0
-            label = 'time offfset to data aquisition (days)'
+            label = 'Time offset to data acquisition (days)'
 
         elif target_var == "sea_ice_freeboard_growth_interpolated":
             vmin, vmax, n_level = -0.5, 0.5, 20
