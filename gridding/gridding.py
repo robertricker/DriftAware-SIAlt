@@ -54,7 +54,6 @@ def get_row_mean(row):
 
 def process_file(config, file, grid, region_grid):
     init_logger(config)
-    sensor = config['options']['sensor']
     target_var = config['options']['target_variable']
     out_epsg = config["options"]["out_epsg"]
     stk_opt = config['options']['proc_step_options']['stacking']
@@ -68,12 +67,11 @@ def process_file(config, file, grid, region_grid):
     # declare gridding options
     gridding_mode = grd_opt['mode']
     var_range = grd_opt['target_variable_range']["freeboard" if "freeboard" in target_var else "thickness"]
-    out_dir = config['dir'][sensor]['netcdf']
+    out_dir = config['output_dir']['gridded_data']
 
     logger.info('process csv file: ' + os.path.basename(file))
 
     data = read_dasit_csv(file)
-    data.crs = "epsg:" + re.findall(r'epsg(\d{4})', os.path.basename(file))[0]
     data.to_crs(crs=out_epsg, inplace=True)
     start_location = data["geometry"].apply(lambda g: g.geoms[0])
     target_location = data["geometry"].apply(lambda g: g.geoms[-1])
@@ -81,22 +79,21 @@ def process_file(config, file, grid, region_grid):
     data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])
     data['shear'] = data['shear'].apply(lambda x: [float(val) for val in x.split()])
 
-    gridding_modes = {
-        'drift-aware': ('daware', target_location),
-        'conventional': ('conv', start_location)}
-
-    if gridding_mode in gridding_modes:
-        file_prefix, data["geometry"] = gridding_modes[gridding_mode]
+    if gridding_mode == 'da':
+        data["geometry"] = target_location
+    elif gridding_mode == 'cv':
+        data["geometry"] = start_location
     else:
         logger.error('Gridding mode does not exist: %s', gridding_mode)
         sys.exit()
+
     data['ice_conc'] = data['ice_conc'] * 100.0
     data[(data[target_var] > var_range[1]) |
          (data[target_var] < var_range[0])] = np.nan
     data = data.dropna(subset=data.columns.difference(['growth']))
     data = data.reset_index()
     time_center = datetime.datetime.strptime(
-        re.split('-', os.path.basename(file))[3], '%Y%m%d') + datetime.timedelta(hours=12)
+        re.split('-', os.path.basename(file))[6], '%Y%m%d') + datetime.timedelta(hours=12)
     # extract histogram
     data_hist = data[target_var + '_hist'].str.split(expand=True).astype(int)
     data_hist.columns = np.arange(hist_n_bins).astype(str)
@@ -152,16 +149,15 @@ def process_file(config, file, grid, region_grid):
     master = prepare_netcdf.add_histogram(master)
     master = prepare_netcdf.set_var_attrbs(master)
     master = prepare_netcdf.set_glob_attrbs(master)
-    outfile = prepare_netcdf.make_filename(grid)
+    outfile = prepare_netcdf.make_netcdf_filename(grid, gridding_mode)
     comp = dict(zlib=True, complevel=1)
     encoding = {var: comp for var in master.data_vars}
-    master.to_netcdf(path=out_dir + file_prefix + '-' + outfile, encoding=encoding, format="NETCDF4")
+    master.to_netcdf(path=os.path.join(out_dir, outfile), encoding=encoding, format="NETCDF4")
     logger.info('generated netcdf file: ' + outfile)
 
 
 def gridding(config):
     sensor = config['options']['sensor']
-    target_var = config['options']['target_variable']
     grd_opt = config['options']['proc_step_options']['gridding']
     netcdf_bounds = grd_opt['netcdf_grid']['bounds']
     if grd_opt['csv_dir'] == "all":
@@ -170,8 +166,8 @@ def gridding(config):
                             for file in files
                             if file.endswith('.csv')])
     else:
-        csv_dir = config['dir'][sensor]['csv'] + grd_opt['csv_dir']
-        file_list = sorted(glob.glob(csv_dir + "/" + target_var + '*.csv'))
+        csv_dir = os.path.join(config['output_dir']['trajectories'], grd_opt['csv_dir'])
+        file_list = sorted(glob.glob(os.path.join(csv_dir,'*.csv')))
 
     grid, cell_width = gridding_lib.define_grid(
         netcdf_bounds,
@@ -179,8 +175,8 @@ def gridding(config):
         config['options']['out_epsg'],
         grid_type='circular')
 
-    config['dir'][sensor]['netcdf'] = create_out_dir(config, config['dir'][sensor]['netcdf'], cell_width)
-    region_grid = get_sea_ice_regions(config['dir']['auxiliary']['reg_mask'], netcdf_bounds,
+    config['output_dir']['gridded_data'] = create_out_dir(config, config['output_dir']['gridded_data'], cell_width)
+    region_grid = get_sea_ice_regions(config['auxiliary']['reg_mask'], netcdf_bounds,
                                       round(0.5 * np.sqrt(2) * cell_width),
                                       config['options']['out_epsg'])
 
@@ -196,4 +192,5 @@ def gridding(config):
             process_file(config, file, grid, region_grid)
 
     if grd_opt["organize_files"]:
-        organize_files_by_date(config['dir'][sensor]['netcdf'], os.path.dirname(config['dir'][sensor]['netcdf']))
+        organize_files_by_date(config['output_dir']['gridded_data'],
+                               os.path.dirname(config['output_dir']['gridded_data']))
