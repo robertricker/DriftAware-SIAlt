@@ -1,4 +1,4 @@
-base_dir: "/cluster/work/users/rori" # project directory
+base_dir: "/cluster/work/users/rori" # main project data directory
 #-----------------------------------DATA REPOSITORY---------------------------------------------------------------------
 input_dir: # relative to base_dir
   envisat: "input_data/envisat/l2p_cci/"
