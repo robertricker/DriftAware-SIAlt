@@ -24,21 +24,27 @@ class PrepareNetcdf:
         self.sid_product = config['options']['ice_conc_product']
         self.sic_product = config['options']['ice_drift_product']
         self.out_epsg = config["options"]["out_epsg"]
+        self.hem = config["options"]["hemisphere"]
         self.version = config['version']
         self.file = file
         self.region_grid = region_grid
 
-    def make_filename(self, grid):
+    def make_netcdf_filename(self, grid, gridding_mode):
         centr = grid['geometry'][0].centroid
-        distances = [centr.distance(Point(vertex)) for vertex in list(grid['geometry'][0].exterior.coords)]
-        outfile = (re.split('-', os.path.basename(self.file))[0] + "-" +
-                   re.split('-', os.path.basename(self.file))[1] + "-" +
-                   re.split('-', os.path.basename(self.file))[2] + "-" +
-                   re.split('-', os.path.basename(self.file))[3] + "-" +
-                   re.split('-', os.path.basename(self.file))[4] + "-" +
-                   'epsg' + self.out_epsg.split(":")[1] + "_" +
-                   "{:.0f}".format(round(min(distances) * np.sqrt(2)) / 100.0) + '.nc')
-        return outfile
+        dist = [centr.distance(Point(vertex)) for vertex in list(grid['geometry'][0].exterior.coords)]
+        dist_km = "{:.0f}".format(round(min(dist) * np.sqrt(2)) / 1e3)
+        prefix = '-'.join(re.split('-', os.path.basename(self.file))[:2])
+        prdlvl = 'L3C'
+        var = re.split('-', os.path.basename(self.file))[3]
+        instr = re.split('-', os.path.basename(self.file))[4]
+        proj_map = {
+            "EPSG:6931": "EASE2",
+            "EPSG:6932": "EASE2"}
+        extra = (f"{self.hem.upper()}_"
+                 f"{dist_km}KM_{proj_map.get(self.out_epsg)}_{gridding_mode.upper()}")
+        period = re.split('-', os.path.basename(self.file))[6]
+        version = re.search(r'(fv\d+)', os.path.basename(self.file)).group(1)
+        return f"{prefix}-{prdlvl}-{var}-{instr}-{extra}-{period}-{version}.nc"
 
     def select_variables(self):
         var = [Template(item).render(target_var=self.target_var)
@@ -67,6 +73,19 @@ class PrepareNetcdf:
 
     def add_region_flag(self, xarray):
         xarray['region_flag'] = (['time', 'yc', 'xc'], np.flip(self.region_grid, axis=0)[np.newaxis, :, :])
+        xarray['region_flag'].attrs = {'standard_name': 'region_flag',
+                                       'long_name': 'NSIDC region mask v2',
+                                       'coordinates': 'time longitude latitude',
+                                       'flag_meanings': 'undefined_region central_arctic beaufort_sea chukchi_sea '
+                                                        'east_siberian_sea laptev_sea kara_sea barents_sea '
+                                                        'east_greenland_sea baffin_bay_and_davis_strait '
+                                                        'gulf_of_st_lawrence hudson_bay canadian_archipelago '
+                                                        'bering_sea sea_of_okhotsk sea_of_japan bohai_sea baltic_sea '
+                                                        'gulf_of_alaska',
+                                       'flag_values': np.byte(np.arange(19)),
+                                       'units': '1',
+                                       'grid_mapping': 'crs',
+                                       'comment': ""}
         return xarray
 
     @staticmethod
@@ -76,17 +95,16 @@ class PrepareNetcdf:
         return xarray
 
     def add_projection_field(self, xarray):
-        proj_name = self.crs.name.split('/', 1)[-1].strip().replace(" ", "_")
+        proj_name = 'crs'  # self.crs.name.split('/', 1)[-1].strip().replace(" ", "_")
         xarray[proj_name] = np.iinfo(np.int32).min
-        xarray[proj_name].attrs = {'long_name': proj_name.replace("_", " "),
+        xarray[proj_name].attrs = {'long_name': self.crs.name.split('/', 1)[-1].strip(),
                                    'grid_mapping_name': 'lambert_azimuthal_equal_area',
                                    'false_easting': 0.0,
                                    'false_northing': 0.0,
-                                   'latitude_of_projection_origin': 90.0,
+                                   'latitude_of_projection_origin':
+                                       float(pyproj.CRS.from_string(self.out_epsg ).to_dict().get("lat_0")),
                                    'longitude_of_projection_origin': 0.0,
                                    'longitude_of_prime_meridian': 0.0,
-                                   'semi_major_axis': 6378137.0,
-                                   'inverse_flattening': 298.257223563,
                                    'proj4_string': self.crs.to_proj4()}
         return xarray
 
