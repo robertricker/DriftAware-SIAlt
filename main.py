@@ -2,12 +2,36 @@ import datetime
 import time
 import yaml
 import argparse
+import os
 from gridding import gridding
 from visualization import visualization
 from typing import Dict
 from loguru import logger
 from stacking import stacking
 from io_tools import init_logger
+
+
+def resolve_paths(config_dict, sensor):
+    if isinstance(config_dict, dict):
+        return {key: resolve_paths(value, sensor) for key, value in config_dict.items()}
+    elif isinstance(config_dict, list):
+        return [resolve_paths(item, sensor) for item in config_dict]
+    elif isinstance(config_dict, str):
+        return config_dict.format(sensor=sensor)
+    else:
+        return config_dict
+
+
+def resolve_absolute_paths(config_dict, base_dir):
+    for key, value in config_dict.items():
+        if key == 'options':
+            break
+        if isinstance(value, str):
+            if not value.startswith("/") and not value.startswith(base_dir):
+                config_dict[key] = os.path.join(base_dir, value)
+        elif isinstance(value, dict):
+            resolve_absolute_paths(value, base_dir)
+    return config_dict
 
 
 def main(configure: Dict[str, object]) -> None:
@@ -49,10 +73,14 @@ if __name__ == '__main__':
     with open(args.config_file, 'r') as f:
         config = yaml.safe_load(f)
 
+    config = resolve_paths(config, config["options"]["sensor"])
+    config = resolve_absolute_paths(config, config["base_dir"])
+    if config['options']['sensor'] == 'icesat2':
+        config['input_dir']['icesat2'] = config['input_dir']['icesat2'][config["options"]["target_variable"]]
+
     # Set up the logging configuration
-    log_file = f"{config['dir']['logging']}{config['user']['name']}{'_'}" \
-               f"{config['options']['proc_step']}{'_'}"\
+    log_file = f"{config['options']['proc_step']}{'_'}"\
                f"{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
-    config['dir']['logging'] = log_file
+    config['logging'] = os.path.join(config['logging'], log_file)
     init_logger(config)
     main(config)
