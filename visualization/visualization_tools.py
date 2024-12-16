@@ -7,6 +7,7 @@ import cartopy
 import os
 import subprocess
 from matplotlib.colors import ListedColormap
+import cartopy.feature as cfeature
 
 
 def visu_xarray(x, y, z, figsize, vmin, vmax, n_level, cmap, time_string, label, outfile, iceconc=None):
@@ -29,8 +30,9 @@ def visu_xarray(x, y, z, figsize, vmin, vmax, n_level, cmap, time_string, label,
 
     im = ax.pcolormesh(xc, yc, z, cmap=cmap, norm=norm)
     ax.add_feature(cartopy.feature.OCEAN, facecolor=(0.86, 0.87, 0.9))
-    ax.add_feature(cartopy.feature.LAND, facecolor=(0.73, 0.74, 0.75), zorder=2)
-    ax.coastlines(linewidth=0.15, color='black', zorder=3, resolution='50m')
+    coastline = cfeature.NaturalEarthFeature('physical', 'coastline', '50m',
+                                             facecolor=(0.73, 0.74, 0.75), edgecolor='black')
+    ax.add_feature(coastline, linewidth=0.2)
     ax.axis("off")
     plt.annotate(
         f"{time_string[0:4]}-{time_string[4:6]}-{time_string[6:8]}",
