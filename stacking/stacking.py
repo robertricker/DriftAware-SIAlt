@@ -22,13 +22,14 @@ from stacking.interpolate_growth import interpolate_growth
 from io_tools import create_out_dir
 from io_tools import init_logger
 from io_tools import read_dasit_csv
+from io_tools import make_csv_filename
 
 
 def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, list_f, list_r, j):
     init_logger(config)
     nbs = 260  # empirical estimate
     target_var = config["options"]["target_variable"]
-    csv_dir = config["dir"][config["options"]["sensor"]]["csv"]
+    csv_dir = config['output_dir']['trajectories']
     out_epsg = config['options']['out_epsg']
     stk_opt = config['options']['proc_step_options']['stacking']
     start_date = stk_opt['t_start']
@@ -44,7 +45,7 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
         stack_r = read_dasit_csv(file_r[0])
         stack_r = stack_r[stack_r.dt_days != 0].reset_index(drop=True)
         data = pd.concat([stack_f, stack_r], ignore_index=True)
-        outfile = os.path.basename(file_f[0]).replace("-f-", "-")
+        outfile = os.path.basename(file_f[0]).replace("_F-", "-")
         os.remove(file_f[0])
         os.remove(file_r[0])
     else:
@@ -80,10 +81,12 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     data[target_var + '_drift_unc'] = data.apply(
         get_neighbor_dyn_range, args=(data, target_var, tree, cell_width/2), axis=1)
     data["geometry"] = traj_geom
-    data.to_csv(os.path.join(csv_dir, outfile), index=False)
+    with open(os.path.join(csv_dir, outfile), 'w') as f:
+        f.write(f"# {out_epsg}\n")
+        data.to_csv(f, index=False)
 
 
-def stack_proc(config, direct, grid, cell_width):
+def stack_proc(config, direct, grid):
     init_logger(config)
     m = 0
     dt1d = datetime.timedelta(days=1)
@@ -105,16 +108,16 @@ def stack_proc(config, direct, grid, cell_width):
     sit_product = SeaIceThicknessProducts(hem=hem, sensor=sensor, target_var=target_var,
                                           add_variable=add_var,
                                           out_epsg=out_epsg)
-    sit_product.get_file_list(config['dir'][sensor]['level2'][target_var])
+    sit_product.get_file_list(config['input_dir'][sensor])
     sit_product.get_file_dates()
 
     sic_product = SeaIceConcentrationProducts(hem=hem, product_id=config['options']['ice_conc_product'],
                                               out_epsg=out_epsg)
-    sic_product.get_file_list(config['dir']['auxiliary']['ice_conc'][config['options']['ice_conc_product']])
+    sic_product.get_file_list(config['auxiliary']['ice_conc'][config['options']['ice_conc_product']])
     sic_product.get_file_dates()
 
     sid_product = SeaIceDriftProducts(hem=hem, product_id=config['options']['ice_drift_product'], out_epsg=out_epsg)
-    sid_product.get_file_list(config['dir']['auxiliary']['ice_drift'][config['options']['ice_drift_product']])
+    sid_product.get_file_list(config['auxiliary']['ice_drift'][config['options']['ice_drift_product']])
     sid_product.get_file_dates()
 
     if direct == 'f':
@@ -152,7 +155,7 @@ def stack_proc(config, direct, grid, cell_width):
                         os.path.basename(sid_product.target_files))
 
             sic_product.ice_conc_ahead = sic_product.get_ice_concentration(sic_product.target_files)
-            sid_product.get_ice_drift(sid_product.target_files, sic_product.ice_conc)
+            sid_product.get_ice_drift(sid_product.target_files, sic_product.ice_conc_ahead)
 
             if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
                 m = processor.drift_aware_proc(sid_product, sic_product, stk_opt['t_window'], d_sgn, day_range[0])
@@ -165,11 +168,7 @@ def stack_proc(config, direct, grid, cell_width):
         gdf_final['divergence'] = gdf_final['divergence'].apply(json.dumps)
         gdf_final['shear'] = gdf_final['shear'].apply(json.dumps)
 
-        outfile = (
-            f"daware-{target_var}-{sensor}-{hem}-{t0.strftime('%Y%m%d')}-"
-            f"{config['version']}-{direct}-epsg{out_epsg.split(':')[1]}_"
-            f"{cell_width / 100.0:.0f}.csv")
-
+        outfile = make_csv_filename(config, t0, direct)
         logger.info(t0.strftime("%Y%m%d")+': generated csv file: ' + outfile)
         gdf_final['divergence'] = gdf_final['divergence'].apply(
             lambda s: s.replace('[', '').replace(']', '').replace(',', ''))
@@ -178,7 +177,9 @@ def stack_proc(config, direct, grid, cell_width):
 
         # optional for Luisa, save only last file
         # if abs(gdf_final['dt_days']).max()+1 == config['options']['proc_step_options']['stacking']['t_window']:
-        gdf_final.to_csv(config['dir'][sensor]['csv'] + outfile, index=False)
+        with open(os.path.join(config['output_dir']['trajectories'], outfile), 'w') as f:
+            f.write(f"# {out_epsg}\n")
+            gdf_final.to_csv(f, index=False)
 
     return scheme
 
@@ -190,7 +191,7 @@ def stacking(config):
     multiproc = stk_opt['multiproc']
     parcel_grid_opt = stk_opt['parcel_grid']
     growth_grid_opt = stk_opt['growth_estimation']['growth_grid']
-    csv_dir = config['dir'][sensor]['csv']
+    csv_dir = config['output_dir']['trajectories']
     grid, cell_width = gridding_lib.define_grid(parcel_grid_opt["bounds"],
                                                 parcel_grid_opt["dim"],
                                                 config['options']['out_epsg'],
@@ -211,26 +212,31 @@ def stacking(config):
 
     t_length = stk_opt['t_length']
     for yr in years:
-        config['dir'][sensor]['csv'] = create_out_dir(config, csv_dir, cell_width)
+        config['output_dir']['trajectories'] = create_out_dir(config, csv_dir, cell_width)
         stk_opt['t_start'] = stk_opt['t_start'].replace(year=yr)
 
         if t_length in ['season', 'all']:
-            stk_opt['t_length'] = (datetime.datetime(stk_opt['t_start'].year + 1, 5, 1, 0, 0) - stk_opt['t_start']).days
+            if config["options"]["hemisphere"] == 'nh':
+                stk_opt['t_length'] = (
+                        datetime.datetime(stk_opt['t_start'].year + 1, 5, 1, 0, 0) - stk_opt['t_start']).days
+            elif config["options"]["hemisphere"] == 'sh':
+                stk_opt['t_length'] = (
+                        datetime.datetime(stk_opt['t_start'].year, 11, 1, 0, 0) - stk_opt['t_start']).days
 
         if multiproc:
             logger.info('start multiprocessing')
             pool = mp.Pool(2)
             for mode in stk_opt['mode']:
-                pool.apply_async(stack_proc, args=(config, mode, grid, cell_width))
+                pool.apply_async(stack_proc, args=(config, mode, grid))
             pool.close()
             pool.join()
         else:
             for mode in stk_opt['mode']:
-                stack_proc(config, mode, grid, cell_width)
+                stack_proc(config, mode, grid)
 
         logger.info('start merging forward and reverse stacks')
-        list_f = sorted(glob.glob(os.path.join(config['dir'][sensor]['csv'], f'*-f-*.csv')))
-        list_r = sorted(glob.glob(os.path.join(config['dir'][sensor]['csv'], f'*-r-*.csv')))
+        list_f = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_F-*.csv')))
+        list_r = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_R-*.csv')))
         if multiproc:
             pool = mp.Pool(stk_opt['num_cpus'])
             for j in range(stk_opt['t_length']):
