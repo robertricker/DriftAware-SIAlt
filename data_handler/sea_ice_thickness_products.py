@@ -245,7 +245,6 @@ class SeaIceThicknessProducts:
         return gdf.to_crs(self.out_epsg)
 
     def get_file_list(self, directory):
-        print(directory)
         hem = self.config[self.sensor][self.target_var]['hem_' + self.hem]
         file_list = [file_path for file_path in glob.iglob(os.path.join(directory, "**", "*"), recursive=True)
                      if hem.lower() in os.path.basename(file_path.lower())]
