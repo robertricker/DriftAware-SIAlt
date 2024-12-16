@@ -78,12 +78,39 @@ def init_logger(config):
                        "<blue>{module}</blue> "
                        "<cyan>{function}</cyan> {message}"),
                enqueue=True)
-    logger.add(config['dir']['logging'],
+    logger.add(config['logging'],
                format="{time:YYYY-MM-DDTHH:mm:ss} {module} {function} {message}", enqueue=True)
 
 
 def read_dasit_csv(file):
-    data = pd.read_csv(file)
+    with open(file, 'r') as f:
+        first_line = f.readline().strip()  # Read the first line
+        epsg_code = int(first_line.split(":")[1].strip())
+    data = pd.read_csv(file, skiprows=1)
     data['geometry'] = data['geometry'].apply(loads)
     data = gpd.GeoDataFrame(data, geometry='geometry')
+    data.set_crs(epsg=epsg_code, allow_override=True, inplace=True)
     return data
+
+
+def make_csv_filename(config, t0, direct):
+    prefix = config['options']['proc_step_options']['stacking']['filename_prefix']
+    prdlvl = 'L2P'
+    var_map = {
+        "sea_ice_thickness": "SITHICK",
+        "sea_ice_freeboard": "SIFB",
+        "total_freeboard": "TFB"}
+    var = var_map.get(config['options']['target_variable'])
+    instr_map = {
+        "envisat": "RA2_ENVISAT",
+        "cryosat2": "SIRAL_CRYOSAT2",
+        "sentinel3a": "SRAL_SENTINAL3A",
+        "sentinel3b": "SRAL_SENTINAL3B",
+        "icesat2": "ATLAS_ICESAT2"}
+    instr = instr_map.get(config['options']['sensor'])
+    region = config['options']['hemisphere'].upper()
+    mode = 'DA_'+direct.upper()
+    period = t0.strftime('%Y%m%d')
+    version = config['version']
+
+    return f"{prefix}-{prdlvl}-{var}-{instr}-{region}_{mode}-{period}-fv{version}.csv"
