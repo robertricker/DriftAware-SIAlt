@@ -25,6 +25,8 @@ class SeaIceThicknessProducts:
             ('icesat2', 'sea_ice_thickness'): self.is2sitdat4_to_gdf,
             ('cryosat2', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
             ('cryosat2', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
+            ('sentinel3a', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
+            ('sentinel3a', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
             ('envisat', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
             ('envisat', 'sea_ice_thickness'): self.cci_l2p_to_gdf
         }
@@ -45,6 +47,20 @@ class SeaIceThicknessProducts:
                 }
             },
             'cryosat2': {
+                'sea_ice_thickness': {
+                    'hem_nh': '-nh-',
+                    'hem_sh': '-sh-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
+                },
+                'sea_ice_freeboard': {
+                    'hem_nh': '-nh-',
+                    'hem_sh': '-sh-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
+                }
+            },
+            'sentinel3a': {
                 'sea_ice_thickness': {
                     'hem_nh': '-nh-',
                     'hem_sh': '-sh-',
@@ -229,6 +245,7 @@ class SeaIceThicknessProducts:
         return gdf.to_crs(self.out_epsg)
 
     def get_file_list(self, directory):
+        print(directory)
         hem = self.config[self.sensor][self.target_var]['hem_' + self.hem]
         file_list = [file_path for file_path in glob.iglob(os.path.join(directory, "**", "*"), recursive=True)
                      if hem.lower() in os.path.basename(file_path.lower())]
