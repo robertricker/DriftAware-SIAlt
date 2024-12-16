@@ -6,7 +6,7 @@ from scipy import interpolate
 from scipy.interpolate import RBFInterpolator
 
 
-def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_tiepoints, nbs):
+def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_tiepoints, nbs, hem):
     merged = gpd.sjoin(data, grid, how='left', predicate='within')
     tmp = (merged.groupby(['index_right', 'dt_days'], as_index=False)
            .agg({'geometry': 'first', interp_var: 'mean'})
@@ -16,7 +16,8 @@ def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_t
     tmp = tmp[tmp['index_right'].isin(valid_indices)]
     tmp.set_index('index_right', inplace=True)
     eps = 1.8
-    fsm = interpolate.interp1d(np.array([40.0, 90.0]), np.array([80, 10]))
+    lat_range = [40.0, 90.0] if hem == 'nh' else [-40.0, -90.0]
+    fsm = interpolate.interp1d(np.array(lat_range), np.array([80, 10]))
 
     # perform linear fit
     tmp['coeff'] = tmp.groupby('index_right').apply(

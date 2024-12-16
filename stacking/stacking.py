@@ -62,7 +62,7 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     data["geometry"] = target_location
     if len(data["dt_days"].unique()) >= min_n_tps:
         f_growth, f_growth_unc, growth = interpolate_growth(
-            data, target_var, growth_range, grid, growth_cell_width, min_n_tps, nbs)
+            data, target_var, growth_range, grid, growth_cell_width, min_n_tps, nbs, config["options"]["hemisphere"])
         growth_interp = f_growth(
             np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
         growth_unc_interp = f_growth_unc(
