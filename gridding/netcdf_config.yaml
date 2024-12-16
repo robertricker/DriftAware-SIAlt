@@ -1,10 +1,10 @@
 variables:
-  drift-aware:
+  da: # drift-aware
     histogram: True
     include:
       - "{{ target_var }}"
       - "{{ target_var }}_l2_unc"
-      - "{{ target_var }}_drift_unc"
+      #- "{{ target_var }}_drift_unc"
       - "{{ target_var }}_growth_unc"
       - "{{ target_var }}_total_unc"
       #- "{{ target_var }}_mode"
@@ -22,7 +22,7 @@ variables:
     rename:
       - "{{ target_var }}"
       - "{{ target_var }}_l2_unc"
-      - "{{ target_var }}_drift_unc"
+      #- "{{ target_var }}_drift_unc"
       - "{{ target_var }}_growth_unc"
       - "{{ target_var }}_total_unc"
       #- "{{ target_var }}_mode"
@@ -38,7 +38,7 @@ variables:
       - "snow_depth"
       - "drift_unc"
 
-  conventional:
+  cv: # conventional
     histogram: True
     include:
       - "{{ target_var }}"
@@ -74,9 +74,9 @@ variable_attributes:
     long_name: "y coordinate of projection (northings)"
     units: "m"
 
-  zc:
-    standard_name: "z_coordinate"
-    long_name: "bins for thickness histogram"
+  hist_bins:
+    standard_name: "bin_centers"
+    long_name: "histogram bin centers"
     units: "m"
 
   latitude:
@@ -86,29 +86,37 @@ variable_attributes:
 
   longitude:
     standard_name: "longitude"
-    long_name: "longitude of grid cell center"
+    long_name: "time longitude of grid cell center"
     units: "degrees_east"
+
+  sea_ice_concentration:
+    standard_name: 'sea_ice_area_fraction'
+    long_name: "sea ice concentration"
+    coordinates: "time longitude latitude"
+    units: "percent"
+    grid_mapping: 'crs'
+    comment: ""
 
   sea_ice_thickness:
     standard_name: 'sea_ice_thickness'
-    long_name: "thickness of the sea ice layer"
-    coordinates: "longitude latitude"
+    long_name: "sea ice thickness"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
 
   sea_ice_thickness_std:
-    standard_name: 'sea_ice_thickness_std'
+    standard_name: 'sea_ice_thickness'
     long_name: "standard deviation of sea ice thickness estimates within parcel"
-    coordinates: "longitude latitude"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
 
   sea_ice_thickness_mode:
-    standard_name: 'sea_ice_thickness_mode'
+    standard_name: 'sea_ice_thickness'
     long_name: "modal sea ice thickness"
-    coordinates: "longitude latitude"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
@@ -116,71 +124,71 @@ variable_attributes:
   sea_ice_thickness_hist:
     standard_name: 'sea_ice_thickness'
     long_name: "thickness classes between 0 m and 10 m with 0.25m bin size"
-    coordinates: "longitude latitude"
-    units: "counts"
+    coordinates: "time longitude latitude"
+    units: "1"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "grid cells contain the absolute counts for each bin"
 
-  sea_ice_thickness_corrected:
-    standard_name: 'sea_ice_thickness_corrected'
-    long_name: "growth-corrected sea ice thickness"
-    coordinates: "longitude latitude"
+  sea_ice_thickness_growth:
+    standard_name: 'sea_ice_thickness_change'
+    long_name: "sea ice thickness growth: rate of change in sea ice thickness per day"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
 
-  sea_ice_thickness_growth:
-    standard_name: 'sea_ice_thickness_growth'
-    long_name: "sea ice thickness growth within t_window_length"
-    coordinates: "longitude latitude"
-    units: "m/day"
-    grid_mapping: 'crs'
-    comment: ""
-
   sea_ice_thickness_growth_interpolated:
-    standard_name: 'sea_ice_thickness_growth_interpolated'
-    long_name: "interpolated sea ice thickness growth within t_window_length"
-    coordinates: "longitude latitude"
-    units: "m/day"
+    standard_name: 'sea_ice_thickness_change'
+    long_name: "interpolated sea ice thickness growth"
+    coordinates: "time longitude latitude"
+    units: "m"
     grid_mapping: 'crs'
     comment: ""
 
   sea_ice_thickness_drift_unc:
-    standard_name: 'sea_ice_thickness_drift_unc'
+    standard_name: 'sea_ice_thickness standard_error'
     long_name: "sea ice thickness uncertainty associated with the ice drift correction"
-    coordinates: "longitude latitude"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
 
   sea_ice_thickness_growth_unc:
-    standard_name: 'sea_ice_thickness_growth_unc'
-    long_name: "sea ice thickness uncertainty associated with the growth correction"
-    coordinates: "longitude latitude"
+    standard_name: 'sea_ice_thickness_change standard_error'
+    long_name: "sea ice thickness uncertainty associated with the sea ice thickness growth per day"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
 
   sea_ice_thickness_l2_unc:
-    standard_name: 'sea_ice_thickness_l2_unc'
+    standard_name: 'sea_ice_thickness standard_error'
     long_name: "sea ice thickness uncertainty associated with the level2 product"
-    coordinates: "longitude latitude"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
 
   sea_ice_thickness_total_unc:
-    standard_name: 'sea_ice_thickness_total_unc'
+    standard_name: 'sea_ice_thickness standard_error'
     long_name: "combined sea ice thickness uncertainty"
-    coordinates: "longitude latitude"
+    coordinates: "time longitude latitude"
+    units: "m"
+    grid_mapping: 'crs'
+    comment: ""
+
+  snow_depth:
+    standard_name: 'surface_snow_thickness_where_sea_ice'
+    long_name: "thickness of the snow layer"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
 
   drift_unc:
-    standard_name: 'drift_unc'
-    long_name: "uncertainty of the sea ice drift product"
-    coordinates: "longitude latitude"
+    standard_name: 'sea_ice_displacement standard_error'
+    long_name: "uncertainty of the accumulated sea ice displacement"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
@@ -188,7 +196,7 @@ variable_attributes:
   deformation:
     standard_name: 'deformation'
     long_name: "mean deformation accumulated along the trajectory"
-    coordinates: "longitude latitude"
+    coordinates: "time longitude latitude"
     units: "1/day"
     grid_mapping: 'crs'
     comment: ""
@@ -196,7 +204,7 @@ variable_attributes:
   divergence:
     standard_name: 'divergence'
     long_name: "mean divergence accumulated along the trajectory"
-    coordinates: "longitude latitude"
+    coordinates: "time longitude latitude"
     units: "1/day"
     grid_mapping: 'crs'
     comment: ""
@@ -204,40 +212,35 @@ variable_attributes:
   shear:
     standard_name: 'shear'
     long_name: "mean shear accumulated along the trajectory"
-    coordinates: "longitude latitude"
+    coordinates: "time longitude latitude"
     units: "1/day"
     grid_mapping: 'crs'
     comment: ""
 
   dist_acquisition:
-    standard_name: 'sea_ice_thickness'
-    long_name: "distance from data acquisition location"
-    coordinates: "longitude latitude"
+    standard_name: 'geospatial_distance'
+    long_name: "distance between target day and day of data acquisition location"
+    coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
     comment: ""
 
   time:
     standard_name: 'time'
-    long_name': 'reference time of product'
+    long_name: 'Time'
+    axis: "T"
+    bounds: "time_bnds"
+    calendar: "standard"
     units: 'seconds since 1970-01-01 00:00:00'
 
   time_bnds:
+    long_name: "Time Bounds"
     units: 'seconds since 1970-01-01 00:00:00'
 
   time_offset_acquisition:
-    standard_name: 'sea_ice_thickness'
+    standard_name: 'delta_time'
     long_name: "time since data acquisition"
-    coordinates: "longitude latitude"
-    units: "m"
-    grid_mapping: 'crs'
-    comment: ""
-
-  region_flag:
-    standard_name: 'region_flag'
-    long_name: "NSIDC region mask v2"
-    coordinates: "longitude latitude"
-    flags: "0: Outside of defined regions, 1: Central Arctic, 2: Beaufort Sea, 3: Chukchi Sea, 4: East Siberian Sea, 5: Laptev Sea, 6: Kara Sea, 7: Barents Sea, 8: East Greenland Sea, 9: Baffin Bay and Davis Strait, 10: Gulf of St. Lawrence, 11: Hudson Bay, 12: Canadian Archipelago, 13: Bering Sea, 14: Sea of Okhotsk, 15: Sea of Japan, 16: Bohai Sea, 17: Gulf of Bothnia, Baltic Sea, 18: Gulf of Alaska"
-    units: ''
+    coordinates: "time longitude latitude"
+    units: "days"
     grid_mapping: 'crs'
     comment: ""
