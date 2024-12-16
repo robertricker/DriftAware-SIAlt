@@ -1,8 +1,0 @@
-{
-"type": "FeatureCollection",
-"features": [
-{ "type": "Feature", "properties": { "name": "A", "my_list_column": [ 1, 2, 3 ] }, "geometry": { "type": "Point", "coordinates": [ 1.0, 2.0 ] } },
-{ "type": "Feature", "properties": { "name": "B", "my_list_column": [ 4, 5, 6 ] }, "geometry": { "type": "Point", "coordinates": [ 3.0, 4.0 ] } },
-{ "type": "Feature", "properties": { "name": "C", "my_list_column": [ 7, 8, 9 ] }, "geometry": { "type": "Point", "coordinates": [ 5.0, 6.0 ] } }
-]
-}
