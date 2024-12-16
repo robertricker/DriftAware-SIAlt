@@ -62,7 +62,7 @@ class DriftAwareProcessor:
                 self.master[beam][self.i][0] = tmp_grid
                 self.scheme[(beams == beam).argmax(), self.i, 0] = 1
 
-        elif self.sensor in ['cryosat2', 'envisat']:
+        elif self.sensor in ['cryosat2', 'sentinel3a', 'envisat']:
             tmp_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var], [self.target_var],
                                               hist_n_bins=hist_n_bins, hist_range=hist_range,
                                               agg_mode=['mean', 'std', 'hist'])
@@ -146,7 +146,7 @@ class DriftAwareProcessor:
                     self.master[beam][self.i + direct][j] = tmp_grid
                     self.scheme[(beams == beam).argmax(), self.i + direct, j] = 1
 
-        elif self.sensor in ['cryosat2', 'envisat']:
+        elif self.sensor in ['cryosat2', 'sentinel3a', 'envisat']:
             m = 0
             end = self.i + 2 if direct == 1 else day0 - self.i + 2
             for j in range(1, end):
@@ -174,7 +174,7 @@ class DriftAwareProcessor:
                     if len(self.master[beam][gdf_array_index][j]) != 0:
                         gdf_list.append(self.master[beam][gdf_array_index][j])
                         del self.master[beam][gdf_array_index][j]
-            elif self.sensor in ['cryosat2', 'envisat']:
+            elif self.sensor in ['cryosat2', 'sentinel3a', 'envisat']:
                 if len(self.master[gdf_array_index][j]) != 0:
                     gdf_list.append(self.master[gdf_array_index][j])
                     del self.master[gdf_array_index][j]
