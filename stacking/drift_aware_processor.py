@@ -24,6 +24,7 @@ class DriftAwareProcessor:
     def baseline_proc(self, sic_product, hist_n_bins, hist_range):
         # adds the original measurements at t=0 (without drift correction) to the master structure
         sit = self.parent.product
+        sit['sea_ice_thickness_l2_unc'] **= 2
         if self.sensor == 'icesat2':
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
             for beam in sit.beam.unique():
@@ -37,12 +38,12 @@ class DriftAwareProcessor:
                                                   hist_n_bins=hist_n_bins, hist_range=hist_range,
                                                   agg_mode=['mean', 'std', 'hist'])
                 unc_grid = gridding_lib.grid_data(tmp, self.grid, [self.target_var+'_l2_unc'],
-                                                  [self.target_var+'_l2_unc'], agg_mode=['mean', 'cnt'])
+                                                  [self.target_var + '_l2_unc'], agg_mode = ['sum', 'cnt'])
                 add_grid = gridding_lib.grid_data(tmp, self.grid, self.add_variable+['time'],
                                                   self.add_variable+['time'], agg_mode=['mean'])
 
-                tmp_grid[self.target_var+'_l2_unc'] = unc_grid[self.target_var+'_l2_unc'] / np.sqrt(
-                    unc_grid[self.target_var+'_l2_unc_cnt'])
+                tmp_grid[self.target_var + '_l2_unc'] = np.sqrt(unc_grid[self.target_var + '_l2_unc_sum']) / unc_grid[
+                    self.target_var + '_l2_unc_cnt']
                 tmp_grid[self.add_variable] = add_grid[self.add_variable]
                 tmp_grid['t0'] = add_grid['time']
                 tmp_grid['xu'] = tmp_grid.index.get_level_values('x')
@@ -62,17 +63,17 @@ class DriftAwareProcessor:
                 self.master[beam][self.i][0] = tmp_grid
                 self.scheme[(beams == beam).argmax(), self.i, 0] = 1
 
-        elif self.sensor in ['cryosat2', 'sentinel3a', 'envisat']:
+        elif self.sensor in ['cryosat2', 'sentinel3a','sentinel3b', 'envisat']:
             tmp_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var], [self.target_var],
                                               hist_n_bins=hist_n_bins, hist_range=hist_range,
                                               agg_mode=['mean', 'std', 'hist'])
             unc_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var + '_l2_unc'],
-                                              [self.target_var + '_l2_unc'], agg_mode=['mean', 'cnt'])
+                                              [self.target_var + '_l2_unc'], agg_mode=['sum', 'cnt'])
             add_grid = gridding_lib.grid_data(sit, self.grid, self.add_variable+['time'],
                                               self.add_variable+['time'], agg_mode=['mean'])
 
-            tmp_grid[self.target_var + '_l2_unc'] = unc_grid[self.target_var+'_l2_unc'] / np.sqrt(
-                unc_grid[self.target_var+'_l2_unc' + '_cnt'])
+            tmp_grid[self.target_var+'_l2_unc'] = np.sqrt(unc_grid[self.target_var+'_l2_unc_sum'])/unc_grid[
+                self.target_var+'_l2_unc_cnt']
             tmp_grid[self.add_variable] = add_grid[self.add_variable]
             tmp_grid['t0'] = add_grid['time']
             tmp_grid['xu'] = tmp_grid.index.get_level_values('x')
