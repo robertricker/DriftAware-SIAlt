@@ -147,7 +147,7 @@ class DriftAwareProcessor:
                     self.master[beam][self.i + direct][j] = tmp_grid
                     self.scheme[(beams == beam).argmax(), self.i + direct, j] = 1
 
-        elif self.sensor in ['cryosat2', 'sentinel3a', 'envisat']:
+        elif self.sensor in ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']:
             m = 0
             end = self.i + 2 if direct == 1 else day0 - self.i + 2
             for j in range(1, end):
@@ -175,7 +175,7 @@ class DriftAwareProcessor:
                     if len(self.master[beam][gdf_array_index][j]) != 0:
                         gdf_list.append(self.master[beam][gdf_array_index][j])
                         del self.master[beam][gdf_array_index][j]
-            elif self.sensor in ['cryosat2', 'sentinel3a', 'envisat']:
+            elif self.sensor in ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']:
                 if len(self.master[gdf_array_index][j]) != 0:
                     gdf_list.append(self.master[gdf_array_index][j])
                     del self.master[gdf_array_index][j]

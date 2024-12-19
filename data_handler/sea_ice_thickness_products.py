@@ -27,6 +27,8 @@ class SeaIceThicknessProducts:
             ('cryosat2', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
             ('sentinel3a', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
             ('sentinel3a', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
+            ('sentinel3b', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
+            ('sentinel3b', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
             ('envisat', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
             ('envisat', 'sea_ice_thickness'): self.cci_l2p_to_gdf
         }
@@ -61,6 +63,20 @@ class SeaIceThicknessProducts:
                 }
             },
             'sentinel3a': {
+                'sea_ice_thickness': {
+                    'hem_nh': '-nh-',
+                    'hem_sh': '-sh-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
+                },
+                'sea_ice_freeboard': {
+                    'hem_nh': '-nh-',
+                    'hem_sh': '-sh-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
+                }
+            },
+            'sentinel3b': {
                 'sea_ice_thickness': {
                     'hem_nh': '-nh-',
                     'hem_sh': '-sh-',
