@@ -12,6 +12,7 @@ input_dir: # relative to base_dir
 output_dir: # relative to base_dir
   trajectories: "output_data/DA/product/{sensor}/csv"  # DA trajectories as daily CSVs
   gridded_data: "output_data/DA/product/{sensor}/netcdf"  # Gridded DA data as daily NetCDFs
+  visu: "output_data/DA/product/{sensor}/visu/"
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -28,7 +29,7 @@ logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
   sensor: cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
-  proc_step: gridding # Available options: stacking, gridding, and visualization
+  proc_step: visualization # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
   target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
@@ -66,8 +67,8 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2024-12-18_17-23-29'
-      mode: 'cv'                                             # drift-aware: da, conventional: cv
+      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2024-12-19_10-53-49'
+      mode: 'da'                                             # drift-aware: da, conventional: cv
       multiproc: True                                       # Parallel processing
       num_cpus: 16                                           # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month
@@ -79,8 +80,9 @@ options:
         thickness: [ 0, 10 ]
 
     visualization:                                            # Processing step: visualization
+      sub_dir: 'sea_ice_thickness-sh-16fr-epsg6932_354-2024-12-19_09-08-22'
       gridded_data_dir: 'crdp_figs'                           # directory relative to output_dir.gridded_data
-      variable: "sea_ice_thickness_growth_interpolated"       # netcdf variable
+      variable: "sea_ice_thickness"       # netcdf variable
       make_gif: False
 
 version: 100                                                  # version of DA-SIT python software

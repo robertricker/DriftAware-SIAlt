@@ -1,33 +1,33 @@
-base_dir: "/cluster/work/users/rori" # main project data directory
+base_dir: "/cluster/projects/108541-SO-SIMBA/data_tmp/" # main project data directory
 #-----------------------------------DATA REPOSITORY---------------------------------------------------------------------
 input_dir: # relative to base_dir
-  envisat: "input_data/envisat/l2p_cci/"
-  cryosat2: "input_data/cryosat2/l2p_cci/"
-  sentinel3a: "input_data/sentinel3a/l2p_cci"
-  sentinel3b: "input_data/sentinel3b/l2p_cci"
+  envisat: "input_data/envisat/l2p_cci/" #TODO UPDATE
+  cryosat2: "output_data/SOSIMBA/cdr/cryosat2/v4p0-preview1-ss/sh/l2p_release/" 
+  sentinel3a: "output_data/SOSIMBA/cdr/sentinel3a/v4p0-preview1-ss/sh/l2p_release" 
+  sentinel3b: "output_data/SOSIMBA/cdr/sentinel3b/v4p0-preview1-ss/sh/l2p_release" 
   icesat2:
     total_freeboard: "input_data/icesat2/ATL10.005"
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "product/{sensor}/csv"  # DA trajectories as daily CSVs
-  gridded_data: "product/{sensor}/netcdf"  # Gridded DA data as daily NetCDFs
+  trajectories: "output_data/DA/product/{sensor}/csv"  # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/netcdf"  # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
-    osi450: "auxiliary/osi450" #v3.0: 1978-2020
-    osi430b: "auxiliary/osi430b" #v3.0: 2021-
+    osi450: "input_data/auxdata/sic/c3s/cdr" #v3.0: 1978-2020
+    osi430b: "input_data/auxdata/sic/c3s/icdr" #v3.0: 2021-
   ice_drift:
-    osi455: "auxiliary/osi455" #1991-2020
-    osi405: "auxiliary/osi405" #2009-
-  reg_mask: "auxiliary/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc"
+    osi455: "input_data/auxdata/sidrift" #1991-2020
+    osi405: "auxiliary/osi405" #2009- # TODO UPDATE
+  reg_mask: "input_data/auxdata/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc" # SETUP
 #-----------------------------------VISUALIZATION-----------------------------------------------------------------------
 visualization: "visualization/plots"
 #-----------------------------------LOGGING-----------------------------------------------------------------------------
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: sentinel3a # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: sentinel3b # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: stacking # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
@@ -43,10 +43,10 @@ options:
     stacking:                                                 # Processing step: stacking (Drift-Aware processing)
       filename_prefix: 'ESACCI-SEAICE'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
-      t_start: 2019-08-01 00:00:00                            # Start of processing period
-      t_length: season                                        # length of processing period in days
+      t_start: 2020-04-01 00:00:00                            # Start of processing period
+      t_length: season                                        # length of processing period in days or 'season'
       t_window: 16                                            # length of the drift-aware window in days
-      multiproc: False                                        # Parallel processing
+      multiproc: True                                        # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
@@ -66,7 +66,7 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: 'sea_ice_thickness-sh-10fr-epsg6932_141-2024-12-16_10-24-43'
+      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2024-12-16_17-27-58'
       mode: 'da'                                             # drift-aware: da, conventional: cv
       multiproc: False                                       # Parallel processing
       num_cpus: 16                                           # Number of CPUs for parallel processing

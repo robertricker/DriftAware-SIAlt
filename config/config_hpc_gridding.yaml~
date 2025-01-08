@@ -33,7 +33,7 @@ options:
   ice_drift_product: osi455
   target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['snow_depth', 'radar_freeboard', 'sea_ice_freeboard']                                # add variables to the trajectory data frame,
+  add_variable: ['snow_depth']                                # add variables to the trajectory data frame,
                                                               # no growth correction, no histogram
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
@@ -67,7 +67,7 @@ options:
 
     gridding:                                                 # Processing step: gridding
       csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2024-12-18_17-23-29'
-      mode: 'cv'                                             # drift-aware: da, conventional: cv
+      mode: 'da'                                             # drift-aware: da, conventional: cv
       multiproc: True                                       # Parallel processing
       num_cpus: 16                                           # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month

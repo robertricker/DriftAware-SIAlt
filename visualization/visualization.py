@@ -27,17 +27,17 @@ def visualization(config):
     visu_opt = config['options']['proc_step_options']['visualization']
     target_var = visu_opt['variable']
     make_gif = visu_opt['make_gif']
-    config['dir'][sensor]['netcdf'] = config['dir'][sensor]['netcdf'] + visu_opt['sub_dir']
-    file_list = sorted(glob.glob(os.path.join(config['dir'][sensor]['netcdf'], '**', '*.nc'), recursive=True))
-    out_dir = config['dir'][sensor]['visu']
+    config['output_dir']['gridded_data'] = config['output_dir']['gridded_data'] + '/' + visu_opt['sub_dir']
+    file_list = sorted(glob.glob(os.path.join(config['output_dir']['gridded_data'], '**', '*.nc'), recursive=True))
+    out_dir = config['output_dir']['visu']
 
     sic_product = SeaIceConcentrationProducts(hem=hem, product_id=config['options']['ice_conc_product'],
                                               out_epsg=out_epsg)
-    sic_product.get_file_list(config['dir']['auxiliary']['ice_conc'][config['options']['ice_conc_product']])
+    sic_product.get_file_list(config['auxiliary']['ice_conc'][config['options']['ice_conc_product']])
     sic_product.get_file_dates()
 
     for file in file_list:
-        time_str = re.search('nh-(.+?)-(.*).nc', os.path.basename(file)).group(1)
+        time_str = re.search(r'-(\d{8})-', os.path.basename(file)).group(1)
         dt1d = datetime.timedelta(days=1)
         t0 = datetime.datetime.strptime(time_str, '%Y%m%d')
         t1 = t0 + dt1d
@@ -132,6 +132,7 @@ def visualization(config):
                                         time_str,
                                         label,
                                         outfile,
+                                        hem,
                                         iceconc=ice_conc)
 
     if make_gif:
