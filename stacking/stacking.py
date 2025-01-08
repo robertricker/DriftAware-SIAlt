@@ -186,7 +186,6 @@ def stack_proc(config, direct, grid):
 
 def stacking(config):
     sensor = config["options"]["sensor"]
-    target_var = config["options"]["target_variable"]
     stk_opt = config['options']['proc_step_options']['stacking']
     multiproc = stk_opt['multiproc']
     parcel_grid_opt = stk_opt['parcel_grid']
