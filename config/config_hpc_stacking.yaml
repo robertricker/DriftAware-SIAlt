@@ -6,8 +6,9 @@ input_dir: # relative to base_dir
   sentinel3a: "output_data/SOSIMBA/cdr/sentinel3a/v4p0-preview1-ss/sh/l2p_release" 
   sentinel3b: "output_data/SOSIMBA/cdr/sentinel3b/v4p0-preview1-ss/sh/l2p_release" 
   icesat2:
-    total_freeboard: "input_data/icesat2/ATL10.005"
+    total_freeboard: "input_data/alti/l2/icesat2/ATL10/v6"
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
+    
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
   trajectories: "output_data/DA/product/{sensor}/csv"  # DA trajectories as daily CSVs
@@ -27,26 +28,26 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: sentinel3b # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: stacking # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
-  target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
+  target_variable: 'sea_ice_freeboard'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['snow_depth']                                # add variables to the trajectory data frame,
-                                                              # no growth correction, no histogram
+  add_variable: ['snow_depth', 'sea_ice_thickness']                             # add variables to the trajectory data frame,
+                                                              # no growth correction, no histogram (list)
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
 
   proc_step_options:                                          # Processing options for each processing step
 
     stacking:                                                 # Processing step: stacking (Drift-Aware processing)
-      filename_prefix: 'ESACCI-SEAICE'                        # project name (e.g., SOSIMBA)
+      filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
       t_start: 2020-04-01 00:00:00                            # Start of processing period
-      t_length: season                                        # length of processing period in days or 'season'
-      t_window: 16                                            # length of the drift-aware window in days
-      multiproc: True                                        # Parallel processing
+      t_length: 2                                        # length of processing period in days or 'season'
+      t_window: 3                                           # length of the drift-aware window in days
+      multiproc: False                                        # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]

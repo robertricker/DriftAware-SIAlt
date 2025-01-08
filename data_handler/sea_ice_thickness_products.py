@@ -117,9 +117,10 @@ class SeaIceThicknessProducts:
             atl10_data = {}
             atl10_attrs = {}
             atl10_beams = []
-            for gtx in [k for k in fileid.keys() if bool(re.match(r'gt\d[lr]', k))]:
+            list_gtx = [k for k in fileid.keys() if bool(re.match(r'gt\d[lr]', k))]
+            for gtx in list_gtx:
                 try:
-                    fileid[gtx]['freeboard_beam_segment']['beam_freeboard']['height_segment_id']
+                    fileid[gtx]['freeboard_segment']['height_segment_id']
                 except KeyError:
                     pass
                 else:
@@ -127,39 +128,39 @@ class SeaIceThicknessProducts:
 
             for gtx in atl10_beams:
                 atl10_data[gtx] = {}
-                atl10_data[gtx]['freeboard_beam_segment'] = {}
-                atl10_data[gtx]['freeboard_beam_segment']['beam_freeboard'] = {}
-                atl10_data[gtx]['freeboard_beam_segment']['geophysical'] = {}
-                atl10_data[gtx]['freeboard_beam_segment']['height_segments'] = {}
+                atl10_data[gtx]['freeboard_segment'] = {}
+                #atl10_data[gtx]['freeboard_segment']['beam_freeboard'] = {}
+                atl10_data[gtx]['freeboard_segment']['geophysical'] = {}
+                atl10_data[gtx]['freeboard_segment']['heights'] = {}
                 atl10_data[gtx]['leads'] = {}
 
-                for key, val in fileid[gtx]['freeboard_beam_segment'].items():
+                for key, val in fileid[gtx]['freeboard_segment'].items():
                     if isinstance(val, h5py.Dataset):
-                        atl10_data[gtx]['freeboard_beam_segment'][key] = val[:]
+                        atl10_data[gtx]['freeboard_segment'][key] = val[:]
                     elif isinstance(val, h5py.Group):
                         for k, v in val.items():
-                            atl10_data[gtx]['freeboard_beam_segment'][key][k] = v[:]
+                            atl10_data[gtx]['freeboard_segment'][key][k] = v[:]
 
                 if attributes:
                     # getting attributes of icesat-2 atl10 beam variables
                     atl10_attrs[gtx] = {}
-                    atl10_attrs[gtx]['freeboard_beam_segment'] = {}
-                    atl10_attrs[gtx]['freeboard_beam_segment']['beam_freeboard'] = {}
-                    atl10_attrs[gtx]['freeboard_beam_segment']['geophysical'] = {}
-                    atl10_attrs[gtx]['freeboard_beam_segment']['height_segments'] = {}
+                    atl10_attrs[gtx]['freeboard_segment'] = {}
+                    #atl10_attrs[gtx]['freeboard_segment']['beam_freeboard'] = {}
+                    atl10_attrs[gtx]['freeboard_segment']['geophysical'] = {}
+                    atl10_attrs[gtx]['freeboard_segment']['heights'] = {}
                     atl10_attrs[gtx]['leads'] = {}
                     # global group attributes for atl10 beam
                     for att_name, att_val in fileid[gtx].attrs.items():
                         atl10_attrs[gtx][att_name] = att_val
-                    for key, val in fileid[gtx]['freeboard_beam_segment'].items():
-                        atl10_attrs[gtx]['freeboard_beam_segment'][key] = {}
+                    for key, val in fileid[gtx]['freeboard_segment'].items():
+                        atl10_attrs[gtx]['freeboard_segment'][key] = {}
                         for att_name, att_val in val.attrs.items():
-                            atl10_attrs[gtx]['freeboard_beam_segment'][key][att_name] = att_val
+                            atl10_attrs[gtx]['freeboard_segment'][key][att_name] = att_val
                         if isinstance(val, h5py.Group):
                             for k, v in val.items():
-                                atl10_attrs[gtx]['freeboard_beam_segment'][key][k] = {}
+                                atl10_attrs[gtx]['freeboard_segment'][key][k] = {}
                                 for att_name, att_val in v.attrs.items():
-                                    atl10_attrs[gtx]['freeboard_beam_segment'][key][k][att_name] = att_val
+                                    atl10_attrs[gtx]['freeboard_segment'][key][k][att_name] = att_val
 
             # icesat-2 orbit_info group
             atl10_data['orbit_info'] = {}
@@ -187,7 +188,8 @@ class SeaIceThicknessProducts:
             atl10_data, atl10_attrs, atl10_beams = self.read_atl10(file, attributes=True)
             beam_list = list()
             for beam in atl10_beams:
-                tmp = pd.DataFrame.from_dict(atl10_data[beam]['freeboard_beam_segment']['beam_freeboard'])
+                beam_freeboard_keys = {key: value for key, value in atl10_data[beam]['freeboard_segment'].items() if key not in ['geophysical', 'heights']} #group "bean_freeboard" in v5 doesn't exist anymore in v6
+                tmp = pd.DataFrame.from_dict(beam_freeboard_keys)
                 tmp['beam'] = beam
                 tmp['beam_type'] = atl10_attrs[beam]['atlas_beam_type'].decode('utf8')
                 beam_list.append(tmp)
@@ -195,18 +197,20 @@ class SeaIceThicknessProducts:
             df = pd.concat([df for df in beam_list]).pipe(gpd.GeoDataFrame)
             gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
             gdf = gdf.to_crs(self.out_epsg)
-            gdf = gdf[(gdf['beam_fb_height'] < 10.0) &
-                      (gdf['latitude'] > 50.0)]
+
+            #gdf = gdf[(gdf['beam_fb_height'] < 10.0) &
+            #          (gdf['latitude'] > 50.0)] # not compatible with southern hemisphere
+            gdf = gdf[(gdf['beam_fb_height'] < 10.0)]
             gdf_list.append(gdf)
 
         gdf_final = pd.concat(gdf_list).pipe(gpd.GeoDataFrame)
         gdf_final.crs = gdf_list[0].crs
         gdf_final['time'] = Time(gdf_final['delta_time'] + atlas_sdp_gps_epoch, format='gps').to_datetime()
-
+        gdf_final['time'] = (gdf_final['time'] - datetime.datetime(1970, 1, 1)).dt.total_seconds()
         gdf_final.rename(columns={"beam_fb_confidence": "total_freeboard_confidence",
                                   "beam_fb_height": "total_freeboard",
                                   "beam_fb_quality_flag": "total_freeboard_quality_flag",
-                                  "beam_fb_sigma": "total_freeboard_l2_unc"}, inplace=True)
+                                  "beam_fb_unc": "total_freeboard_l2_unc"}, inplace=True) #sigma -> unc in v6
 
         return gdf_final.reset_index(drop=True)
 
@@ -250,9 +254,11 @@ class SeaIceThicknessProducts:
         d = {
             'latitude': np.array(data[latitude_field]),
             'longitude': np.array(data[longitude_field]),
+            'radar_freeboard': np.array(data["radar_freeboard"]),
             'sea_ice_freeboard': np.array(data["sea_ice_freeboard"]),
             'sea_ice_thickness': np.array(data["sea_ice_thickness"]),
             'sea_ice_thickness_l2_unc': np.array(data["sea_ice_thickness_uncertainty"]),
+            'sea_ice_freeboard_l2_unc': np.array(data["sea_ice_freeboard_uncertainty"]),
             'snow_depth': np.array(data["snow_depth"]),
             'time': np.array(data["time"])
         }

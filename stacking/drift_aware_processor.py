@@ -27,12 +27,12 @@ class DriftAwareProcessor:
         sit[self.target_var + '_l2_unc'] **= 2
         if self.sensor == 'icesat2':
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
-            for beam in sit.beam.unique():
+            for beam in sit.beam.unique(): 
                 tmp = (sit[[self.target_var, self.target_var + '_l2_unc', 'geometry', 'time', 'beam'] + self.add_variable]
-                       .copy()
-                       .loc[sit['beam'] == beam]
-                       .drop(columns=['beam'])
-                       )
+                           .copy()
+                           .loc[sit['beam'] == beam]
+                           .drop(columns=['beam'])
+                           )
                 tmp = tmp.reset_index(drop=True)
                 tmp_grid = gridding_lib.grid_data(tmp, self.grid, [self.target_var], [self.target_var],
                                                   hist_n_bins=hist_n_bins, hist_range=hist_range,
