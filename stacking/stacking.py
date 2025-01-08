@@ -203,7 +203,7 @@ def stacking(config):
     logger.info('grid cell width of the stacking parcel grid: ' + str(cell_width) + ' m')
 
     if stk_opt['t_length'] == 'all':
-        years = list(filter(lambda f: not f.startswith('.'), os.listdir(config['dir'][sensor]['level2'][target_var])))
+        years = list(filter(lambda f: not f.startswith('.'), os.listdir(config['input_dir'][sensor])))
         years.sort()
         years = [int(x) for x in years]
         years = [y for y in years if y >= stk_opt['t_start'].year]
