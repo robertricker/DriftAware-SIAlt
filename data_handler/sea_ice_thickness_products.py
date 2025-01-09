@@ -236,6 +236,7 @@ class SeaIceThicknessProducts:
                 'beam_type': "strong"
             }
             df = pd.DataFrame(data=d)
+            df = df.dropna(how='any')
             gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
             gdf = gdf.to_crs(self.out_epsg)
             gdf = gdf[gdf['latitude'] > 50.0]
