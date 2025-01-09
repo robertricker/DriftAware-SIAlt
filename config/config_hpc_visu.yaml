@@ -28,13 +28,13 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: sentinel3a # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: icesat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: visualization # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
-  target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
+  target_variable: 'total_freeboars'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['snow_depth', 'radar_freeboard', 'sea_ice_freeboard']                                # add variables to the trajectory data frame,
+  add_variable: []                                # add variables to the trajectory data frame,
                                                               # no growth correction, no histogram
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
@@ -80,9 +80,9 @@ options:
         thickness: [ 0, 10 ]
 
     visualization:                                            # Processing step: visualization
-      sub_dir: 'sea_ice_thickness-sh-16fr-epsg6932_354-2024-12-20_15-28-56'
+      sub_dir: 'total_freeboard-sh-16fr-epsg6932_354-2025-01-09_11-17-38'
       gridded_data_dir: 'crdp_figs'                           # directory relative to output_dir.gridded_data
-      variable: "sea_ice_thickness"       # netcdf variable
+      variable: "total_freeboard"       # netcdf variable
       make_gif: False
 
 version: 100                                                  # version of DA-SIT python software
