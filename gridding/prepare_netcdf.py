@@ -15,6 +15,8 @@ class PrepareNetcdf:
     def __init__(self, config, file, region_grid):
         with open(os.path.join(os.path.dirname(__file__), 'netcdf_config.yaml'), 'r') as f:
             self.netcdf_config = yaml.safe_load(f)
+        
+        self.sensor = config['options']['sensor']
         self.target_var = config["options"]["target_variable"]
         self.hist_n_bins = config['options']['proc_step_options']['stacking']['hist']['n_bins']
         self.hist_range = config['options']['proc_step_options']['stacking']['hist']['range'][
@@ -47,10 +49,12 @@ class PrepareNetcdf:
         return f"{prefix}-{prdlvl}-{var}-{instr}-{extra}-{period}-{version}.nc"
 
     def select_variables(self):
-        var = [Template(item).render(target_var=self.target_var)
-               for item in self.netcdf_config['variables'][self.mode]['include']]
-        var_rename = [Template(item).render(target_var=self.target_var)
-                      for item in self.netcdf_config['variables'][self.mode]['rename']]
+        var = [Template(item).render(target_var=self.target_var) #Exception for is2
+               for item in self.netcdf_config['variables'][self.mode]['include']
+               if not (self.sensor == 'icesat2' and item == 'snow_depth')] 
+        var_rename = [Template(item).render(target_var=self.target_var) #Same exception for is2
+                      for item in self.netcdf_config['variables'][self.mode]['rename']
+                      if not (self.sensor == 'icesat2' and item == 'snow_depth')] 
         return var, var_rename
 
     def set_var_attrbs(self, dataset):

@@ -93,7 +93,7 @@ def process_file(config, file, grid, region_grid):
     data = data.dropna(subset=data.columns.difference(['growth']))
     data = data.reset_index()
     time_center = datetime.datetime.strptime(
-        re.split('-', os.path.basename(file))[6], '%Y%m%d') + datetime.timedelta(hours=12)
+        re.split('-', os.path.basename(file))[-2], '%Y%m%d') + datetime.timedelta(hours=12)
     # extract histogram
     data_hist = data[target_var + '_hist'].str.split(expand=True).astype(int)
     data_hist.columns = np.arange(hist_n_bins).astype(str)
