@@ -35,16 +35,16 @@ class PrepareNetcdf:
         centr = grid['geometry'][0].centroid
         dist = [centr.distance(Point(vertex)) for vertex in list(grid['geometry'][0].exterior.coords)]
         dist_km = "{:.0f}".format(round(min(dist) * np.sqrt(2)) / 1e3)
-        prefix = '-'.join(re.split('-', os.path.basename(self.file))[:2])
+        prefix = '-'.join(re.split('-', os.path.basename(self.file))[:-6])
         prdlvl = 'L3C'
-        var = re.split('-', os.path.basename(self.file))[3]
-        instr = re.split('-', os.path.basename(self.file))[4]
+        var = re.split('-', os.path.basename(self.file))[-5]
+        instr = re.split('-', os.path.basename(self.file))[-4]
         proj_map = {
             "EPSG:6931": "EASE2",
             "EPSG:6932": "EASE2"}
         extra = (f"{self.hem.upper()}_"
                  f"{dist_km}KM_{proj_map.get(self.out_epsg)}_{gridding_mode.upper()}")
-        period = re.split('-', os.path.basename(self.file))[6]
+        period = re.split('-', os.path.basename(self.file))[-2] 
         version = re.search(r'(fv\d+)', os.path.basename(self.file)).group(1)
         return f"{prefix}-{prdlvl}-{var}-{instr}-{extra}-{period}-{version}.nc"
 
