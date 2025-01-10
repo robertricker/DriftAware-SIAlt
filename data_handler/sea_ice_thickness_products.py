@@ -264,6 +264,7 @@ class SeaIceThicknessProducts:
             'time': np.array(data["time"])
         }
         df = pd.DataFrame(data=d)
+        df = df.dropna(how='any')
         gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
         return gdf.to_crs(self.out_epsg)
 
