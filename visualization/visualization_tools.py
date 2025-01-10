@@ -39,6 +39,9 @@ def visu_xarray(x, y, z, figsize, vmin, vmax, n_level, cmap, time_string, label,
     #ax.add_feature(cartopy.feature.OCEAN, facecolor=(0.86, 0.87, 0.9))
     coastline = cfeature.NaturalEarthFeature('physical', 'coastline', '50m',
                                              facecolor=(0.73, 0.74, 0.75), edgecolor='black')
+    shelves = cfeature.NaturalEarthFeature('physical', 'antarctic_ice_shelves_polys', '50m',
+                                             facecolor='lightgray', edgecolor='lightgray')
+    ax.add_feature(shelves, linewidth=0.2)
     ax.add_feature(coastline, linewidth=0.2)
     ax.axis("off")
     plt.annotate(
