@@ -162,7 +162,7 @@ def gridding(config):
     netcdf_bounds = grd_opt['netcdf_grid']['bounds']
     if grd_opt['csv_dir'] == "all":
         file_list = sorted([os.path.join(root, file)
-                            for root, _, files in os.walk(config['dir'][sensor]['csv'])
+                            for root, _, files in os.walk(config['output_dir']['trajectories'])
                             for file in files
                             if file.endswith('.csv')])
     else:
