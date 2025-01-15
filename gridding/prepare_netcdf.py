@@ -102,7 +102,7 @@ class PrepareNetcdf:
                                    'false_easting': 0.0,
                                    'false_northing': 0.0,
                                    'latitude_of_projection_origin':
-                                       float(pyproj.CRS.from_string(self.out_epsg ).to_dict().get("lat_0")),
+                                       float(pyproj.CRS.from_string(self.out_epsg).to_dict().get("lat_0")),
                                    'longitude_of_projection_origin': 0.0,
                                    'longitude_of_prime_meridian': 0.0,
                                    'proj4_string': self.crs.to_proj4()}

@@ -4,7 +4,7 @@ variables:
     include:
       - "{{ target_var }}"
       - "{{ target_var }}_l2_unc"
-      #- "{{ target_var }}_drift_unc"
+      - "{{ target_var }}_drift_unc"
       - "{{ target_var }}_growth_unc"
       - "{{ target_var }}_total_unc"
       #- "{{ target_var }}_mode"
@@ -18,11 +18,11 @@ variables:
       #- "shear"
       #- "divergence"
       - "snow_depth"
-      - "drift_unc"
+      #- "drift_unc"
     rename:
       - "{{ target_var }}"
       - "{{ target_var }}_l2_unc"
-      #- "{{ target_var }}_drift_unc"
+      - "{{ target_var }}_drift_unc"
       - "{{ target_var }}_growth_unc"
       - "{{ target_var }}_total_unc"
       #- "{{ target_var }}_mode"
@@ -36,7 +36,7 @@ variables:
       #- "shear"
       #- "divergence"
       - "snow_depth"
-      - "drift_unc"
+      #- "drift_unc"
 
   cv: # conventional
     histogram: True
@@ -227,14 +227,14 @@ variable_attributes:
 
   time:
     standard_name: 'time'
-    long_name: 'Time'
+    long_name: 'time'
     axis: "T"
     bounds: "time_bnds"
     calendar: "standard"
     units: 'seconds since 1970-01-01 00:00:00'
 
   time_bnds:
-    long_name: "Time Bounds"
+    long_name: "time bounds"
     units: 'seconds since 1970-01-01 00:00:00'
 
   time_offset_acquisition:
