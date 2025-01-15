@@ -131,7 +131,7 @@ variable_attributes:
 
   sea_ice_thickness_growth:
     standard_name: 'sea_ice_thickness_change'
-    long_name: "sea ice thickness growth: rate of change in sea ice thickness per day"
+    long_name: "rate of change in sea ice thickness per day"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
