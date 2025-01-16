@@ -102,6 +102,9 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
         dx_dy_unc = self.ice_drift['dx_dy_unc']
         np.ma.getdata(dx)[np.ma.getdata(dx) == -1e+10] = 0
         np.ma.getdata(dy)[np.ma.getdata(dy) == -1e+10] = 0
+        # infinite values can occure in drift files
+        np.ma.getdata(dx)[np.ma.getdata(dx) == np.inf] = 0
+        np.ma.getdata(dy)[np.ma.getdata(dy) == np.inf] = 0
         # Check if xc and yc are in descending order
         if xc[0] > xc[-1]:
             xc = xc[::-1]
