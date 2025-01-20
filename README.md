@@ -5,4 +5,4 @@
 
 ### Requirements
 
-DriftAware-SIAlt is built with and tested on python 3.10 . In addition it depends on several additional packages (see [requirements.txt](requirements.txt))
+DriftAware-SIAlt is built with and tested on python 3.10. In addition, it depends on several additional packages (see [requirements.txt](requirements.txt))
