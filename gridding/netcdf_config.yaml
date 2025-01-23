@@ -41,7 +41,7 @@ variables:
   cv: # conventional
     histogram: True
     include:
-      - "{{ target_var }}"
+      - "{{ target_var }}_uncorrected"
       - "{{ target_var }}_l2_unc"
       - "{{ target_var }}_mode"
       - "dist_acquisition"
