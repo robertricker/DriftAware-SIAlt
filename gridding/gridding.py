@@ -157,7 +157,6 @@ def process_file(config, file, grid, region_grid):
 
 
 def gridding(config):
-    sensor = config['options']['sensor']
     grd_opt = config['options']['proc_step_options']['gridding']
     netcdf_bounds = grd_opt['netcdf_grid']['bounds']
     if grd_opt['csv_dir'] == "all":
@@ -167,7 +166,7 @@ def gridding(config):
                             if file.endswith('.csv')])
     else:
         csv_dir = os.path.join(config['output_dir']['trajectories'], grd_opt['csv_dir'])
-        file_list = sorted(glob.glob(os.path.join(csv_dir,'*.csv')))
+        file_list = sorted(glob.glob(os.path.join(csv_dir, '*.csv')))
 
     grid, cell_width = gridding_lib.define_grid(
         netcdf_bounds,
