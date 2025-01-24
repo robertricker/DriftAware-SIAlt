@@ -1,0 +1,10 @@
+cff-version: 1.1.0
+message: "If you use this python toolbox, please cite it as below."
+authors:
+- family-names: "Ricker"
+  given-names: "Robert"
+orcid: "https://orcid.org/0000-0001-6928-7757"
+title: "Drift-Awareness for Sea Ice Altimetry (DriftAware-SIAlt)"
+doi: "10.5281/zenodo.14732716"
+version: "v100"
+date-released: "2025-01-24"
