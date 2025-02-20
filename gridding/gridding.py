@@ -52,7 +52,7 @@ def get_row_mean(row):
     return np.mean(row)
 
 
-def process_file(config, file, grid, region_grid):
+def process_file(config, file_list, grid, region_grid):
     init_logger(config)
     target_var = config['options']['target_variable']
     out_epsg = config["options"]["out_epsg"]
@@ -69,9 +69,14 @@ def process_file(config, file, grid, region_grid):
     var_range = grd_opt['target_variable_range']["freeboard" if "freeboard" in target_var else "thickness"]
     out_dir = config['output_dir']['gridded_data']
 
-    logger.info('process csv file: ' + os.path.basename(file))
-
-    data = read_dasit_csv(file)
+    for i, file in enumerate(file_list):
+        logger.info('process csv file: ' + os.path.basename(file))
+        if i == 0:
+            data = read_dasit_csv(file)
+        else:
+            data_tmp = read_dasit_csv(file)
+            data = pd.concat([data, data_tmp], ignore_index=True)
+            
     data.to_crs(crs=out_epsg, inplace=True)
     start_location = data["geometry"].apply(lambda g: g.geoms[0])
     target_location = data["geometry"].apply(lambda g: g.geoms[-1])
@@ -180,16 +185,44 @@ def gridding(config):
                                       round(0.5 * np.sqrt(2) * cell_width),
                                       config['options']['out_epsg'])
 
+    date_pattern = re.compile(r"\b(20\d{6})\b")
+
+    # Liste qui contiendra les sous-listes de fichiers par date
+    grouped_files = []
+
+    # Tant qu'il reste des fichiers dans file_list
+    while file_list:
+        file = file_list.pop(0)  # Prendre le premier fichier et le retirer de la liste
+        match = date_pattern.search(file)
+        
+        if match:
+            date = match.group(1)
+            sublist = [file]  # Créer une sous-liste avec ce fichier
+            
+            # Trouver les autres fichiers avec la même date
+            remaining_files = []
+            for other_file in file_list:
+                if date_pattern.search(other_file) and date_pattern.search(other_file).group(1) == date:
+                    sublist.append(other_file)
+                else:
+                    remaining_files.append(other_file)
+
+            # Ajouter la sous-liste à la liste principale
+            grouped_files.append(sublist)
+
+            # Mettre à jour la liste des fichiers restants
+            file_list = remaining_files
+
     if grd_opt['multiproc']:
         logger.info('start multiprocessing')
         pool = mp.Pool(grd_opt['num_cpus'])
-        for file in file_list:
-            pool.apply_async(process_file, args=(config, file, grid, region_grid))
+        for i in range(len(grouped_files)):
+            pool.apply_async(process_file, args=(config, grouped_files[i], grid, region_grid))
         pool.close()
         pool.join()
     else:
-        for file in file_list:
-            process_file(config, file, grid, region_grid)
+        for i in range(len(grouped_files)):
+            process_file(config, grouped_files[i], grid, region_grid)
 
     if grd_opt["organize_files"]:
         organize_files_by_date(config['output_dir']['gridded_data'],
