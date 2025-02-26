@@ -1,4 +1,6 @@
 import geopandas as gpd
+import pandas as pd
+
 import shapely as shp
 import numpy as np
 from shapely.geometry import Point
@@ -38,11 +40,22 @@ def define_grid(bounds, n_cells, epsg, grid_type='rectangular'):
         raise ValueError("Invalid grid_type. Use 'rectangular' or 'circular'.")
 
 
-def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_nan=False, agg_mode=None):
+def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_nan=False, agg_mode=None, weight_var=None):
     if agg_mode is None:
         agg_mode = ['mean', 'std']
     tmp_grid = grid.copy()
     merged = gpd.sjoin(gdf[var + ['geometry']].copy(), grid, how='left', predicate='within')
+    if 'weighted_mean' in agg_mode:
+        if not weight_var or weight_var=='':
+            weight_var = 'dt_days'
+        merged['weight'] = 1/(merged[f'{weight_var}']+1)**2
+        weighted = gpd.GeoDataFrame(pd.concat([merged.drop(merged[['geometry', 'index_right']], axis=1)*merged['weight'].values[:, None], merged[['geometry', 'index_right']]], axis=1), crs=merged.crs, geometry=merged.geometry)
+        dissolve_sum = weighted.dissolve(by='index_right', aggfunc=np.sum)
+        weight_sum = merged.dissolve(by='index_right', aggfunc=np.sum)['weight'].values[:, None]
+        #dissolve_weighted_mean = gpd.GeoDataFrame(pd.concat([dissolve_sum.drop(dissolve_sum[['geometry']], axis=1)/dissolve_sum['weight'].values[:, None], dissolve_sum[['geometry']]], axis=1), crs=dissolve_sum.crs, geometry=dissolve_sum.geometry)
+        dissolve_weighted_mean = pd.concat([dissolve_sum.drop(dissolve_sum[['geometry']], axis=1)/weight_sum, dissolve_sum[['geometry']]], axis=1)
+        for i in range(0, len(var)):
+            tmp_grid.loc[dissolve_weighted_mean.index, var_str[i]] = dissolve_weighted_mean[var[i]].values
     if 'mean' in agg_mode:
         dissolve_mean = merged.dissolve(by='index_right', aggfunc=np.mean)
         for i in range(0, len(var)):

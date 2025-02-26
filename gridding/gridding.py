@@ -58,7 +58,6 @@ def process_file(config, file_list, grid, region_grid):
     out_epsg = config["options"]["out_epsg"]
     stk_opt = config['options']['proc_step_options']['stacking']
     grd_opt = config['options']['proc_step_options']['gridding']
-
     # declare histogram options
     hist_n_bins = stk_opt['hist']['n_bins']
     hist_range = stk_opt['hist']['range']["freeboard" if "freeboard" in target_var else "thickness"]
@@ -68,6 +67,8 @@ def process_file(config, file_list, grid, region_grid):
     gridding_mode = grd_opt['mode']
     var_range = grd_opt['target_variable_range']["freeboard" if "freeboard" in target_var else "thickness"]
     out_dir = config['output_dir']['gridded_data']
+    is_weight = config['options']['proc_step_options']['gridding']['weighting']['is_weight']
+    weight_var = config['options']['proc_step_options']['gridding']['weighting']['var_to_weight_with']
 
     for i, file in enumerate(file_list):
         logger.info('process csv file: ' + os.path.basename(file))
@@ -135,7 +136,10 @@ def process_file(config, file_list, grid, region_grid):
     data['shear'] = data["shear"].apply(get_row_mean)
     prepare_netcdf = PrepareNetcdf(config, file, region_grid)
     var, var_rename = prepare_netcdf.select_variables()
-    master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
+    if is_weight:
+        master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['weighted_mean'], weight_var=weight_var)
+
+    #master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
     master[target_var + '_std'] = gridding_lib.grid_data(
         data, grid, [target_var], [target_var], fill_nan=True, agg_mode=['std'])[target_var + '_std']
     master = master.join(tmp_hist_grid.drop(columns=['geometry']))
