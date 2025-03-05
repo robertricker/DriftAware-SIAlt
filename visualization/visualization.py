@@ -119,12 +119,17 @@ def visualization(config):
 
         if not os.path.exists(out_dir + target_var):
             try:
-                os.mkdir(out_dir + target_var)
+                os.makedirs(out_dir + target_var, exist_ok=True)
             except OSError as error:
                 print(error)
 
         outfile = out_dir + target_var + os.sep + re.split('.nc', os.path.basename(file))[0] + '_' + target_var + '.png'
         print(outfile)
+        if not os.path.exists(os.path.dirname(outfile)):
+            try:
+                os.makedirs(os.path.dirname(outfile), exist_ok=True)
+            except OSError as error:
+                print(error)
         visualization_tools.visu_xarray(data.xc, data.yc, data[target_var][0] * scaling,
                                         (6, 6),
                                         vmin, vmax, n_level,

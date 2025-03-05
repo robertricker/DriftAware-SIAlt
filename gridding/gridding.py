@@ -138,8 +138,9 @@ def process_file(config, file_list, grid, region_grid):
     var, var_rename = prepare_netcdf.select_variables()
     if is_weight:
         master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['weighted_mean'], weight_var=weight_var)
+    else:
+        master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
 
-    #master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
     master[target_var + '_std'] = gridding_lib.grid_data(
         data, grid, [target_var], [target_var], fill_nan=True, agg_mode=['std'])[target_var + '_std']
     master = master.join(tmp_hist_grid.drop(columns=['geometry']))

@@ -1,7 +1,7 @@
 base_dir: "/cluster/projects/108541-SO-SIMBA/data_tmp/" # main project data directory
 #-----------------------------------DATA REPOSITORY---------------------------------------------------------------------
 input_dir: # relative to base_dir
-  envisat: "input_data/envisat/l2p_cci/" #TODO update
+  envisat: "output_data/SOSIMBA/cdr/envisat/v3p0-ss/sh/l2p_release_miz_23/" #TODO update
   cryosat2: "output_data/SOSIMBA/cdr/cryosat2/v4p0-preview1-ss/sh/l2p_release/"
   sentinel3a: "output_data/SOSIMBA/cdr/sentinel3a/v4p0-preview1-ss/sh/l2p_release"
   sentinel3b: "output_data/SOSIMBA/cdr/sentinel3b/v4p0-preview1-ss/sh/l2p_release"
@@ -10,8 +10,8 @@ input_dir: # relative to base_dir
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/csv"  # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/netcdf"  # Gridded DA data as daily NetCDFs
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv"  # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/CV"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -31,9 +31,9 @@ options:
   proc_step: gridding # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
-  target_variable: 'sea_ice_freeboard'                        # Available options: sea_ice_freeboard (radar altimeters),
+  target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['snow_depth', 'sea_ice_freeboard', 'radar_freeboard']                                # add variables to the trajectory data frame,
+  add_variable: ['snow_depth', 'radar_freeboard', 'sea_ice_freeboard']                                # add variables to the trajectory data frame,
                                                               # no growth correction, no histogram
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
@@ -66,14 +66,17 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: 'sea_ice_freeboard/*/*/'
-      mode: 'da'                                             # drift-aware: da, conventional: cv
-      multiproc: False                                       # Parallel processing
-      num_cpus: 1                                          # Number of CPUs for parallel processing
+      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-02-21_08-59-59'
+      mode: 'cv'                      # if true then it will look here to get the variable to weigth with
+      weighting : 
+        is_weight : False                                  # if true then it will look here to get the variable to weigth with
+        var_to_weight_with : ['dt_days', 'sea_ice_thickness_total_unc']               # if not specified : '' -> dt_days
+      multiproc: True                                    # Parallel processing
+      num_cpus: 16                                          # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month
       netcdf_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
-        dim: 432
+        dim: 432 #864
       target_variable_range:
         freeboard: [ 0, 1 ]
         thickness: [ 0, 10 ]
