@@ -132,12 +132,16 @@ def stack_proc(config, direct, grid):
     # initialize drift aware processor
     processor = DriftAwareProcessor(sit_product, master=master, scheme=scheme, grid=grid)
 
+    # for each day we want a stack
     for i in day_range:
-        processor.i = i
-        t0 = stk_opt['t_start'] + datetime.timedelta(days=i)
-        t1 = stk_opt['t_start'] + datetime.timedelta(days=i + 1)
-        sit_product.get_target_files(t0, t1)
+
+        processor.i = i 
+        t0 = stk_opt['t_start'] + datetime.timedelta(days=i) 
+        t1 = stk_opt['t_start'] + datetime.timedelta(days=i + 1) 
+        sit_product.get_target_files(t0, t1) 
         sic_product.target_files = sic_product.get_target_files(t0, t1)
+
+        # Build the baseline so the line that corresponds to the actual time, without any advection needed
         if sit_product.target_files and sic_product.target_files:
             logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(len(sit_product.target_files)))
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
@@ -145,7 +149,11 @@ def stack_proc(config, direct, grid):
             sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
             processor.baseline_proc(sic_product, hist_n_bins, hist_range)
 
+
+        # The sea ice concentration is taken at t1 check data after beeing advected
         sic_product.target_files = sic_product.get_target_files(t0 + d_sgn * dt1d, t1 + d_sgn * dt1d)
+        # The sea ice drift to advect parcel at t0 is the one referenced as t1
+        # Indeed the reference correspond to the end of the 24h data range that cover each file
         sid_product.target_files = sid_product.get_target_files(t0 + d_sgn_drift * dt1d, t1 + d_sgn_drift * dt1d)
 
         if sic_product.target_files and sid_product.target_files:
@@ -157,6 +165,7 @@ def stack_proc(config, direct, grid):
             sic_product.ice_conc_ahead = sic_product.get_ice_concentration(sic_product.target_files)
             sid_product.get_ice_drift(sid_product.target_files, sic_product.ice_conc_ahead)
 
+            # check if the date is still in the range
             if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
                 m = processor.drift_aware_proc(sid_product, sic_product, stk_opt['t_window'], d_sgn, day_range[0])
 

@@ -89,7 +89,7 @@ class DriftAwareProcessor:
             tmp_grid[self.target_var+'_drift_unc'] = 0.0
             tmp_grid['divergence'], tmp_grid['shear'] = [[0]] * len(tmp_grid), [[0]] * len(tmp_grid)
             self.master[self.i][0] = tmp_grid
-            self.scheme[self.i, 0] = 1
+            self.scheme[self.i, 0] = 1  
 
         else:
             logger.error('Sensor does not exist: %s', self.sensor)
@@ -109,7 +109,7 @@ class DriftAwareProcessor:
             dt = dt - dt_corr
             xu = tmp_grid['xu'].values + (dx * dt)
             yu = tmp_grid['yu'].values + (dy * dt)
-            tt = self.i + direct - j
+            tt = self.i + direct - j 
         else:
             dt = dt + dt_corr
             xu = tmp_grid['xu'].values - (dx * dt)
@@ -130,7 +130,15 @@ class DriftAwareProcessor:
         return tmp_grid
 
     def drift_aware_proc(self, sid_product, sic_product, t_window_length, direct, day0):
-        # incrementally applies drift correction and adds the corrected field to the master structure
+        """
+        This funciton incrementally applies the drift correction and adds the corrected 
+        field to the master structure.
+        day0 -> the first day of the stacking process
+        The master structure is a matrix (row = i, colums = j) 
+        For each j (j will be max the t_window length), we advect the parcels at the actual date i 
+        to the state they will be the time i+1
+        The master structure is built columns after columns (not diagonal per diagonal)
+        """
         if self.sensor == 'icesat2':
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
             m = 0
@@ -150,8 +158,12 @@ class DriftAwareProcessor:
 
         elif self.sensor in ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']:
             m = 0
-            end = self.i + 2 if direct == 1 else day0 - self.i + 2
-            for j in range(1, end):
+            # end is the indice of the target day +2 if f or -2 if r
+            end = self.i + 2 if direct == 1 else day0 - self.i + 2  
+            # go from 1 to the end of the curent indice + 1
+            # j is the lag in data acquisition
+            for j in range(1, end): 
+                
                 if j >= t_window_length:
                     continue
                 m = m + 1
