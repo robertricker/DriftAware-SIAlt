@@ -15,6 +15,7 @@ from gridding import gridding_lib
 from data_handler.sea_ice_concentration_products import SeaIceConcentrationProducts
 from data_handler.sea_ice_drift_products import SeaIceDriftProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessProducts
+from data_handler.air_temperature_products import AirTemperatureProducts
 from stacking.stack_structure import StackStructure
 from stacking.drift_aware_processor import DriftAwareProcessor
 from stacking.drift_aware_uncertainties import get_neighbor_dyn_range
@@ -120,6 +121,10 @@ def stack_proc(config, direct, grid):
     sid_product.get_file_list(config['auxiliary']['ice_drift'][config['options']['ice_drift_product']])
     sid_product.get_file_dates()
 
+    t2m_product = AirTemperatureProducts(hem=hem, product_id=config['options']['t2m_product'], out_epsg=out_epsg)
+    t2m_product.get_file_list(config['auxiliary']['t2m'][config['options']['t2m_product']])
+    t2m_product.get_file_dates()
+
     if direct == 'f':
         d_sgn = 1
         d_sgn_drift = 1
@@ -139,6 +144,10 @@ def stack_proc(config, direct, grid):
         t0 = stk_opt['t_start'] + datetime.timedelta(days=i) 
         t1 = stk_opt['t_start'] + datetime.timedelta(days=i + 1) 
         sit_product.get_target_files(t0, t1) 
+
+        t2m_product.target_files = t2m_product.get_target_files(t0, t1)
+        t2m_product.get_air_temperature(t2m_product.target_files)
+
         sic_product.target_files = sic_product.get_target_files(t0, t1)
 
         # Build the baseline so the line that corresponds to the actual time, without any advection needed
@@ -167,7 +176,7 @@ def stack_proc(config, direct, grid):
 
             # check if the date is still in the range
             if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
-                m = processor.drift_aware_proc(sid_product, sic_product, stk_opt['t_window'], d_sgn, day_range[0])
+                m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, stk_opt['t_window'], d_sgn, day_range[0])
 
         gdf_final = processor.concat_gdfs(i, m)
         gdf_final[target_var+'_drift_unc'] = np.sqrt(gdf_final[target_var+'_drift_unc'])

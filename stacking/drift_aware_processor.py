@@ -88,6 +88,8 @@ class DriftAwareProcessor:
                 sic_product.ice_conc, tmp_grid['xu'].values, tmp_grid['yu'].values)
             tmp_grid[self.target_var+'_drift_unc'] = 0.0
             tmp_grid['divergence'], tmp_grid['shear'] = [[0]] * len(tmp_grid), [[0]] * len(tmp_grid)
+            tmp_grid['sit_thermo_change'] = tmp_grid['sea_ice_thickness']
+            tmp_grid['thermo_change'] = [[0]] * len(tmp_grid)
             self.master[self.i][0] = tmp_grid
             self.scheme[self.i, 0] = 1  
 
@@ -95,10 +97,12 @@ class DriftAwareProcessor:
             logger.error('Sensor does not exist: %s', self.sensor)
             sys.exit()
 
-    def apply_drift_correction(self, j, tmp_grid, sid_product, sic_product, direct):
+    def apply_drift_correction(self, j, tmp_grid, sid_product, sic_product, t2m_product, direct):
         # applies drift correction per day (24 h)
         dx, dy, dx_dy_unc = sid_product.drift_correction(tmp_grid['xu'].values, tmp_grid['yu'].values)
         div, she = sid_product.deformation(tmp_grid['xu'].values, tmp_grid['yu'].values)
+        thermo = t2m_product.thermodyn_change(tmp_grid['sit_thermo_change'], tmp_grid['snow_depth'],
+                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct).values
         dt = np.full(len(dx), 24)
         dt_corr = 0
         if tmp_grid['dt_days'][0] == 0:
@@ -124,12 +128,15 @@ class DriftAwareProcessor:
         tmp_grid['dt_days'] = tt - (self.i + direct)
         tmp_grid['divergence'] = tmp_grid.apply(lambda row: row['divergence'] + [div[row.name]], axis=1)
         tmp_grid['shear'] = tmp_grid.apply(lambda row: row['shear'] + [she[row.name]], axis=1)
+        tmp_grid['sit_thermo_change'] = tmp_grid.apply(lambda row: row['sit_thermo_change'] + thermo[row.name], axis=1)
+        tmp_grid['thermo_change'] = tmp_grid.apply(lambda row: row['thermo_change'] + thermo[row.name], axis=1)
+
         tmp_grid["ice_conc"] = sic_product.interp_ice_concentration(
             sic_product.ice_conc_ahead, tmp_grid['xu'].values, tmp_grid['yu'].values)
         tmp_grid = tmp_grid[tmp_grid["ice_conc"] > 0.15].reset_index(drop=True)
         return tmp_grid
 
-    def drift_aware_proc(self, sid_product, sic_product, t_window_length, direct, day0):
+    def drift_aware_proc(self, sid_product, sic_product, t2m_product, t_window_length, direct, day0):
         """
         This funciton incrementally applies the drift correction and adds the corrected 
         field to the master structure.
@@ -170,7 +177,7 @@ class DriftAwareProcessor:
                 if len(self.master[self.i][(j - 1)]) == 0:
                     continue
                 tmp_grid = self.master[self.i][(j - 1)].copy().reset_index(drop=True)
-                tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, direct)
+                tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, t2m_product, direct)
                 self.master[(self.i + direct)][j] = tmp_grid
                 self.scheme[self.i + direct, j] = 1
         else:
@@ -194,3 +201,5 @@ class DriftAwareProcessor:
                     del self.master[gdf_array_index][j]
         return pd.concat(gdf_list).reset_index(drop=True)
         # return pd.concat(gdf_list).pipe(gpd.GeoDataFrame, crs=self.out_epsg).reset_index(drop=True)
+
+    
