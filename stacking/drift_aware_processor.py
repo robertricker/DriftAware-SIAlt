@@ -89,7 +89,7 @@ class DriftAwareProcessor:
             tmp_grid[self.target_var+'_drift_unc'] = 0.0
             tmp_grid['divergence'], tmp_grid['shear'] = [[0]] * len(tmp_grid), [[0]] * len(tmp_grid)
             tmp_grid['sit_thermo_change'] = tmp_grid['sea_ice_thickness']
-            tmp_grid['thermo_change'] = [[0]] * len(tmp_grid)
+            tmp_grid['thermo_change'] = [0] * len(tmp_grid)
             self.master[self.i][0] = tmp_grid
             self.scheme[self.i, 0] = 1  
 
