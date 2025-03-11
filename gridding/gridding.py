@@ -134,6 +134,7 @@ def process_file(config, file_list, grid, region_grid):
     data['deformation'] = data.apply(get_deformation, axis=1)
     data['divergence'] = data["divergence"].apply(get_row_mean)
     data['shear'] = data["shear"].apply(get_row_mean)
+
     prepare_netcdf = PrepareNetcdf(config, file, region_grid)
     var, var_rename = prepare_netcdf.select_variables()
     if is_weight:

@@ -18,8 +18,9 @@ variables:
       - "shear"
       - "divergence"
       - "snow_depth"
-      - "sit_thermo_change"
-      - "thermo_change"
+      - "sit_corr_thermo_mod"
+      - "rate_thermo_change_mod"
+      - "rate_thermo_growth_mod"
       #- "drift_unc"
     rename:
       - "{{ target_var }}"
@@ -38,8 +39,9 @@ variables:
       - "shear"
       - "divergence"
       - "snow_depth"
-      - "sit_thermo"
-      - "thermo_change"
+      - "sit_corr_thermo_mod"
+      - "rate_change_model"
+      - "rate_growth_model"
       #- "drift_unc"
 
   cv: # conventional

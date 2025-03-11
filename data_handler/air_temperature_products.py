@@ -2,6 +2,7 @@ import netCDF4
 import numpy as np
 from scipy.interpolate import griddata
 from scipy.interpolate import RegularGridInterpolator
+from loguru import logger
 from io_tools import transform_coords
 import datetime
 import glob
@@ -93,7 +94,7 @@ class AirTemperatureProducts:
                 t0i, t1i = t0i - dt1d, t1i - dt1d
         return file[0]
 
-    def thermodyn_change(self, hice, hsnow, x, y, direct):
+    def thermodyn_growth(self, hice, hsnow, x, y, direct):
         t2m = self.interp_air_temperature(x, y)
         
         L = 3*1e8 # Latent heat of fusion
@@ -103,5 +104,45 @@ class AirTemperatureProducts:
         F = 2 # the ocean heat flux, is assumed to be constant #TODO, take it not constant ?
         dt = 86400 # daily
 
-        deltaH = direct * dt * (-1/L) * (F + (t2m - T_0)*((k_ice * k_snow)/(k_ice * hsnow + k_snow * hice)))
+        if direct == 1:
+            deltaH = direct * dt * (-1/L) * (F + (t2m - T_0)*((k_ice * k_snow)/(k_ice * hsnow + k_snow * hice)))
+            Hf = deltaH + hice
+        elif direct == -1:
+            # in this case hice = Hf
+            Hf = np.copy(hice)
+            # need to find hice, knowing Hf in the previous equation : DeltaH = A*(F + B/(C+k_snow*hice)) with :
+            A = -1/L
+            B = (t2m-T_0)*k_ice*k_snow
+            C = k_ice*hsnow
+            # polynom's coefficients a*hice**2 + b*hice + c = 0 
+            a = -k_snow
+            b = -(C - Hf*k_snow + dt*A*F*k_snow)
+            c = -dt*A*C*F - dt*A*B + C*Hf
+            # Discriminant :
+            D = b**2 - 4*a*c
+            if D >= 0 :
+                s1 = (-b-np.sqrt(D))/(2*a)
+                #s2 = (-b+np.sqrt(D))/(2*a)
+                deltaH = (Hf - s1) #already in the time direction
+                Hf = s1.copy() #that is in fact Hice ... 
+            else:
+                logger.error('No real solution to this polynom, the discriminant is equal to: %s', D)
+            
+            # in this case, if deltaH>0 <=> Hf>Hi means that going back in time there is melting and going with t>0 there is freezing.
+            # So deltaH should be removed to the Hi the most advanced in time to get the hice.
+            # if we consider the time t to correct the hice (which is Hf) from the thermodynamic we should consider the t2m at t-1day.
+
+        return deltaH.values, Hf.values
+    
+    #def thermodyn_growth(self, hice, hsnow, x, y):
+        t2m = self.interp_air_temperature(x, y)
+        
+        L = 3*1e8 # Latent heat of fusion
+        T_0 = -1.9 # temperature at the ice-water interface
+        k_ice = 2 # thermal conductivity of the ice
+        k_snow = 0.33 # thermal conductivity of the snow
+        F = 2 # the ocean heat flux, is assumed to be constant #TODO, take it not constant ?
+        dt = 86400 # daily
+
+        deltaH = dt * (-1/L) * (F + (t2m - T_0)*((k_ice * k_snow)/(k_ice * hsnow + k_snow * hice)))
         return deltaH

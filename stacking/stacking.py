@@ -128,10 +128,12 @@ def stack_proc(config, direct, grid):
     if direct == 'f':
         d_sgn = 1
         d_sgn_drift = 1
+        d_sgn_t2m = 0
         day_range = range(0, stk_opt['t_length'], d_sgn)
     else:
         d_sgn = -1
         d_sgn_drift = 0
+        d_sgn_t2m = -1
         day_range = range(stk_opt['t_length'] - 1, -1, d_sgn)
 
     # initialize drift aware processor
@@ -144,9 +146,6 @@ def stack_proc(config, direct, grid):
         t0 = stk_opt['t_start'] + datetime.timedelta(days=i) 
         t1 = stk_opt['t_start'] + datetime.timedelta(days=i + 1) 
         sit_product.get_target_files(t0, t1) 
-
-        t2m_product.target_files = t2m_product.get_target_files(t0, t1)
-        t2m_product.get_air_temperature(t2m_product.target_files)
 
         sic_product.target_files = sic_product.get_target_files(t0, t1)
 
@@ -164,15 +163,19 @@ def stack_proc(config, direct, grid):
         # The sea ice drift to advect parcel at t0 is the one referenced as t1
         # Indeed the reference correspond to the end of the 24h data range that cover each file
         sid_product.target_files = sid_product.get_target_files(t0 + d_sgn_drift * dt1d, t1 + d_sgn_drift * dt1d)
+        t2m_product.target_files = t2m_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
 
-        if sic_product.target_files and sid_product.target_files:
+        if sic_product.target_files and sid_product.target_files and t2m_product.target_files:
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day'+str(d_sgn)+': ' +
                         os.path.basename(sic_product.target_files))
             logger.info(t0.strftime("%Y%m%d") + ': ice_drift file: ' +
                         os.path.basename(sid_product.target_files))
-
+            logger.info(t0.strftime("%Y%m%d") + ': t2m file: ' +
+                        os.path.basename(t2m_product.target_files))
+            
             sic_product.ice_conc_ahead = sic_product.get_ice_concentration(sic_product.target_files)
             sid_product.get_ice_drift(sid_product.target_files, sic_product.ice_conc_ahead)
+            t2m_product.get_air_temperature(t2m_product.target_files)
 
             # check if the date is still in the range
             if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
@@ -185,7 +188,8 @@ def stack_proc(config, direct, grid):
         gdf_final = gpd.GeoDataFrame(gdf_final, geometry='geometry')
         gdf_final['divergence'] = gdf_final['divergence'].apply(json.dumps)
         gdf_final['shear'] = gdf_final['shear'].apply(json.dumps)
-
+        gdf_final['rate_thermo_change_mod'] = gdf_final.apply(lambda row: row['thermo_change_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+        gdf_final['rate_thermo_growth_mod'] = gdf_final.apply(lambda row: row['thermo_growth_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
         outfile = make_csv_filename(config, t0, direct)
         logger.info(t0.strftime("%Y%m%d")+': generated csv file: ' + outfile)
         gdf_final['divergence'] = gdf_final['divergence'].apply(
