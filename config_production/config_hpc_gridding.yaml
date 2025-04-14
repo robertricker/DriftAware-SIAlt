@@ -10,8 +10,8 @@ input_dir: # relative to base_dir
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv"  # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/CV"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/thermo/param"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -66,12 +66,12 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-02-21_08-59-59'
-      mode: 'cv'                      # if true then it will look here to get the variable to weigth with
+      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-04-11_10-55-13'
+      mode: 'da'                      # if true then it will look here to get the variable to weigth with
       weighting : 
         is_weight : False                                  # if true then it will look here to get the variable to weigth with
         var_to_weight_with : ['dt_days', 'sea_ice_thickness_total_unc']               # if not specified : '' -> dt_days
-      multiproc: True                                    # Parallel processing
+      multiproc: False                                    # Parallel processing
       num_cpus: 16                                          # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month
       netcdf_grid:

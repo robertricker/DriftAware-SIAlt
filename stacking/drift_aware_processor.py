@@ -91,6 +91,18 @@ class DriftAwareProcessor:
             tmp_grid['sit_corr_thermo_mod'] = tmp_grid['sea_ice_thickness']
             tmp_grid['thermo_change_mod'] = [0] * len(tmp_grid)
             tmp_grid['thermo_growth_mod'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_change_mod2'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_growth_mod2'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_change_mod3'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_growth_mod3'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_change_mod4'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_growth_mod4'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_change_mod5'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_growth_mod5'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_change_mod6'] = [0] * len(tmp_grid)
+            tmp_grid['thermo_growth_mod6'] = [0] * len(tmp_grid)
+            tmp_grid['t2m'] = [0] * len(tmp_grid)
+            tmp_grid['ohf'] = [0] * len(tmp_grid)
 
             self.master[self.i][0] = tmp_grid
             self.scheme[self.i, 0] = 1  
@@ -99,12 +111,33 @@ class DriftAwareProcessor:
             logger.error('Sensor does not exist: %s', self.sensor)
             sys.exit()
 
-    def apply_drift_correction(self, j, tmp_grid, sid_product, sic_product, t2m_product, direct):
+    def apply_drift_correction(self, j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model):
         # applies drift correction per day (24 h)
         dx, dy, dx_dy_unc = sid_product.drift_correction(tmp_grid['xu'].values, tmp_grid['yu'].values)
+        if ohf_product is not int:
+            tmp_grid['ohf'], tmp_grid['ohf2'], tmp_grid['ohf3'], tmp_grid['ohf4'], tmp_grid['ohf5'], tmp_grid['ohf6'] = ohf_product.interp_ocean_heat_flux(tmp_grid['xu'].values, tmp_grid['yu'].values)
+        else:
+            tmp_grid['ohf'] = int(ohf_product)
+            
         div, she = sid_product.deformation(tmp_grid['xu'].values, tmp_grid['yu'].values)
-        thermodyn_growth, thermodyn_corr_sit = t2m_product.thermodyn_growth(tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
-                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct)
+        tmp_grid['t2m'], thermodyn_growth, thermodyn_corr_sit = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
+                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf'])
+        
+        tmp_grid['t2m'], thermodyn_growth2, thermodyn_corr_sit2 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
+                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf2'])
+        
+        tmp_grid['t2m'], thermodyn_growth3, thermodyn_corr_sit3 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
+                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf3'])
+        
+        tmp_grid['t2m'], thermodyn_growth4, thermodyn_corr_sit4 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
+                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf4'])
+        
+        tmp_grid['t2m'], thermodyn_growth5, thermodyn_corr_sit5 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
+                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf5'])
+        
+        tmp_grid['t2m'], thermodyn_growth6, thermodyn_corr_sit6 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
+                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf6'])
+        
         dt = np.full(len(dx), 24)
         dt_corr = 0
         if tmp_grid['dt_days'][0] == 0:
@@ -131,17 +164,47 @@ class DriftAwareProcessor:
         tmp_grid['divergence'] = tmp_grid.apply(lambda row: row['divergence'] + [div[row.name]], axis=1)
         tmp_grid['shear'] = tmp_grid.apply(lambda row: row['shear'] + [she[row.name]], axis=1)
         tmp_grid['sit_corr_thermo_mod'] = tmp_grid.apply(lambda row: thermodyn_corr_sit[row.name], axis=1)
+        tmp_grid['sit_corr_thermo_mod2'] = tmp_grid.apply(lambda row: thermodyn_corr_sit2[row.name], axis=1)
+        tmp_grid['sit_corr_thermo_mod3'] = tmp_grid.apply(lambda row: thermodyn_corr_sit3[row.name], axis=1)
+        tmp_grid['sit_corr_thermo_mod4'] = tmp_grid.apply(lambda row: thermodyn_corr_sit4[row.name], axis=1)
+        tmp_grid['sit_corr_thermo_mod5'] = tmp_grid.apply(lambda row: thermodyn_corr_sit5[row.name], axis=1)
+        tmp_grid['sit_corr_thermo_mod6'] = tmp_grid.apply(lambda row: thermodyn_corr_sit6[row.name], axis=1)
+
         # what is called growth is the same as the computed growth (always in the time direction even for backward drifting)
         tmp_grid['thermo_growth_mod'] = tmp_grid.apply(lambda row: row['thermo_growth_mod'] + thermodyn_growth[row.name], axis=1)
         #refer to the deltaH that need the sit needs to be corrected from
         tmp_grid['thermo_change_mod'] = tmp_grid.apply(lambda row: row['thermo_change_mod'] + thermodyn_growth[row.name]*direct, axis=1) 
+
+        tmp_grid['thermo_growth_mod2'] = tmp_grid.apply(lambda row: row['thermo_growth_mod2'] + thermodyn_growth2[row.name], axis=1)
+        #refer to the deltaH that need the sit needs to be corrected from
+        tmp_grid['thermo_change_mod2'] = tmp_grid.apply(lambda row: row['thermo_change_mod2'] + thermodyn_growth2[row.name]*direct, axis=1) 
+
+
+        tmp_grid['thermo_growth_mod3'] = tmp_grid.apply(lambda row: row['thermo_growth_mod3'] + thermodyn_growth3[row.name], axis=1)
+        #refer to the deltaH that need the sit needs to be corrected from
+        tmp_grid['thermo_change_mod3'] = tmp_grid.apply(lambda row: row['thermo_change_mod3'] + thermodyn_growth3[row.name]*direct, axis=1) 
+
+
+        tmp_grid['thermo_growth_mod4'] = tmp_grid.apply(lambda row: row['thermo_growth_mod4'] + thermodyn_growth4[row.name], axis=1)
+        #refer to the deltaH that need the sit needs to be corrected from
+        tmp_grid['thermo_change_mod4'] = tmp_grid.apply(lambda row: row['thermo_change_mod4'] + thermodyn_growth4[row.name]*direct, axis=1) 
+
+
+        tmp_grid['thermo_growth_mod5'] = tmp_grid.apply(lambda row: row['thermo_growth_mod5'] + thermodyn_growth5[row.name], axis=1)
+        #refer to the deltaH that need the sit needs to be corrected from
+        tmp_grid['thermo_change_mod5'] = tmp_grid.apply(lambda row: row['thermo_change_mod5'] + thermodyn_growth5[row.name]*direct, axis=1) 
+
+
+        tmp_grid['thermo_growth_mod6'] = tmp_grid.apply(lambda row: row['thermo_growth_mod6'] + thermodyn_growth6[row.name], axis=1)
+        #refer to the deltaH that need the sit needs to be corrected from
+        tmp_grid['thermo_change_mod6'] = tmp_grid.apply(lambda row: row['thermo_change_mod6'] + thermodyn_growth6[row.name]*direct, axis=1) 
 
         tmp_grid["ice_conc"] = sic_product.interp_ice_concentration(
             sic_product.ice_conc_ahead, tmp_grid['xu'].values, tmp_grid['yu'].values)
         tmp_grid = tmp_grid[tmp_grid["ice_conc"] > 0.15].reset_index(drop=True)
         return tmp_grid
 
-    def drift_aware_proc(self, sid_product, sic_product, t2m_product, t_window_length, direct, day0):
+    def drift_aware_proc(self, sid_product, sic_product, t2m_product, ohf_product, t_window_length, direct, day0, thermo_model):
         """
         This funciton incrementally applies the drift correction and adds the corrected 
         field to the master structure.
@@ -182,7 +245,7 @@ class DriftAwareProcessor:
                 if len(self.master[self.i][(j - 1)]) == 0:
                     continue
                 tmp_grid = self.master[self.i][(j - 1)].copy().reset_index(drop=True)
-                tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, t2m_product, direct)
+                tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model)
                 self.master[(self.i + direct)][j] = tmp_grid
                 self.scheme[self.i + direct, j] = 1
         else:
