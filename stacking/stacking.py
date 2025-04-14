@@ -14,7 +14,9 @@ from scipy.spatial import cKDTree
 from gridding import gridding_lib
 from data_handler.sea_ice_concentration_products import SeaIceConcentrationProducts
 from data_handler.sea_ice_drift_products import SeaIceDriftProducts
+from data_handler.sea_ice_thickness_products import SeaIceThicknessMultiProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessProducts
+
 from data_handler.air_temperature_products import AirTemperatureProducts
 from stacking.stack_structure import StackStructure
 from stacking.drift_aware_processor import DriftAwareProcessor
@@ -106,10 +108,10 @@ def stack_proc(config, direct, grid):
     master, scheme = stack.get_master(), stack.get_scheme()
 
     # initialize data objects
-    sit_product = SeaIceThicknessProducts(hem=hem, sensor=sensor, target_var=target_var,
+    sit_product = SeaIceThicknessMultiProducts(hem=hem, sensor=sensor, target_var=target_var,
                                           add_variable=add_var,
                                           out_epsg=out_epsg)
-    sit_product.get_file_list(config['input_dir'][sensor])
+    sit_product.get_file_list(config['input_dir'])
     sit_product.get_file_dates()
 
     sic_product = SeaIceConcentrationProducts(hem=hem, product_id=config['options']['ice_conc_product'],
@@ -149,9 +151,12 @@ def stack_proc(config, direct, grid):
 
         sic_product.target_files = sic_product.get_target_files(t0, t1)
 
+        # Number of empty list for missions
+        empty_lists = [k for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) == 0]
+        file_counts = {k: len(v) for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) > 0}
         # Build the baseline so the line that corresponds to the actual time, without any advection needed
-        if sit_product.target_files and sic_product.target_files:
-            logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(len(sit_product.target_files)))
+        if len(empty_lists)==0 and sic_product.target_files:
+            logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(file_counts))
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
             sit_product.get_product()
             sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)

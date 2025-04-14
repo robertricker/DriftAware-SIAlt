@@ -25,7 +25,9 @@ class DriftAwareProcessor:
         # adds the original measurements at t=0 (without drift correction) to the master structure
         sit = self.parent.product
         sit[self.target_var + '_l2_unc'] **= 2
-        if self.sensor == 'icesat2':
+        target_sensors = ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']
+
+        if 'icesat2' in self.sensor:
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
             for beam in sit.beam.unique(): 
                 tmp = (sit[[self.target_var, self.target_var + '_l2_unc', 'geometry', 'time', 'beam'] + self.add_variable]
@@ -64,7 +66,7 @@ class DriftAwareProcessor:
                 self.master[beam][self.i][0] = tmp_grid
                 self.scheme[(beams == beam).argmax(), self.i, 0] = 1
 
-        elif self.sensor in ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']:
+        elif any(s in self.sensor for s in target_sensors):
             tmp_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var], [self.target_var],
                                               hist_n_bins=hist_n_bins, hist_range=hist_range,
                                               agg_mode=['mean', 'std', 'hist'])
@@ -151,7 +153,9 @@ class DriftAwareProcessor:
         to the state they will be the time i+1
         The master structure is built columns after columns (not diagonal per diagonal)
         """
-        if self.sensor == 'icesat2':
+        target_sensors = ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']
+
+        if 'icesat2' in self.sensor:
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
             m = 0
             for beam in beams.tolist():
@@ -168,7 +172,7 @@ class DriftAwareProcessor:
                     self.master[beam][self.i + direct][j] = tmp_grid
                     self.scheme[(beams == beam).argmax(), self.i + direct, j] = 1
 
-        elif self.sensor in ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']:
+        elif any(s in self.sensor for s in target_sensors):
             m = 0
             # end is the indice of the target day +2 if f or -2 if r
             end = self.i + 2 if direct == 1 else day0 - self.i + 2  
@@ -193,14 +197,15 @@ class DriftAwareProcessor:
 
     def concat_gdfs(self, gdf_array_index, row_lim):
         gdf_list = []
+        target_sensors = ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']
         for j in range(0, row_lim + 1):
-            if self.sensor == 'icesat2':
+            if 'icesat2' in self.sensor:
                 beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
                 for beam in beams.tolist():
                     if len(self.master[beam][gdf_array_index][j]) != 0:
                         gdf_list.append(self.master[beam][gdf_array_index][j])
                         del self.master[beam][gdf_array_index][j]
-            elif self.sensor in ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']:
+            elif any(s in self.sensor for s in target_sensors) :
                 if len(self.master[gdf_array_index][j]) != 0:
                     gdf_list.append(self.master[gdf_array_index][j])
                     del self.master[gdf_array_index][j]

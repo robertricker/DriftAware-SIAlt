@@ -104,10 +104,12 @@ def make_csv_filename(config, t0, direct):
     instr_map = {
         "envisat": "RA2_ENVISAT",
         "cryosat2": "SIRAL_CRYOSAT2",
-        "sentinel3a": "SRAL_SENTINAL3A",
-        "sentinel3b": "SRAL_SENTINAL3B",
+        "sentinel3a": "SRAL_SENTINEL3A",
+        "sentinel3b": "SRAL_SENTINEL3B",
         "icesat2": "ATLAS_ICESAT2"}
-    instr = instr_map.get(config['options']['sensor'])
+    
+    instr_list = [instr_map.get(config['options']['sensor'][i]) for i in range(len(config['options']['sensor']))]
+    instr = "_".join(instr_list)
     region = config['options']['hemisphere'].upper()
     mode = 'DA_'+direct.upper()
     period = t0.strftime('%Y%m%d')
