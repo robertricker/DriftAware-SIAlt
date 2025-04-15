@@ -218,6 +218,7 @@ def stacking(config):
     parcel_grid_opt = stk_opt['parcel_grid']
     growth_grid_opt = stk_opt['growth_estimation']['growth_grid']
     csv_dir = config['output_dir']['trajectories']
+    csv_dir = csv_dir.replace(f'{sensor}', "_".join(sensor))
     grid, cell_width = gridding_lib.define_grid(parcel_grid_opt["bounds"],
                                                 parcel_grid_opt["dim"],
                                                 config['options']['out_epsg'],
@@ -261,6 +262,7 @@ def stacking(config):
                 stack_proc(config, mode, grid)
 
         logger.info('start merging forward and reverse stacks')
+        
         list_f = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_F-*.csv')))
         list_r = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_R-*.csv')))
         if multiproc:

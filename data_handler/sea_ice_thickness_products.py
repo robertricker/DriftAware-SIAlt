@@ -576,12 +576,16 @@ class SeaIceThicknessMultiProducts:
         for sens in self.sensor:
             key = (sens, self.target_var)
             product_temp = self.function_map[key](sens)
+            product_temp[sens] = 1
             #product_temp['sensor'] = sens
             self.product_dict[sens] = product_temp
+
         product = pd.concat(
             [gdf.assign(sensor=k) 
              for k, gdf in self.product_dict.items() if gdf is not None], 
              ignore_index=True)
+        for sens in self.sensor:
+            product[sens] = product[sens].fillna(0)
         self.product = product
         
 

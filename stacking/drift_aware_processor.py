@@ -74,10 +74,14 @@ class DriftAwareProcessor:
                                               [self.target_var + '_l2_unc'], agg_mode=['sum', 'cnt'])
             add_grid = gridding_lib.grid_data(sit, self.grid, self.add_variable+['time'],
                                               self.add_variable+['time'], agg_mode=['mean'])
-
+            frac_mission_grid = gridding_lib.grid_data(sit, self.grid, self.sensor,
+                                              self.sensor, agg_mode=['mean', 'cnt'])
+            
             tmp_grid[self.target_var+'_l2_unc'] = np.sqrt(unc_grid[self.target_var+'_l2_unc_sum'])/unc_grid[
                 self.target_var+'_l2_unc_cnt']
             tmp_grid[self.add_variable] = add_grid[self.add_variable]
+            tmp_grid[self.sensor] = frac_mission_grid[self.sensor]
+            tmp_grid[[s + '_cnt' for s in self.sensor]] = frac_mission_grid[[s + '_cnt' for s in self.sensor]]
             tmp_grid['t0'] = add_grid['time']
             tmp_grid['xu'] = tmp_grid.index.get_level_values('x')
             tmp_grid['yu'] = tmp_grid.index.get_level_values('y')
