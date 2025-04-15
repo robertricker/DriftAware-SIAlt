@@ -105,12 +105,18 @@ class DriftAwareProcessor:
             logger.error('Sensor does not exist: %s', self.sensor)
             sys.exit()
 
-    def apply_drift_correction(self, j, tmp_grid, sid_product, sic_product, t2m_product, direct):
+    def apply_drift_correction(self, j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model):
         # applies drift correction per day (24 h)
         dx, dy, dx_dy_unc = sid_product.drift_correction(tmp_grid['xu'].values, tmp_grid['yu'].values)
         div, she = sid_product.deformation(tmp_grid['xu'].values, tmp_grid['yu'].values)
-        thermodyn_growth, thermodyn_corr_sit = t2m_product.thermodyn_growth(tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
-                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct)
+        if type(ohf_product) is not int:
+            tmp_grid['ohf'] = ohf_product.interp_ocean_heat_flux(tmp_grid['xu'].values, tmp_grid['yu'].values)
+        else:
+            tmp_grid['ohf'] = ohf_product
+            
+        tmp_grid['t2m'], thermodyn_growth, thermodyn_corr_sit = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
+                                              tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf'])
+        
         dt = np.full(len(dx), 24)
         dt_corr = 0
         if tmp_grid['dt_days'][0] == 0:
@@ -147,7 +153,7 @@ class DriftAwareProcessor:
         tmp_grid = tmp_grid[tmp_grid["ice_conc"] > 0.15].reset_index(drop=True)
         return tmp_grid
 
-    def drift_aware_proc(self, sid_product, sic_product, t2m_product, t_window_length, direct, day0):
+    def drift_aware_proc(self, sid_product, sic_product, t2m_product, ohf_product, t_window_length, direct, day0, thermo_model):
         """
         This funciton incrementally applies the drift correction and adds the corrected 
         field to the master structure.
@@ -190,7 +196,7 @@ class DriftAwareProcessor:
                 if len(self.master[self.i][(j - 1)]) == 0:
                     continue
                 tmp_grid = self.master[self.i][(j - 1)].copy().reset_index(drop=True)
-                tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, t2m_product, direct)
+                tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model)
                 self.master[(self.i + direct)][j] = tmp_grid
                 self.scheme[self.i + direct, j] = 1
         else:

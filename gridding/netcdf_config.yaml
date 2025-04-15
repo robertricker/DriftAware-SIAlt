@@ -21,6 +21,12 @@ variables:
       - "sit_corr_thermo_mod"
       - "rate_thermo_change_mod"
       - "rate_thermo_growth_mod"
+      - "sentinel3a"
+      - "sentinel3b"
+      - "cryosat2"
+      - "sentinel3a_cnt"
+      - "sentinel3b_cnt"
+      - "cryosat2_cnt"      
       #- "drift_unc"
     rename:
       - "{{ target_var }}"
@@ -42,6 +48,12 @@ variables:
       - "sit_corr_thermo_mod"
       - "rate_change_model"
       - "rate_growth_model"
+      - "sentinel3a_frac"
+      - "sentinel3b_frac"
+      - "cryosat2_frac"
+      - "sentinel3a_cnt"
+      - "sentinel3b_cnt"
+      - "cryosat2_cnt"      
       #- "drift_unc"
 
   cv: # conventional

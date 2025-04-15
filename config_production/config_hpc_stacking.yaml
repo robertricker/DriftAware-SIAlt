@@ -30,7 +30,7 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: ['sentinel3a'] # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: ['sentinel3a', 'sentinel3b', 'cryosat2'] # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: stacking # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
@@ -47,9 +47,9 @@ options:
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
       t_length: 30                                  # length of processing period in days or 'season'
-      t_start: 2020-10-01 00:00:00                            # Start of processing period
+      t_start: 2020-09-01 00:00:00                            # Start of processing period
       t_window: 16                                       # length of the drift-aware window in days
-      multiproc: False                                       # Parallel processing
+      multiproc: True                                       # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]

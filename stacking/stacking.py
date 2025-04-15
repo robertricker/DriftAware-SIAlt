@@ -127,6 +127,15 @@ def stack_proc(config, direct, grid):
     t2m_product.get_file_list(config['auxiliary']['t2m'][config['options']['t2m_product']])
     t2m_product.get_file_dates()
 
+    thermo_model = config['options']['proc_step_options']['stacking']['thermo_change']['model']
+
+    if type(config['options']['proc_step_options']['stacking']['thermo_change']['oce_heat_flux']) is not int:
+        print('Need to be implemented with a reanalysis')
+
+    else:
+        ohf_product = config['options']['proc_step_options']['stacking']['thermo_change']['oce_heat_flux']
+
+
     if direct == 'f':
         d_sgn = 1
         d_sgn_drift = 1
@@ -184,8 +193,7 @@ def stack_proc(config, direct, grid):
 
             # check if the date is still in the range
             if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
-                m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, stk_opt['t_window'], d_sgn, day_range[0])
-
+                m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, ohf_product, stk_opt['t_window'], d_sgn, day_range[0], thermo_model)
         gdf_final = processor.concat_gdfs(i, m)
         gdf_final[target_var+'_drift_unc'] = np.sqrt(gdf_final[target_var+'_drift_unc'])
         gdf_final = gdf_final.drop(columns=['xu', 'yu'])
@@ -262,7 +270,7 @@ def stacking(config):
                 stack_proc(config, mode, grid)
 
         logger.info('start merging forward and reverse stacks')
-        
+
         list_f = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_F-*.csv')))
         list_r = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_R-*.csv')))
         if multiproc:
