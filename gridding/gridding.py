@@ -86,59 +86,6 @@ def process_file(config, file_list, grid, region_grid):
     data["geometry"] = target_location
 
     data.to_crs(crs=out_epsg, inplace=True)
-    
-    
-    """
-    data = data.drop("growth", axis='columns')
-    traj_geom = data['geometry']
-    start_location = data["geometry"].apply(lambda g: g.geoms[0])
-    target_location = data["geometry"].apply(lambda g: g.geoms[-1])
-    data["geometry"] = target_location
-
-    data.to_crs(crs=out_epsg, inplace=True)
-    
-    stk_opt = config['options']['proc_step_options']['stacking']
-    growth_range = stk_opt['growth_estimation']['growth_range']["freeboard" if "free" in target_var else "thickness"]
-    min_n_tps = stk_opt['growth_estimation']['min_n_tiepoints']
-    growth_grid_opt = stk_opt['growth_estimation']['growth_grid']
-
-    nbs = 260 # empirical estimates
-    growth_grid, growth_cell_width = gridding_lib.define_grid(growth_grid_opt["bounds"],
-                                                              growth_grid_opt["dim"],
-                                                              config['options']['out_epsg'])
-    
-    if len(data["dt_days"].unique()) >= min_n_tps:
-        f_growth, f_growth_nb, f_growth_s10, f_growth_unc, growth, n_tiepoints = interpolate_growth_gridd(
-            data, target_var, growth_range, growth_grid, growth_cell_width, min_n_tps, nbs, config["options"]["hemisphere"])
-        logger.info('Interpolation of sea ice growth rate function created')
-
-        growth_interp = f_growth(
-            np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
-        growth_interp_nb = f_growth_nb(
-            np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
-        growth_interp_s10 = f_growth_s10(
-            np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
-        growth_unc_interp = f_growth_unc(
-            np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
-        logger.info('Interpolation of sea ice growth rate function applied')
-
-    else:
-        growth, growth_interp_nb, growth_interp_s10, growth_interp, growth_unc_interp, n_tiepoints = np.nan, np.nan, np.nan, np.nan, np.nan
-    
-    #growth, growth_interp, growth_unc_interp, n_tiepoints = interpolate_growth(data, target_var, growth_range, growth_grid, growth_cell_width, min_n_tps, nbs/10, config["options"]["hemisphere"])
-    #data = data.rename(columns={target_var: target_var + "_uncorrected"})
-    
-    #data[target_var] = growth_interp * (-data.dt_days.to_numpy()) + data[target_var + "_uncorrected"].to_numpy()
-    #data[target_var + "_growth_unc"] = growth_unc_interp * abs(data.dt_days.to_numpy())
-    #data["growth_interpolated"] = growth_interp
-    #data["growth_interpolated_nb"] = growth_interp_nb
-    #data["growth_interpolated_s10"] = growth_interp_s10
-    data["nb_tiepoints"] = n_tiepoints
-    #data["growth"] = growth
-    #logger.info('Interpolation of sea ice growth rate computed')
-
-    # END TEST
-    """
 
     data['dist_acquisition'] = start_location.distance(target_location) / 1000.0
     data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])

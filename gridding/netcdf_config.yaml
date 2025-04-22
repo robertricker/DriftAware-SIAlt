@@ -30,8 +30,6 @@ variables:
       - "sentinel3b_cnt"
       - "cryosat2_cnt"
       #- "nb_tiepoints"
-      #- "growth_interpolated_s10"
-      #- "growth_interpolated_nb"    
       #- "drift_unc"
     rename:
       - "{{ target_var }}"
@@ -62,8 +60,6 @@ variables:
       - "sentinel3b_cnt"
       - "cryosat2_cnt"
       #- "nb_tiepoints"
-      #- "growth_interpolated_s10"
-      #- "growth_interpolated_nb"    
       #- "drift_unc"
 
   cv: # conventional
