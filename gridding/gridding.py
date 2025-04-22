@@ -17,7 +17,8 @@ from gridding.prepare_netcdf import PrepareNetcdf
 from gridding import gridding_lib
 from loguru import logger
 from io_tools import init_logger
-
+from stacking.interpolate_growth import interpolate_growth_gridd
+from stacking.interpolate_growth import interpolate_growth
 
 def organize_files_by_date(source_dir, target_dir):
     files = [f for f in os.listdir(source_dir) if f.endswith('.nc')]
@@ -78,11 +79,74 @@ def process_file(config, file_list, grid, region_grid):
             data_tmp = read_dasit_csv(file)
             data = pd.concat([data, data_tmp], ignore_index=True)
             
-    data.to_crs(crs=out_epsg, inplace=True)
+    # TEST of growth interpolation
+    traj_geom = data['geometry']
     start_location = data["geometry"].apply(lambda g: g.geoms[0])
     target_location = data["geometry"].apply(lambda g: g.geoms[-1])
+    data["geometry"] = target_location
+
+    data.to_crs(crs=out_epsg, inplace=True)
+    
+    
+    """
+    data = data.drop("growth", axis='columns')
+    traj_geom = data['geometry']
+    start_location = data["geometry"].apply(lambda g: g.geoms[0])
+    target_location = data["geometry"].apply(lambda g: g.geoms[-1])
+    data["geometry"] = target_location
+
+    data.to_crs(crs=out_epsg, inplace=True)
+    
+    stk_opt = config['options']['proc_step_options']['stacking']
+    growth_range = stk_opt['growth_estimation']['growth_range']["freeboard" if "free" in target_var else "thickness"]
+    min_n_tps = stk_opt['growth_estimation']['min_n_tiepoints']
+    growth_grid_opt = stk_opt['growth_estimation']['growth_grid']
+
+    nbs = 260 # empirical estimates
+    growth_grid, growth_cell_width = gridding_lib.define_grid(growth_grid_opt["bounds"],
+                                                              growth_grid_opt["dim"],
+                                                              config['options']['out_epsg'])
+    
+    if len(data["dt_days"].unique()) >= min_n_tps:
+        f_growth, f_growth_nb, f_growth_s10, f_growth_unc, growth, n_tiepoints = interpolate_growth_gridd(
+            data, target_var, growth_range, growth_grid, growth_cell_width, min_n_tps, nbs, config["options"]["hemisphere"])
+        logger.info('Interpolation of sea ice growth rate function created')
+
+        growth_interp = f_growth(
+            np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
+        growth_interp_nb = f_growth_nb(
+            np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
+        growth_interp_s10 = f_growth_s10(
+            np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
+        growth_unc_interp = f_growth_unc(
+            np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
+        logger.info('Interpolation of sea ice growth rate function applied')
+
+    else:
+        growth, growth_interp_nb, growth_interp_s10, growth_interp, growth_unc_interp, n_tiepoints = np.nan, np.nan, np.nan, np.nan, np.nan
+    
+    #growth, growth_interp, growth_unc_interp, n_tiepoints = interpolate_growth(data, target_var, growth_range, growth_grid, growth_cell_width, min_n_tps, nbs/10, config["options"]["hemisphere"])
+    #data = data.rename(columns={target_var: target_var + "_uncorrected"})
+    
+    #data[target_var] = growth_interp * (-data.dt_days.to_numpy()) + data[target_var + "_uncorrected"].to_numpy()
+    #data[target_var + "_growth_unc"] = growth_unc_interp * abs(data.dt_days.to_numpy())
+    #data["growth_interpolated"] = growth_interp
+    #data["growth_interpolated_nb"] = growth_interp_nb
+    #data["growth_interpolated_s10"] = growth_interp_s10
+    data["nb_tiepoints"] = n_tiepoints
+    #data["growth"] = growth
+    #logger.info('Interpolation of sea ice growth rate computed')
+
+    # END TEST
+    """
+
     data['dist_acquisition'] = start_location.distance(target_location) / 1000.0
     data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])
+    data['dynamic_change_rate_tmp'] = data['divergence'].apply(lambda x: [np.exp(-val) for val in x])
+    data['dynamic_change_rate'] = data.apply(lambda row: [-row["sea_ice_thickness_uncorrected"] * val for val in row["divergence"]], axis=1)
+    data['thermo_change_rate'] = data.apply(lambda row: [row["growth_interpolated"] - val for val in row["dynamic_change_rate"]], axis=1)
+
+    #data['thermo_change_rate'] = data.apply(lambda row: row["growth_interpolated"] - row["dynamic_change_rate"], axis=1)
     data['shear'] = data['shear'].apply(lambda x: [float(val) for val in x.split()])
 
     if gridding_mode == 'da':
@@ -134,6 +198,8 @@ def process_file(config, file_list, grid, region_grid):
     data['deformation'] = data.apply(get_deformation, axis=1)
     data['divergence'] = data["divergence"].apply(get_row_mean)
     data['shear'] = data["shear"].apply(get_row_mean)
+    data['dynamic_change_rate'] = data['dynamic_change_rate'].apply(get_row_mean)
+    data['thermo_change_rate'] = data['thermo_change_rate'].apply(get_row_mean)
 
     prepare_netcdf = PrepareNetcdf(config, file, region_grid)
     var, var_rename = prepare_netcdf.select_variables()
@@ -193,19 +259,16 @@ def gridding(config):
 
     date_pattern = re.compile(r"\b(20\d{6})\b")
 
-    # Liste qui contiendra les sous-listes de fichiers par date
     grouped_files = []
 
-    # Tant qu'il reste des fichiers dans file_list
     while file_list:
-        file = file_list.pop(0)  # Prendre le premier fichier et le retirer de la liste
+        file = file_list.pop(0)  
         match = date_pattern.search(file)
         
         if match:
             date = match.group(1)
-            sublist = [file]  # Créer une sous-liste avec ce fichier
+            sublist = [file]  
             
-            # Trouver les autres fichiers avec la même date
             remaining_files = []
             for other_file in file_list:
                 if date_pattern.search(other_file) and date_pattern.search(other_file).group(1) == date:
@@ -213,10 +276,7 @@ def gridding(config):
                 else:
                     remaining_files.append(other_file)
 
-            # Ajouter la sous-liste à la liste principale
             grouped_files.append(sublist)
-
-            # Mettre à jour la liste des fichiers restants
             file_list = remaining_files
 
     if grd_opt['multiproc']:

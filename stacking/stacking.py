@@ -201,8 +201,9 @@ def stack_proc(config, direct, grid):
         gdf_final = gpd.GeoDataFrame(gdf_final, geometry='geometry')
         gdf_final['divergence'] = gdf_final['divergence'].apply(json.dumps)
         gdf_final['shear'] = gdf_final['shear'].apply(json.dumps)
-        gdf_final['rate_thermo_change_mod'] = gdf_final.apply(lambda row: row['thermo_change_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-        gdf_final['rate_thermo_growth_mod'] = gdf_final.apply(lambda row: row['thermo_growth_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+        #no rate computed when the data acquisition date is the target date
+        gdf_final['rate_thermo_change_mod'] = gdf_final.apply(lambda row: row['thermo_change_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else np.nan, axis=1) 
+        gdf_final['rate_thermo_growth_mod'] = gdf_final.apply(lambda row: row['thermo_growth_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else np.nan, axis=1)
         outfile = make_csv_filename(config, t0, direct)
         logger.info(t0.strftime("%Y%m%d")+': generated csv file: ' + outfile)
         gdf_final['divergence'] = gdf_final['divergence'].apply(

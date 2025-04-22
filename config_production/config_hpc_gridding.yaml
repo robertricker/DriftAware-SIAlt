@@ -10,8 +10,8 @@ input_dir: # relative to base_dir
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv"  # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/CV"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
+  trajectories: "output_data/DA/product/{sensor}/test/csv/"  # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/test_multi/netcdf" #MIZ_filter_23/netcdf/no_weight/CV"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -27,7 +27,7 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: gridding # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
@@ -43,7 +43,7 @@ options:
     stacking:                                                 # Processing step: stacking (Drift-Aware processing)
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
-      t_start: 2020-04-01 00:00:00                            # Start of processing period
+      t_start: 2020-09-01 00:00:00                            # Start of processing period
       t_length: season                                        # length of processing period in days
       t_window: 16                                            # length of the drift-aware window in days
       multiproc: True                                        # Parallel processing
@@ -66,8 +66,8 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-02-21_08-59-59'
-      mode: 'cv'                      # if true then it will look here to get the variable to weigth with
+      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-04-16_13-26-33'
+      mode: 'da'                      # if true then it will look here to get the variable to weigth with
       weighting : 
         is_weight : False                                  # if true then it will look here to get the variable to weigth with
         var_to_weight_with : ['dt_days', 'sea_ice_thickness_total_unc']               # if not specified : '' -> dt_days
