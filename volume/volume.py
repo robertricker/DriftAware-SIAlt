@@ -8,7 +8,7 @@ from gridding.prepare_netcdf import PrepareNetcdf
 from volume import compute_volume
 import pandas as pd
 import yaml
-
+import shutil
 import glob
 import re
 import os
@@ -154,7 +154,7 @@ def volume(config):
                                                                   df_vol_mass.index.strftime('%Y%m%d')[-1]))
     
 
-    organize_files_by_date(config['output_dir']['volume'],
+    organize_files_by_date(config['output_dir']['volume']+ '/' + volume_opt['sub_dir'],
                            os.path.dirname(config['output_dir']['volume']+ '/' + volume_opt['sub_dir'])) ## check 
     df_vol_mass.to_csv(outfile_csv)
     logger.info('csv files for volume saved as : %s' %outfile_csv )
