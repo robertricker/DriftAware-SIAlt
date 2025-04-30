@@ -155,7 +155,7 @@ def volume(config):
     
 
     organize_files_by_date(config['output_dir']['volume']+ '/' + volume_opt['sub_dir'],
-                           os.path.dirname(config['output_dir']['volume']+ '/' + volume_opt['sub_dir'])) ## check 
+                           os.path.dirname(config['output_dir']['volume']+ '/' + volume_opt['sub_dir'] + '/')) ## check 
     df_vol_mass.to_csv(outfile_csv)
     logger.info('csv files for volume saved as : %s' %outfile_csv )
 
