@@ -5,6 +5,7 @@ import argparse
 import os
 from gridding import gridding
 from visualization import visualization
+from volume import volume
 from typing import Dict
 from loguru import logger
 from stacking import stacking
@@ -53,6 +54,11 @@ def main(configure: Dict[str, object]) -> None:
         logger.info('start visualization')
         visualization.visualization(configure)
         logger.info('finished visualization')
+        
+    elif proc_step == 'volume':
+        logger.info('start volume computation')
+        volume.volume(configure)
+        logger.info('finished volume computation')
 
     else:
         raise ValueError('unexpected proc_step: %s' % proc_step)
