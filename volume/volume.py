@@ -85,7 +85,8 @@ def volume(config):
             except OSError as error:
                 print(error)
 
-        outfile = out_dir + volume_opt['sub_dir'] + os.sep + 'VOL_' + os.path.basename(file)
+        outfile = out_dir + volume_opt['sub_dir'] + os.sep + os.path.basename(file)
+        outfile = outfile.replace('SOSIMBA', 'SOSIMBA_VOL')
         
         with open(os.path.join(os.path.dirname(__file__), 'netcdf_config.yaml'), 'r') as f:
             netcdf_config = yaml.safe_load(f)

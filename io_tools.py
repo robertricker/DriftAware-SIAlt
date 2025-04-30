@@ -32,7 +32,7 @@ def transform_coords(x: float, y: float, in_epsg: str, out_epsg: str) -> Tuple[f
     return transformer.transform(x, y)
 
 
-def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg):
+def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg, hemisphere):
     xmin, xmax = netcdf_bounds[0], netcdf_bounds[2]
     ymin, ymax = netcdf_bounds[1], netcdf_bounds[3]
 
@@ -46,10 +46,14 @@ def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg):
     reg_data = netCDF4.Dataset(file)
     xc, yc = np.meshgrid(np.ma.getdata(reg_data.variables['x'][:]),
                          np.ma.getdata(reg_data.variables['y'][:]))
+    
+    dict_region = {'epsg': {'sh': 'epsg:6932',
+                'nh': 'epsg:6931'}, 'var' : {'nh' : 'sea_ice_region', 'sh': 'sea_ice_region_NASA_modified'}}
+
     lon, lat = transform_coords(np.ma.getdata(xc).flatten(),
                                 np.ma.getdata(yc).flatten(),
-                                'epsg:6931', 'epsg:4326')
-    value = np.ma.getdata(reg_data.variables['sea_ice_region'][:, :]).flatten()
+                                dict_region['epsg'][hemisphere], 'epsg:4326')
+    value = np.ma.getdata(reg_data.variables[dict_region['var'][hemisphere]][:, :]).flatten()
     coords = np.transpose(np.vstack((lon, lat)))
     region = griddata(coords, value, (lon_grid, lat_grid), method='nearest')
     return region

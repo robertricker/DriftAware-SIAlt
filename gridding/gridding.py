@@ -169,6 +169,7 @@ def process_file(config, file_list, grid, region_grid):
 
 def gridding(config):
     sensor = config['options']['sensor']
+    hemisphere = config['options']['hemisphere']
     grd_opt = config['options']['proc_step_options']['gridding']
     netcdf_bounds = grd_opt['netcdf_grid']['bounds']
     if grd_opt['csv_dir'] == "all":
@@ -187,9 +188,9 @@ def gridding(config):
         grid_type='circular')
 
     config['output_dir']['gridded_data'] = create_out_dir(config, config['output_dir']['gridded_data'], cell_width)
-    region_grid = get_sea_ice_regions(config['auxiliary']['reg_mask'], netcdf_bounds,
+    region_grid = get_sea_ice_regions(config['auxiliary']['reg_mask'][hemisphere], netcdf_bounds,
                                       round(0.5 * np.sqrt(2) * cell_width),
-                                      config['options']['out_epsg'])
+                                      config['options']['out_epsg'], hemisphere)
 
     date_pattern = re.compile(r"\b(20\d{6})\b")
 
