@@ -21,7 +21,9 @@ auxiliary:
   ice_drift:
     osi455: "input_data/auxdata/sidrift" #1991-2020
     osi405: "auxiliary/osi405" #2009- # TODO UPDATE
-  reg_mask: "input_data/auxdata/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc" # SETUP
+  reg_mask: 
+    nh: "input_data/auxdata/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc" # SETUP
+    sh: "input_data/auxdata/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-S12.5km_v1.0.nc"
 #-----------------------------------VISUALIZATION-----------------------------------------------------------------------
 visualization: "visualization/plots"
 #-----------------------------------LOGGING-----------------------------------------------------------------------------
