@@ -73,7 +73,7 @@ options:
       weighting : 
         is_weight : False                                  # if true then it will look here to get the variable to weigth with
         var_to_weight_with : ['dt_days', 'sea_ice_thickness_total_unc']               # if not specified : '' -> dt_days
-      multiproc: True                                    # Parallel processing
+      multiproc: False                                    # Parallel processing
       num_cpus: 16                                          # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month
       netcdf_grid:
