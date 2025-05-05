@@ -135,14 +135,14 @@ class AirTemperatureProducts:
         return deltaH.values, Hf.values
     
     #def thermodyn_growth(self, hice, hsnow, x, y):
-        t2m = self.interp_air_temperature(x, y)
+        # t2m = self.interp_air_temperature(x, y)
         
-        L = 3*1e8 # Latent heat of fusion
-        T_0 = -1.9 # temperature at the ice-water interface
-        k_ice = 2 # thermal conductivity of the ice
-        k_snow = 0.33 # thermal conductivity of the snow
-        F = 2 # the ocean heat flux, is assumed to be constant #TODO, take it not constant ?
-        dt = 86400 # daily
+        # L = 3*1e8 # Latent heat of fusion
+        # T_0 = -1.9 # temperature at the ice-water interface
+        # k_ice = 2 # thermal conductivity of the ice
+        # k_snow = 0.33 # thermal conductivity of the snow
+        # F = 2 # the ocean heat flux, is assumed to be constant #TODO, take it not constant ?
+        # dt = 86400 # daily
 
-        deltaH = dt * (-1/L) * (F + (t2m - T_0)*((k_ice * k_snow)/(k_ice * hsnow + k_snow * hice)))
-        return deltaH
+        # deltaH = dt * (-1/L) * (F + (t2m - T_0)*((k_ice * k_snow)/(k_ice * hsnow + k_snow * hice)))
+        # return deltaH
