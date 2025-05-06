@@ -58,21 +58,21 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
         data = read_dasit_csv(file[0])
         outfile = os.path.basename(file[0])
         os.remove(file[0])
-
+    outfile_density = 'density_' + outfile
     data.crs = out_epsg
     # apply growth correction
     traj_geom = data['geometry']
     target_location = data["geometry"].apply(lambda g: g.geoms[-1])
     data["geometry"] = target_location
     if len(data["dt_days"].unique()) >= min_n_tps:
-        f_growth, f_growth_unc, growth = interpolate_growth(
+        f_growth, f_growth_unc, growth, nb_tie_points, counts = interpolate_growth(
             data, target_var, growth_range, grid, growth_cell_width, min_n_tps, nbs, config["options"]["hemisphere"])
         growth_interp = f_growth(
             np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
         growth_unc_interp = f_growth_unc(
             np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
     else:
-        growth, growth_interp, growth_unc_interp = np.nan, np.nan, np.nan
+        growth, growth_interp, growth_unc_interp, counts = np.nan, np.nan, np.nan, np.nan
 
     data = data.rename(columns={target_var: target_var + "_uncorrected"})
     data[target_var] = growth_interp * (-data.dt_days.to_numpy()) + data[target_var + "_uncorrected"].to_numpy()
@@ -88,6 +88,10 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     with open(os.path.join(csv_dir, outfile), 'w') as f:
         f.write(f"# {out_epsg}\n")
         data.to_csv(f, index=False)
+    if type(counts)!=float:
+        with open(os.path.join(csv_dir, outfile_density), 'w') as f:
+            f.write(f"# {out_epsg}\n")
+            counts.to_csv(f, index=False)
 
 
 def stack_proc(config, direct, grid):

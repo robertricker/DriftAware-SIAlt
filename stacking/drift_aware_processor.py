@@ -126,10 +126,6 @@ class DriftAwareProcessor:
             tmp_grid['ohf'] = int(ohf_product)
             
         div, she = sid_product.deformation(tmp_grid['xu'].values, tmp_grid['yu'].values)
-        if type(ohf_product) is not int:
-            tmp_grid['ohf'] = ohf_product.interp_ocean_heat_flux(tmp_grid['xu'].values, tmp_grid['yu'].values)
-        else:
-            tmp_grid['ohf'] = ohf_product
         
         tmp_grid['t2m'], thermodyn_growth, thermodyn_corr_sit = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
                                               tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf'])
