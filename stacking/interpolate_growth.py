@@ -4,9 +4,11 @@ import geopandas as gpd
 import numpy as np
 from scipy import interpolate
 from scipy.interpolate import RBFInterpolator
+from scipy.stats import linregress
 from shapely.geometry import box
 from pyproj import Geod
 from shapely.geometry import Polygon, mapping, shape
+#from sklearn.linear_model import RANSACRegressor, LinearRegression
 
 
 def split_and_compute_area(poly, step=1):
@@ -152,7 +154,11 @@ def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_t
     counts["density_km2"] = counts["count"] / counts["area_km2"]
     counts["density_km2_no_land"] = counts["count"] / counts["area_km2_no_land"]
 
-    fsm = interpolate.interp1d(np.array(lat_range), np.array([80, 10]))
+    #model = linregress()
+    slope, intercept, *_ = linregress(counts['lat_band'].values, counts['density_km2_no_land'].values)
+    fsm = interpolate.interp1d([0, 0.035], np.array([80, 10])) # Notebook and SOSIMBA ATBD
+
+    #fsm = interpolate.interp1d(np.array(lat_range), np.array([80, 10]))
 
     # perform linear fit
     tmp['coeff'] = tmp.groupby('index_right').apply(
@@ -176,15 +182,15 @@ def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_t
                                     np.array(growth_grid.dropna()['xc']))).transpose(),
                          np.array(growth_grid.dropna()['growth']),
                          neighbors=nbs,
-                         smoothing=fsm(
-                             np.array(growth_grid.dropna().geometry.centroid.to_crs(4326).geometry.y)),
+                         smoothing=fsm(slope*(np.array(
+                             growth_grid.dropna().geometry.centroid.to_crs(4326).geometry.y))+intercept),
                          kernel='gaussian', epsilon=eps/cell_width)
     
     fg_unc = RBFInterpolator(np.vstack((np.array(growth_grid.dropna()['yc']),
                                         np.array(growth_grid.dropna()['xc']))).transpose(),
                              np.array(growth_grid.dropna()['growth_unc']),
                              neighbors=nbs,
-                             smoothing=fsm(
-                                 np.array(growth_grid.dropna().geometry.centroid.to_crs(4326).geometry.y)),
+                             smoothing=fsm(slope*(np.array(
+                                 growth_grid.dropna().geometry.centroid.to_crs(4326).geometry.y))+intercept),
                              kernel='gaussian', epsilon=eps/cell_width)
     return fg, fg_unc, growth_raw.values, n_tiepoints, counts
