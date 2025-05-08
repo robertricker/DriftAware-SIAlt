@@ -53,9 +53,9 @@ options:
     stacking:                                                 # Processing step: stacking (Drift-Aware processing)
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
-      t_length: 30 #'season' #426                                 # length of processing period in days or 'season'
+      t_length: 31 #'season' #426                                 # length of processing period in days or 'season'
       t_start: 2020-09-01 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
-      t_window: 16                                      # length of the drift-aware window in days
+      t_window: 16                                     # length of the drift-aware window in days
       multiproc: True                                       # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
