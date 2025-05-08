@@ -1,18 +1,19 @@
 base_dir: "/cluster/projects/108541-SO-SIMBA/data_tmp/" # main project data directory
 #-----------------------------------DATA REPOSITORY---------------------------------------------------------------------
 input_dir: # relative to base_dir
-  envisat: "output_data/SOSIMBA/cdr/envisat/v3p0-ss/sh/l2p_release_miz_23/" #TODO UPDATE
-  cryosat2: "output_data/SOSIMBA/cdr/cryosat2/v4p0-preview1-ss/sh/l2p_release_miz_23/" 
-  sentinel3a: "output_data/SOSIMBA/cdr/sentinel3a/v4p0-preview1-ss/sh/l2p_release_miz_23" 
-  sentinel3b: "output_data/SOSIMBA/cdr/sentinel3b/v4p0-preview1-ss/sh/l2p_release_miz_23" 
+  envisat: "input_data/envisat/l2p_cci/" #TODO update
+  cryosat2: "output_data/SOSIMBA/cdr/cryosat2/v4p0-preview1-ss/sh/l2p_release/"
+  sentinel3a: "output_data/SOSIMBA/cdr/sentinel3a/v4p0-preview1-ss/sh/l2p_release"
+  sentinel3b: "output_data/SOSIMBA/cdr/sentinel3b/v4p0-preview1-ss/sh/l2p_release"
   icesat2:
-    total_freeboard: "input_data/alti/l2/icesat2/ATL10/v6"
+    total_freeboard: "input_data/icesat2/ATL10.005"
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
-    
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/thermo/param"  # Gridded DA data as daily NetCDFs
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv/no_weight/"  # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/DA/"  # Gridded DA data as daily NetCDFs
+  visu: "output_data/DA/product/{sensor}/MIZ_filter_23/visu/no_weight/"
+  volume: "output_data/DA/product/{sensor}/MIZ_filter_23/volume/no_weight/DA/"
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -20,51 +21,34 @@ auxiliary:
     osi430b: "input_data/auxdata/sic/c3s/icdr" #v3.0: 2021-
   ice_drift:
     osi455: "input_data/auxdata/sidrift" #1991-2020
-    osi405: "auxiliary/osi405" #2009- # TODO UPDATE
-  t2m:
-    era5: "input_data/auxdata/air_temperature/ERA5/2m_temperature/"
-  reg_mask: 
-    nh: "input_data/auxdata/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc" # SETUP
-    sh: "input_data/auxdata/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-S12.5km_v1.0.nc"
-  t2m:
-    era5: "input_data/auxdata/air_temperature/ERA5/2m_temperature/"
-  ohf:
-    sose: "input_data/auxdata/ocean_heat_flux/SOSE/OHF_compute/iter155/5DAY/DAILY"
-
+    osi405: "auxiliary/osi405" #2009-
+  reg_mask: "/cluster/projects/108541-SO-SIMBA/data_tmp/input_data/auxdata/masks/nsidc_2021/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc"
 #-----------------------------------VISUALIZATION-----------------------------------------------------------------------
 visualization: "visualization/plots"
 #-----------------------------------LOGGING-----------------------------------------------------------------------------
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: ['cryosat2'] # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   sensor: cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
-  proc_step: stacking # Available options: stacking, gridding, and visualization
+  proc_step: volume # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
-  t2m_product : era5
-  ohf_product : sose
-
-  target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
   target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['snow_depth', 'sea_ice_freeboard', 'radar_freeboard']                             # add variables to the trajectory data frame,
-                                                              # no growth correction, no histogram (list)
+  add_variable: []                                # add variables to the trajectory data frame,
+                                                              # no growth correction, no histogram
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
 
   proc_step_options:                                          # Processing options for each processing step
+
     stacking:                                                 # Processing step: stacking (Drift-Aware processing)
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
-      t_length: 31 #'season' #426                                 # length of processing period in days or 'season'
-      t_start: 2020-09-01 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
-      t_window: 16                                     # length of the drift-aware window in days
-      multiproc: True                                       # Parallel processing
-      t_length: 30                                  # length of processing period in days or 'season'
-      t_start: 2019-10-01 00:00:00                            # Start of processing period
-      t_window: 16                                       # length of the drift-aware window in days
-      multiproc: False                                       # Parallel processing
+      t_start: 2020-04-01 00:00:00                            # Start of processing period
+      t_length: season                                        # length of processing period in days
+      t_window: 16                                            # length of the drift-aware window in days
+      multiproc: True                                        # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
@@ -82,13 +66,10 @@ options:
         growth_range:
           freeboard: [ -0.25, 0.25 ] # min/max limits for freeboard growth, neglected if outside
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
-      thermo_change:
-        model : 'winter_2layers' 
-        oce_heat_flux : sose #either a constant or the name of the product to be used as ocean heat flux
-          
+
     gridding:                                                 # Processing step: gridding
-      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-02-20_10-00-39'
-      mode: 'da'                                             # drift-aware: da, conventional: cv
+      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2024-12-19_10-53-49'
+      mode: 'cv'                                             # drift-aware: da, conventional: cv
       multiproc: True                                       # Parallel processing
       num_cpus: 16                                           # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month
@@ -98,10 +79,21 @@ options:
       target_variable_range:
         freeboard: [ 0, 1 ]
         thickness: [ 0, 10 ]
-
+  
     visualization:                                            # Processing step: visualization
+      sub_dir: 'sea_ice_thickness-sh-16fr-epsg6932_354-2025-03-04_01-03-52'
       gridded_data_dir: 'crdp_figs'                           # directory relative to output_dir.gridded_data
-      variable: "sea_ice_thickness_growth_interpolated"       # netcdf variable
+      variable: "sea_ice_thickness"       # netcdf variable
       make_gif: False
+    
+    volume:
+      # Assume that the projection is ease2 
+      sub_dir: 'sea_ice_thickness_year_round'
+      ice_conc :  #or osi450 (for instance)
+      sea_ice_density : ice_fons_2022 #if constant give the value
+      snow_density : snow_fons_2022 #if constant give the value e.g 320
+      
+
+
 
 version: 100                                                  # version of DA-SIT python software
