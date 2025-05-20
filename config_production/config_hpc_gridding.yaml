@@ -10,7 +10,7 @@ input_dir: # relative to base_dir
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv/thermo/param/"  # DA trajectories as daily CSVs
   gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/thermo/param"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
@@ -29,13 +29,13 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: gridding # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
   target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['snow_depth', 'radar_freeboard', 'sea_ice_freeboard']                                # add variables to the trajectory data frame,
+  add_variable: ['snow_depth', 'radar_freeboard', 'sea_ice_freeboard',  'sea_ice_thickness_uncorrected']                                # add variables to the trajectory data frame,
                                                               # no growth correction, no histogram
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
@@ -48,7 +48,7 @@ options:
       t_start: 2020-09-01 00:00:00                            # Start of processing period
       t_length: season                                        # length of processing period in days
       t_window: 16                                            # length of the drift-aware window in days
-      multiproc: True                                        # Parallel processing
+      multiproc: False                                        # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
@@ -68,12 +68,12 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-04-11_10-55-13'
+      csv_dir: 'iter156_meeting_hamburg'
       mode: 'da'                      # if true then it will look here to get the variable to weigth with
       weighting : 
         is_weight : False                                  # if true then it will look here to get the variable to weigth with
         var_to_weight_with : ['dt_days', 'sea_ice_thickness_total_unc']               # if not specified : '' -> dt_days
-      multiproc: False                                    # Parallel processing
+      multiproc: True                                    # Parallel processing
       num_cpus: 16                                          # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month
       netcdf_grid:

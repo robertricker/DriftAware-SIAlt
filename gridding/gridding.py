@@ -149,7 +149,7 @@ def process_file(config, file_list, grid, region_grid):
     data['thermo_change_rate'] = data['thermo_change_rate'].apply(get_row_mean)
 
     prepare_netcdf = PrepareNetcdf(config, file, region_grid)
-    var, var_rename = prepare_netcdf.select_variables()
+    var, var_rename = prepare_netcdf.select_variables(data)
     if is_weight:
         master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['weighted_mean'], weight_var=weight_var)
     else:

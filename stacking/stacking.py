@@ -88,10 +88,12 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     with open(os.path.join(csv_dir, outfile), 'w') as f:
         f.write(f"# {out_epsg}\n")
         data.to_csv(f, index=False)
-    if type(counts)!=float:
-        with open(os.path.join(csv_dir, outfile_density), 'w') as f:
-            f.write(f"# {out_epsg}\n")
-            counts.to_csv(f, index=False)
+    
+    # Only if you want to save the density of point per lat band
+    # if type(counts)!=float:
+    #     with open(os.path.join(csv_dir, outfile_density), 'w') as f:
+    #         f.write(f"# {out_epsg}\n")
+    #         counts.to_csv(f, index=False)
 
 
 def stack_proc(config, direct, grid):

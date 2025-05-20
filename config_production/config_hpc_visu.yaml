@@ -10,9 +10,9 @@ input_dir: # relative to base_dir
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv"  # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/CV"  # Gridded DA data as daily NetCDFs
-  visu: "output_data/DA/product/{sensor}/MIZ_filter_23/visu/no_weight/CV/"
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/thermo/param"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
+  visu: "output_data/DA/product/{sensor}/MIZ_filter_23/visu/no_weight/thermo/param/DA/"
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -28,7 +28,7 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: visualization # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
@@ -80,9 +80,9 @@ options:
         thickness: [ 0, 10 ]
 
     visualization:                                            # Processing step: visualization
-      sub_dir: 'sea_ice_thickness-sh-16fr-epsg6932_354-2025-03-04_01-03-52'
+      sub_dir: 'iter156_meeting_hamburg'
       gridded_data_dir: 'crdp_figs'                           # directory relative to output_dir.gridded_data
-      variable: "sea_ice_thickness"       # netcdf variable
+      variable: "sea_ice_thickness_growth_interpolated"       # netcdf variable
       make_gif: False
 
 version: 100                                                  # version of DA-SIT python software

@@ -48,13 +48,31 @@ class PrepareNetcdf:
         version = re.search(r'(fv\d+)', os.path.basename(self.file)).group(1)
         return f"{prefix}-{prdlvl}-{var}-{instr}-{extra}-{period}-{version}.nc"
 
-    def select_variables(self):
+    def select_variables(self, data):
         var = [Template(item).render(target_var=self.target_var) #Exception for is2
                for item in self.netcdf_config['variables'][self.mode]['include']
-               if not (self.sensor == 'icesat2' and item == 'snow_depth')] 
-        var_rename = [Template(item).render(target_var=self.target_var) #Same exception for is2
-                      for item in self.netcdf_config['variables'][self.mode]['rename']
-                      if not (self.sensor == 'icesat2' and item == 'snow_depth')] 
+               if not (self.sensor == 'icesat2' and item == 'snow_depth') 
+               and Template(item).render(target_var=self.target_var) in data.columns] 
+                #if Template(item).render(target_var=self.target_var) in data.columns and item!='snow_depth']
+
+        var_rename = []
+
+        include_items = self.netcdf_config['variables'][self.mode]['include']
+        rename_items = self.netcdf_config['variables'][self.mode]['rename']
+
+        for i, item in enumerate(rename_items):
+            if self.sensor == 'icesat2' and include_items[i] == 'snow_depth':
+                continue  # exception spéciale
+    
+            input_var = Template(include_items[i]).render(target_var=self.target_var)
+            output_var = Template(item).render(target_var=self.target_var)
+
+            if input_var in data.columns:
+                var_rename.append(output_var)
+        #var_rename = [Template(item).render(target_var=self.target_var) #Same exception for is2
+        #              for item in self.netcdf_config['variables'][self.mode]['rename']
+        #              if not (self.sensor == 'icesat2' and item == 'snow_depth')
+        #              and item in data.columns] 
         return var, var_rename
 
     def set_var_attrbs(self, dataset):
