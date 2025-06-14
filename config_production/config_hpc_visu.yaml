@@ -11,8 +11,8 @@ input_dir: # relative to base_dir
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
   trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/thermo/param"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
-  visu: "output_data/DA/product/{sensor}/MIZ_filter_23/visu/no_weight/thermo/param/DA/"
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/DA" #thermo/param"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
+  visu: "output_data/DA/product/{sensor}/MIZ_filter_23/visu/no_weight/DA/" #thermo/param/DA/"
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -28,7 +28,7 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: envisat #sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: visualization # Available options: stacking, gridding, and visualization
   ice_conc_product: osi450
   ice_drift_product: osi455
@@ -80,9 +80,9 @@ options:
         thickness: [ 0, 10 ]
 
     visualization:                                            # Processing step: visualization
-      sub_dir: 'iter156_meeting_hamburg'
+      sub_dir: 'sea_ice_thickness-sh-16fr-epsg6932_354-2025-03-01_18-22-58'
       gridded_data_dir: 'crdp_figs'                           # directory relative to output_dir.gridded_data
-      variable: "sea_ice_thickness_growth_interpolated"       # netcdf variable
+      variable: "sea_ice_thickness"       # netcdf variable
       make_gif: False
 
 version: 100                                                  # version of DA-SIT python software

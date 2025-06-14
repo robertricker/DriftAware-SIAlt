@@ -90,7 +90,7 @@ def process_file(config, file_list, grid, region_grid):
     data['dist_acquisition'] = start_location.distance(target_location) / 1000.0
     data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])
     data['dynamic_change_rate_tmp'] = data['divergence'].apply(lambda x: [np.exp(-val) for val in x])
-    data['dynamic_change_rate'] = data.apply(lambda row: [-row["sea_ice_thickness_uncorrected"] * val for val in row["divergence"]], axis=1)
+    data['dynamic_change_rate'] = data.apply(lambda row: [-row[f"{target_var}_uncorrected"] * val for val in row["divergence"]], axis=1)
     data['thermo_change_rate'] = data.apply(lambda row: [row["growth_interpolated"] - val for val in row["dynamic_change_rate"]], axis=1)
 
     #data['thermo_change_rate'] = data.apply(lambda row: row["growth_interpolated"] - row["dynamic_change_rate"], axis=1)

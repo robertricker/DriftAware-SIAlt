@@ -7,7 +7,9 @@ from scipy.interpolate import RBFInterpolator
 from scipy.stats import linregress
 from shapely.geometry import box
 from pyproj import Geod
-from shapely.geometry import Polygon, mapping, shape
+from shapely.geometry import Polygon, MultiPolygon, GeometryCollection
+from loguru import logger
+import sys
 #from sklearn.linear_model import RANSACRegressor, LinearRegression
 
 
@@ -118,6 +120,9 @@ def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_t
            .pipe(gpd.GeoDataFrame, geometry='geometry', crs=merged.crs))
     n_tiepoints = tmp.groupby('index_right')['dt_days'].count()
     valid_indices = n_tiepoints[n_tiepoints >= min_n_tiepoints].index
+    if len(valid_indices) == []:
+        logger.error('Number of tie points insufficiant for all the grid cell')
+        sys.exit()
     tmp = tmp[tmp['index_right'].isin(valid_indices)]
     tmp.set_index('index_right', inplace=True)
     eps = 1.8
@@ -136,9 +141,8 @@ def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_t
     #ocean_polygon_without_land = counts['geometry'].difference(land_gdf.unary_union)
     diff_geoms = counts['geometry'].apply(lambda geom: geom.difference(land_gdf.unary_union))
 
-    # Nettoyer et extraire uniquement les géométries valides (Polygon ou MultiPolygon)
+    # Clean and get valid geometries
     clean_geoms = []
-    from shapely.geometry import Polygon, MultiPolygon, GeometryCollection
     for geom in diff_geoms:
         if isinstance(geom, (Polygon, MultiPolygon)):
             clean_geoms.append(geom)
@@ -154,13 +158,9 @@ def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_t
     counts["density_km2"] = counts["count"] / counts["area_km2"]
     counts["density_km2_no_land"] = counts["count"] / counts["area_km2_no_land"]
 
-    #model = linregress()
     slope, intercept, *_ = linregress(counts['lat_band'].values, counts['density_km2_no_land'].values)
     fsm = interpolate.interp1d([0, 0.035], np.array([80, 10])) # Notebook and SOSIMBA ATBD
-    arr_density = slope*(np.array(growth_grid.dropna().geometry.centroid.to_crs(4326).geometry.y))+intercept
-    arr_positif = np.where(arr_density < 0, 0, arr_density)
-    #fsm = interpolate.interp1d(np.array(lat_range), np.array([80, 10]))
-
+    
     # perform linear fit
     tmp['coeff'] = tmp.groupby('index_right').apply(
         lambda x: np.polyfit(x['dt_days'], x[interp_var], deg=1, cov=True))
@@ -177,7 +177,8 @@ def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_t
     growth_grid = gridding_lib.grid_data(tmp, grid, ['growth', 'growth_unc'], ['growth', 'growth_unc'], fill_nan=True)
     centroidseries = growth_grid['geometry'].centroid
     growth_grid['yc'], growth_grid['xc'] = centroidseries.x, centroidseries.y
-
+    arr_density = slope*(np.array(growth_grid.dropna().geometry.centroid.to_crs(4326).geometry.y))+intercept
+    arr_positif = np.where(arr_density < 0, 0, arr_density)
     # interpolation of growth for all valid target variable data points
     fg = RBFInterpolator(np.vstack((np.array(growth_grid.dropna()['yc']),
                                     np.array(growth_grid.dropna()['xc']))).transpose(),

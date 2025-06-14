@@ -13,7 +13,7 @@ class StackStructure:
 
     def initialize_master(self):
         master = {}
-        if self.sensor == 'icesat2':
+        if self.sensor == ['icesat2']:
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
             for beam in beams.tolist():
                 master[beam] = {}
@@ -29,7 +29,7 @@ class StackStructure:
         return master
 
     def initialize_scheme(self):
-        if self.sensor == 'icesat2':
+        if self.sensor == ['icesat2']:
             self.scheme = np.zeros([len(self.master), len(self.days1.tolist()), len(self.days2.tolist())])
         else:
             self.scheme = np.zeros([len(self.days1.tolist()), len(self.days2.tolist())])

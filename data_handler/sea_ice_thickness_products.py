@@ -459,10 +459,10 @@ class SeaIceThicknessMultiProducts:
 
         return atl10_data, atl10_attrs, atl10_beams
 
-    def atl10_to_gdf(self):
+    def atl10_to_gdf(self, sens):
         atlas_sdp_gps_epoch = 1198800018.0
         gdf_list = list()
-        for file in self.target_files:
+        for file in self.target_files[sens]:
             atl10_data, atl10_attrs, atl10_beams = self.read_atl10(file, attributes=True)
             beam_list = list()
             for beam in atl10_beams:
@@ -492,9 +492,9 @@ class SeaIceThicknessMultiProducts:
 
         return gdf_final.reset_index(drop=True)
 
-    def is2sitdat4_to_gdf(self):
+    def is2sitdat4_to_gdf(self, sens):
         gdf_list = list()
-        for file in self.target_files:
+        for file in self.target_files[sens]:
             data = netCDF4.Dataset(file)
 
             start_idx = os.path.basename(file).find("bnum") + 5
@@ -549,8 +549,12 @@ class SeaIceThicknessMultiProducts:
     def get_file_list(self, directory):
         for sens in self.sensor:
             hem = self.config[sens][self.target_var]['hem_' + self.hem]
-            file_list = [file_path for file_path in glob.iglob(os.path.join(directory[sens], "**", "*"), recursive=True)
-                         if hem.lower() in os.path.basename(file_path.lower())]
+            if sens != 'icesat2':
+                file_list = [file_path for file_path in glob.iglob(os.path.join(directory[sens], "**", "*"), recursive=True)
+                            if hem.lower() in os.path.basename(file_path.lower()) ]
+            else:
+                file_list = [file_path for file_path in glob.iglob(os.path.join(directory[sens][self.target_var], "**", "*"), recursive=True)
+                            if hem.lower() in os.path.basename(file_path.lower()) ]
             self.file_list[sens] = file_list
 
     def get_file_dates(self):

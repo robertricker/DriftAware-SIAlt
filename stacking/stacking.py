@@ -135,7 +135,7 @@ def stack_proc(config, direct, grid):
     t2m_product.get_file_dates()
 
     thermo_model = config['options']['proc_step_options']['stacking']['thermo_change']['model']
-
+    #if thermo_model=='None' : thermo_model = None
     if type(config['options']['proc_step_options']['stacking']['thermo_change']['oce_heat_flux']) is not int:
         print('Need to be implemented with a reanalysis')
         ohf_product = OceanHeatFluxProducts(hem=hem, product_id=config['options']['ohf_product'], out_epsg=out_epsg)
@@ -186,25 +186,32 @@ def stack_proc(config, direct, grid):
         # The sea ice drift to advect parcel at t0 is the one referenced as t1
         # Indeed the reference correspond to the end of the 24h data range that cover each file
         sid_product.target_files = sid_product.get_target_files(t0 + d_sgn_drift * dt1d, t1 + d_sgn_drift * dt1d)
-        t2m_product.target_files = t2m_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
-        if ohf_product is not int:
+        if thermo_model!=None:
+            t2m_product.target_files = t2m_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
+        else:
+            t2m_product.target_files = None
+        if type(ohf_product) is not int:
             ohf_product.target_files = ohf_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
 
-        if sic_product.target_files and sid_product.target_files and t2m_product.target_files:
+        if sic_product.target_files and sid_product.target_files and (t2m_product.target_files or not thermo_model) :
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day'+str(d_sgn)+': ' +
                         os.path.basename(sic_product.target_files))
             logger.info(t0.strftime("%Y%m%d") + ': ice_drift file: ' +
                         os.path.basename(sid_product.target_files))
-            logger.info(t0.strftime("%Y%m%d") + ': t2m file: ' +
-                        os.path.basename(t2m_product.target_files))
             
             sic_product.ice_conc_ahead = sic_product.get_ice_concentration(sic_product.target_files)
             sid_product.get_ice_drift(sid_product.target_files, sic_product.ice_conc_ahead)
-            t2m_product.get_air_temperature(t2m_product.target_files)
             
-            if ohf_product is not int:
+            if thermo_model:
+                logger.info(t0.strftime("%Y%m%d") + ': t2m file: ' +
+                        os.path.basename(t2m_product.target_files))
+                t2m_product.get_air_temperature(t2m_product.target_files)
+            
+            if type(ohf_product) is not int:
                 ohf_product.get_ocean_heat_flux(ohf_product.target_files)
-
+                logger.info(t0.strftime("%Y%m%d") + ': ohf file: ' +
+                        os.path.basename(ohf_product.target_files))
+                
             # check if the date is still in the range
             if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
                 m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, ohf_product, stk_opt['t_window'], d_sgn, day_range[0], thermo_model)
@@ -216,23 +223,24 @@ def stack_proc(config, direct, grid):
         gdf_final = gpd.GeoDataFrame(gdf_final, geometry='geometry')
         gdf_final['divergence'] = gdf_final['divergence'].apply(json.dumps)
         gdf_final['shear'] = gdf_final['shear'].apply(json.dumps)
-        gdf_final['rate_thermo_change_mod'] = gdf_final.apply(lambda row: row['thermo_change_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-        gdf_final['rate_thermo_growth_mod'] = gdf_final.apply(lambda row: row['thermo_growth_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+        if thermo_model:
+            gdf_final['rate_thermo_change_mod'] = gdf_final.apply(lambda row: row['thermo_change_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_growth_mod'] = gdf_final.apply(lambda row: row['thermo_growth_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
 
-        gdf_final['rate_thermo_change_mod2'] = gdf_final.apply(lambda row: row['thermo_change_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-        gdf_final['rate_thermo_growth_mod2'] = gdf_final.apply(lambda row: row['thermo_growth_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_change_mod2'] = gdf_final.apply(lambda row: row['thermo_change_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_growth_mod2'] = gdf_final.apply(lambda row: row['thermo_growth_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
 
-        gdf_final['rate_thermo_change_mod3'] = gdf_final.apply(lambda row: row['thermo_change_mod3'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-        gdf_final['rate_thermo_growth_mod3'] = gdf_final.apply(lambda row: row['thermo_growth_mod3'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_change_mod3'] = gdf_final.apply(lambda row: row['thermo_change_mod3'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_growth_mod3'] = gdf_final.apply(lambda row: row['thermo_growth_mod3'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
 
-        gdf_final['rate_thermo_change_mod4'] = gdf_final.apply(lambda row: row['thermo_change_mod4'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-        gdf_final['rate_thermo_growth_mod4'] = gdf_final.apply(lambda row: row['thermo_growth_mod4'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_change_mod4'] = gdf_final.apply(lambda row: row['thermo_change_mod4'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_growth_mod4'] = gdf_final.apply(lambda row: row['thermo_growth_mod4'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
 
-        gdf_final['rate_thermo_change_mod5'] = gdf_final.apply(lambda row: row['thermo_change_mod5'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-        gdf_final['rate_thermo_growth_mod5'] = gdf_final.apply(lambda row: row['thermo_growth_mod5'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_change_mod5'] = gdf_final.apply(lambda row: row['thermo_change_mod5'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_growth_mod5'] = gdf_final.apply(lambda row: row['thermo_growth_mod5'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
 
-        gdf_final['rate_thermo_change_mod6'] = gdf_final.apply(lambda row: row['thermo_change_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-        gdf_final['rate_thermo_growth_mod6'] = gdf_final.apply(lambda row: row['thermo_growth_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_change_mod6'] = gdf_final.apply(lambda row: row['thermo_change_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            gdf_final['rate_thermo_growth_mod6'] = gdf_final.apply(lambda row: row['thermo_growth_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
         outfile = make_csv_filename(config, t0, direct)
         logger.info(t0.strftime("%Y%m%d")+': generated csv file: ' + outfile)
         gdf_final['divergence'] = gdf_final['divergence'].apply(

@@ -20,7 +20,8 @@ class SeaIceConcentrationProducts:
 
         self.function_map = {
             'osi430b': self.get_ice_concentration,
-            'osi450': self.get_ice_concentration
+            'osi450': self.get_ice_concentration,
+            'c3s': self.get_ice_concentration
         }
 
         self.config = {
@@ -32,6 +33,13 @@ class SeaIceConcentrationProducts:
                 'date_offset': datetime.timedelta(days=0)
             },
             'osi450': {
+                'hem_nh': '_nh_',
+                'hem_sh': '_sh_',
+                'date_str': '{12}',
+                'date_pt': '%Y%m%d%H%M',
+                'date_offset': datetime.timedelta(days=0)
+            },
+            'c3s': {
                 'hem_nh': '_nh_',
                 'hem_sh': '_sh_',
                 'date_str': '{12}',
