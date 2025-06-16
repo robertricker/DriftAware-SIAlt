@@ -159,7 +159,7 @@ def stack_proc(config, direct, grid):
     # initialize drift aware processor
     processor = DriftAwareProcessor(sit_product, master=master, scheme=scheme, grid=grid)
 
-    # for each day we want a stack
+    # for each day we want to stack
     for i in day_range:
 
         processor.i = i 
