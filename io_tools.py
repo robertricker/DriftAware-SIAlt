@@ -103,6 +103,7 @@ def make_csv_filename(config, t0, direct):
     var_map = {
         "sea_ice_thickness": "SITHICK",
         "sea_ice_freeboard": "SIFB",
+        "radar_freeboard": "RFB",
         "total_freeboard": "TFB"}
     var = var_map.get(config['options']['target_variable'])
     instr_map = {

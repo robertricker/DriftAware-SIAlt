@@ -301,13 +301,17 @@ class SeaIceThicknessMultiProducts:
             ('icesat2', 'total_freeboard'): self.atl10_to_gdf,
             ('icesat2', 'sea_ice_thickness'): self.is2sitdat4_to_gdf,
             ('cryosat2', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
+            ('cryosat2', 'radar_freeboard'): self.cci_l2p_to_gdf,
             ('cryosat2', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
             ('sentinel3a', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
             ('sentinel3a', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
+            ('sentinel3a', 'radar_freeboard'): self.cci_l2p_to_gdf,
             ('sentinel3b', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
             ('sentinel3b', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
+            ('sentinel3b', 'radar_freeboard'): self.cci_l2p_to_gdf,
             ('envisat', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
-            ('envisat', 'sea_ice_thickness'): self.cci_l2p_to_gdf
+            ('envisat', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
+            ('envisat', 'radar_freeboard'): self.cci_l2p_to_gdf
         }
 
         self.config = {
@@ -337,6 +341,12 @@ class SeaIceThicknessMultiProducts:
                     'hem_sh': '-sh-',
                     'date_str': '{8}',
                     'date_pt': '%Y%m%d'
+                },
+                'radar_freeboard': {
+                    'hem_nh': '-nh-',
+                    'hem_sh': '-sh-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
                 }
             },
             'sentinel3a': {
@@ -347,6 +357,12 @@ class SeaIceThicknessMultiProducts:
                     'date_pt': '%Y%m%d'
                 },
                 'sea_ice_freeboard': {
+                    'hem_nh': '-nh-',
+                    'hem_sh': '-sh-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
+                },
+                'radar_freeboard': {
                     'hem_nh': '-nh-',
                     'hem_sh': '-sh-',
                     'date_str': '{8}',
@@ -365,6 +381,12 @@ class SeaIceThicknessMultiProducts:
                     'hem_sh': '-sh-',
                     'date_str': '{8}',
                     'date_pt': '%Y%m%d'
+                },
+                'radar_freeboard': {
+                    'hem_nh': '-nh-',
+                    'hem_sh': '-sh-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
                 }
             },
             'envisat': {
@@ -375,6 +397,12 @@ class SeaIceThicknessMultiProducts:
                     'date_pt': '%Y%m%d'
                 },
                 'sea_ice_freeboard': {
+                    'hem_nh': '-NH-',
+                    'hem_sh': '-SH-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
+                },
+                'radar_freeboard': {
                     'hem_nh': '-NH-',
                     'hem_sh': '-SH-',
                     'date_str': '{8}',
@@ -538,6 +566,7 @@ class SeaIceThicknessMultiProducts:
             'sea_ice_thickness': np.array(data["sea_ice_thickness"]),
             'sea_ice_thickness_l2_unc': np.array(data["sea_ice_thickness_uncertainty"]),
             'sea_ice_freeboard_l2_unc': np.array(data["sea_ice_freeboard_uncertainty"]),
+            'radar_freeboard_l2_unc': np.array(data["radar_freeboard_uncertainty"]),
             'snow_depth': np.array(data["snow_depth"]),
             'time': np.array(data["time"])
         }

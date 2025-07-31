@@ -10,8 +10,8 @@ input_dir: # relative to base_dir
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv/thermo/param" # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/thermo/param"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
+  trajectories: "output_data/DA/product/{sensor}/" # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/no_weight/DA/"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -29,13 +29,13 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: sentinel3b #sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: sentinel3a_sentinel3b_cryosat2 #sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: gridding # Available options: stacking, gridding, and visualization
-  ice_conc_product: osi450
+  ice_conc_product: c3s
   ice_drift_product: osi455
-  target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
+  target_variable: 'radar_freeboard'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['snow_depth', 'radar_freeboard', 'sea_ice_freeboard', 'sea_ice_thickness_uncorrected']                                # add variables to the trajectory data frame,
+  add_variable: [] #'snow_depth', 'radar_freeboard', 'sea_ice_freeboard', 'sea_ice_thickness_uncorrected']                                # add variables to the trajectory data frame,
                                                               # no growth correction, no histogram
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
@@ -48,7 +48,7 @@ options:
       t_start: 2020-09-01 00:00:00                            # Start of processing period
       t_length: season                                        # length of processing period in days
       t_window: 16                                            # length of the drift-aware window in days
-      multiproc: False                                        # Parallel processing
+      multiproc: True                                        # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
@@ -68,7 +68,7 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: 'iter156_meeting_hamburg' #'iter156_meeting_hamburg'
+      csv_dir: 'MIZ_filter_2/csv//sea_ice_thickness-sh-16fr-epsg6932_141-2025-07-06_15-16-14' #'iter156_meeting_hamburg'
       mode: 'da'                      # if true then it will look here to get the variable to weigth with
       weighting : 
         is_weight : False                                  # if true then it will look here to get the variable to weigth with
@@ -78,7 +78,7 @@ options:
       organize_files: True                                   # Organize files in year/month
       netcdf_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
-        dim: 432 #864 #216 #432 #864
+        dim: 216 #864 #864 #216 #432 #864
       target_variable_range:
         freeboard: [ 0, 1 ]
         thickness: [ 0, 10 ]

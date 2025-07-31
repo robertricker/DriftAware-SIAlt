@@ -9,6 +9,7 @@ from volume import volume
 from typing import Dict
 from loguru import logger
 from stacking import stacking
+from binning import binning
 from io_tools import init_logger
 
 
@@ -54,7 +55,12 @@ def main(configure: Dict[str, object]) -> None:
         logger.info('start visualization')
         visualization.visualization(configure)
         logger.info('finished visualization')
-        
+
+    elif proc_step == 'binning':
+        logger.info('start binning')
+        binning.binning(configure)
+        logger.info('finished binning')        
+
     elif proc_step == 'volume':
         logger.info('start volume computation')
         volume.volume(configure)

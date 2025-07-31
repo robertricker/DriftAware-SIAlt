@@ -31,19 +31,19 @@ def visualization(config):
     file_list = sorted(glob.glob(os.path.join(config['output_dir']['gridded_data'], '**', '*.nc'), recursive=True))
     out_dir = config['output_dir']['visu']
 
-    sic_product = SeaIceConcentrationProducts(hem=hem, product_id=config['options']['ice_conc_product'],
-                                              out_epsg=out_epsg)
-    sic_product.get_file_list(config['auxiliary']['ice_conc'][config['options']['ice_conc_product']])
-    sic_product.get_file_dates()
+    #sic_product = SeaIceConcentrationProducts(hem=hem, product_id=config['options']['ice_conc_product'],
+    #                                          out_epsg=out_epsg)
+    #sic_product.get_file_list(config['auxiliary']['ice_conc'][config['options']['ice_conc_product']])
+    #sic_product.get_file_dates()
 
     for file in file_list:
-        time_str = re.search(r'-(\d{8})-', os.path.basename(file)).group(1)
+        time_str = re.search(r'(\d{8})', os.path.basename(file)).group(1)
         dt1d = datetime.timedelta(days=1)
         t0 = datetime.datetime.strptime(time_str, '%Y%m%d')
         t1 = t0 + dt1d
 
-        sic_product.target_files = sic_product.get_target_files(t0, t1)
-        ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
+        #sic_product.target_files = sic_product.get_target_files(t0, t1)
+        #ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
 
         data = xr.open_dataset(file, decode_times=False)
 
@@ -77,6 +77,11 @@ def visualization(config):
             cmap = plt.cm.cool
             scaling = 100.0
             label = 'Total freeboard in cm'
+        elif target_var in ['snow_depth', 'snow_depth_uncorrected']:
+            vmin, vmax, n_level = 0, 50, 13
+            cmap = plt.cm.magma
+            scaling = 100.0
+            label = 'Snow Depth in cm'
 
         elif target_var in ['total_freeboard_l2_unc', 'total_freeboard_total_unc', 'total_freeboard_drift_unc']:
             vmin, vmax, n_level = 0, 6, 13
@@ -137,8 +142,8 @@ def visualization(config):
                                         time_str,
                                         label,
                                         outfile,
-                                        hem,
-                                        iceconc=ice_conc)
+                                        hem)
+                                        #,iceconc=ice_conc)
 
     if make_gif:
         visualization_tools.make_gif(out_dir+target_var, target_var)

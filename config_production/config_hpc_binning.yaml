@@ -37,15 +37,15 @@ logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
   sensor: ['sentinel3a', 'sentinel3b', 'cryosat2'] # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
-  proc_step: stacking # Available options: stacking, gridding, and visualization
+  proc_step: binning # Available options: stacking, gridding, and visualization
   ice_conc_product: c3s
   ice_drift_product: osi405 ##### !!!!!!!
   t2m_product : era5
   ohf_product : sose
 
-  target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
+  target_variable: 'radar_freeboard'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['snow_depth', 'sea_ice_freeboard', 'radar_freeboard']                             # add variables to the trajectory data frame,
+  add_variable: ['snow_depth', 'sea_ice_freeboard']                             # add variables to the trajectory data frame,
                                                               # no growth correction, no histogram (list)
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
@@ -55,9 +55,9 @@ options:
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
       t_length: 45 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
-      t_start: 2022-08-18 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
+      t_start: 2022-08-01 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
       t_window: 16                                     # length of the drift-aware window in days
-      multiproc: True                                       # Parallel processing
+      multiproc: False                                       # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
@@ -78,7 +78,34 @@ options:
       thermo_change:
         model :  #'winter_2layers' # If None -> no thermodynamic computation
         oce_heat_flux : 2 #sose #either a constant or the name of the product to be used as ocean heat flux
-          
+
+    binning:                                                # Processing step: binning (Drift-Aware processing)
+      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-07-01_18-19-48'
+      filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
+      mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
+      t_length: 45 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
+      t_start: 2022-08-18 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
+      t_window: 16                                     # length of the drift-aware window in days
+      multiproc: False                                       # Parallel processing
+      num_cpus: 16                                            # Number of CPUs for parallel processing
+      parcel_grid:
+        bounds: [-5400000, -5400000, 5400000, 5400000]
+        dim: 1080
+      hist:
+        n_bins: 40                                            # number of histogram bins
+        range:
+          freeboard: [0, 1]                                   # freeboard hist range min/max (m)
+          thickness: [0, 10]                                  # thickness hist range min/max (m)
+      growth_estimation:
+        growth_grid:
+          bounds: [ -5400000, -5400000, 5400000, 5400000 ]
+          dim: 432
+        min_n_tiepoints: 3                                    # min number of tie points for the linear growth fitting
+        growth_range:
+          freeboard: [ -0.25, 0.25 ] # min/max limits for freeboard growth, neglected if outside
+          thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
+      
+
     gridding:                                                 # Processing step: gridding
       csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-02-20_10-00-39'
       mode: 'da'                                             # drift-aware: da, conventional: cv
