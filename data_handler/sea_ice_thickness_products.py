@@ -1,4 +1,10 @@
 import numpy as np
+import xarray as xr
+from scipy import ndimage
+from scipy import ndimage
+from scipy.spatial.distance import cdist
+from pyproj import Proj
+
 import pandas as pd
 import geopandas as gpd
 import glob
@@ -192,8 +198,54 @@ class SeaIceThicknessProducts:
                 tmp = pd.DataFrame.from_dict(beam_freeboard_keys)
                 tmp['beam'] = beam
                 tmp['beam_type'] = atl10_attrs[beam]['atlas_beam_type'].decode('utf8')
+                
+                heights = atl10_data[beam]['freeboard_segment'].get('heights', {})
+                
+                if 'height_segment_sigma' in heights:
+                    tmp['height_segment_sigma'] = heights['height_segment_sigma']
+                if 'height_segment_height' in heights:
+                    tmp['height_segment_height'] = heights['height_segment_height']
+                if 'ssh_n' in heights:
+                    tmp['ssh_n'] = heights['ssh_n']
+                if 'height_segment_length_seg' in heights:
+                    tmp['height_segment_length_seg'] = heights['height_segment_length_seg']
+                
+                if 'height_segment_confidence' in heights:
+                    tmp['height_segment_confidence'] = heights['height_segment_confidence']
+                
+                if 'height_segment_rms' in heights:
+                    tmp['height_segment_rms'] = heights['height_segment_rms']
+                
+                if 'height_segment_ssh_flag' in heights:
+                    tmp['height_segment_ssh_flag'] = heights['height_segment_ssh_flag']
+
+                if 'height_segment_type' in heights:
+                    tmp['height_segment_type'] = heights['height_segment_type']
+
+                if 'height_segment_w_gaussian' in heights:
+                    tmp['height_segment_w_gaussian'] = heights['height_segment_w_gaussian']
+
+                if 'cloud_flag_asr' in heights:
+                    tmp['cloud_flag_asr'] = heights['cloud_flag_asr']
+
+                if 'cloud_flag_atm' in heights:
+                    tmp['cloud_flag_atm'] = heights['cloud_flag_atm']
+
+                if 'photon_rate' in heights:
+                    tmp['photon_rate'] = heights['photon_rate']
+                
+                if 'backgr_r_25' in heights:
+                    tmp['backgr_r_25'] = heights['backgr_r_25']
+                
+                if 'msw_flag' in heights:
+                    tmp['msw_flag'] = heights['msw_flag']
+                if 'layer_flag' in heights:
+                    tmp['layer_flag'] = heights['layer_flag']
+                
+                
                 beam_list.append(tmp)
 
+            # Concatenate all beam dataframes into a single GeoDataFrame    
             df = pd.concat([df for df in beam_list]).pipe(gpd.GeoDataFrame)
             gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
             gdf = gdf.to_crs(self.out_epsg)
@@ -487,7 +539,7 @@ class SeaIceThicknessMultiProducts:
 
         return atl10_data, atl10_attrs, atl10_beams
 
-    def atl10_to_gdf(self, sens):
+    """def atl10_to_gdf(self, sens):
         atlas_sdp_gps_epoch = 1198800018.0
         gdf_list = list()
         for file in self.target_files[sens]:
@@ -519,7 +571,86 @@ class SeaIceThicknessMultiProducts:
                                   "beam_fb_unc": "total_freeboard_l2_unc"}, inplace=True) #sigma -> unc in v6
 
         return gdf_final.reset_index(drop=True)
+    """
+    def atl10_to_gdf(self, sens):
+        atlas_sdp_gps_epoch = 1198800018.0
+        gdf_list = list()
+        for file in self.target_files[sens]:
+            atl10_data, atl10_attrs, atl10_beams = self.read_atl10(file, attributes=True)
+            beam_list = list()
+            for beam in atl10_beams:
+                beam_freeboard_keys = {key: value for key, value in atl10_data[beam]['freeboard_segment'].items() if key not in ['geophysical', 'heights']} #group "bean_freeboard" in v5 doesn't exist anymore in v6
+                tmp = pd.DataFrame.from_dict(beam_freeboard_keys)
+                tmp['beam'] = beam
+                tmp['beam_type'] = atl10_attrs[beam]['atlas_beam_type'].decode('utf8')
+                
+                heights = atl10_data[beam]['freeboard_segment'].get('heights', {})
+                
+                if 'height_segment_sigma' in heights:
+                    tmp['height_segment_sigma'] = heights['height_segment_sigma']
+                if 'height_segment_height' in heights:
+                    tmp['height_segment_height'] = heights['height_segment_height']
+                if 'ssh_n' in heights:
+                    tmp['ssh_n'] = heights['ssh_n']
+                if 'height_segment_length_seg' in heights:
+                    tmp['height_segment_length_seg'] = heights['height_segment_length_seg']
+                
+                if 'height_segment_confidence' in heights:
+                    tmp['height_segment_confidence'] = heights['height_segment_confidence']
+                
+                if 'height_segment_rms' in heights:
+                    tmp['height_segment_rms'] = heights['height_segment_rms']
+                
+                if 'height_segment_ssh_flag' in heights:
+                    tmp['height_segment_ssh_flag'] = heights['height_segment_ssh_flag']
 
+                if 'height_segment_type' in heights:
+                    tmp['height_segment_type'] = heights['height_segment_type']
+
+                if 'height_segment_w_gaussian' in heights:
+                    tmp['height_segment_w_gaussian'] = heights['height_segment_w_gaussian']
+
+                if 'cloud_flag_asr' in heights:
+                    tmp['cloud_flag_asr'] = heights['cloud_flag_asr']
+
+                if 'cloud_flag_atm' in heights:
+                    tmp['cloud_flag_atm'] = heights['cloud_flag_atm']
+
+                if 'photon_rate' in heights:
+                    tmp['photon_rate'] = heights['photon_rate']
+                
+                if 'backgr_r_25' in heights:
+                    tmp['backgr_r_25'] = heights['backgr_r_25']
+                
+                if 'msw_flag' in heights:
+                    tmp['msw_flag'] = heights['msw_flag']
+                if 'layer_flag' in heights:
+                    tmp['layer_flag'] = heights['layer_flag']
+                
+                
+                beam_list.append(tmp)
+
+            # Concatenate all beam dataframes into a single GeoDataFrame    
+            df = pd.concat([df for df in beam_list]).pipe(gpd.GeoDataFrame)
+            gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
+            gdf = gdf.to_crs(self.out_epsg)
+
+            #gdf = gdf[(gdf['beam_fb_height'] < 10.0) &
+            #          (gdf['latitude'] > 50.0)] # not compatible with southern hemisphere
+            gdf = gdf[(gdf['beam_fb_height'] < 10.0)]
+            gdf_list.append(gdf)
+
+        gdf_final = pd.concat(gdf_list).pipe(gpd.GeoDataFrame)
+        gdf_final.crs = gdf_list[0].crs
+        gdf_final['time'] = Time(gdf_final['delta_time'] + atlas_sdp_gps_epoch, format='gps').to_datetime()
+        gdf_final['time'] = (gdf_final['time'] - datetime.datetime(1970, 1, 1)).dt.total_seconds()
+        gdf_final.rename(columns={"beam_fb_confidence": "total_freeboard_confidence",
+                                  "beam_fb_height": "total_freeboard",
+                                  "beam_fb_quality_flag": "total_freeboard_quality_flag",
+                                  "beam_fb_unc": "total_freeboard_l2_unc"}, inplace=True) #sigma -> unc in v6
+
+        return gdf_final.reset_index(drop=True)
+    
     def is2sitdat4_to_gdf(self, sens):
         gdf_list = list()
         for file in self.target_files[sens]:

@@ -80,28 +80,20 @@ class DriftAwareProcessor:
             # In order to give the same weight to sentinel3 and cs2 even in the case of there are several sensors 
             # for the same grid cell, we give the same weight to CS2 and (s3a + s3b). So only the number of point influence 
             # the final value and no systematic bias is introduced
-            sit_temp = sit.reset_index(drop=False).rename(columns={'index': 'orig_index'})
-            sit_weight = gpd.sjoin(sit_temp, frac_mission_grid[['cryosat2', 'sentinel3a', 'sentinel3b', 'geometry']], how='inner', predicate='within')
-            sit_weight = sit_weight.drop_duplicates(subset='orig_index')
-            sit_weight = sit_weight.set_index('orig_index').reindex(sit_temp.set_index('orig_index').index)
             if len(self.sensor) == 3:
+                sit_temp = sit.reset_index(drop=False).rename(columns={'index': 'orig_index'})
+                sit_weight = gpd.sjoin(sit_temp, frac_mission_grid[['cryosat2', 'sentinel3a', 'sentinel3b', 'geometry']], how='inner', predicate='within')
+                sit_weight = sit_weight.drop_duplicates(subset='orig_index')
+                sit_weight = sit_weight.set_index('orig_index').reindex(sit_temp.set_index('orig_index').index)
+            
                 # Weight initialization
-                sit_weight['weight'] = 1
+                cond = (0 < sit_weight['cryosat2_right']) & (sit_weight['cryosat2_right'] < 1) & \
+                        (0 < sit_weight['sentinel3a_right']) & (sit_weight['sentinel3a_right'] < 1) & \
+                        (0 < sit_weight['sentinel3b_right']) & (sit_weight['sentinel3b_right'] < 1)
 
-                for idx, row in sit.iterrows():
-                    x = row.geometry.x
-                    y = row.geometry.y
-                    try:
-                        frac_row = sit_weight.loc[(x, y)]
-                        if (0 < frac_row['cryosat2_right'] < 1) and (0 < frac_row['sentinel3a_right'] < 1) and (0 < frac_row['sentinel3b_right'] < 1):
-                            if sit_weight[idx, 'cryosat2'] == 1:
-                                sit_weight.at[idx, 'weight'] = 0.5
-                            else:
-                                sit_weight.at[idx, 'weight'] = 0.25
-                        else:
-                            sit_weight.at[idx, 'weight'] = 0.5
-                    except KeyError:
-                        continue
+                sit_weight['weight'] = np.where(cond, 0.25, 0.5)
+                sit_weight['weight'] = np.where(sit_weight.sensor == 'cryosat2', 0.5, sit_weight['weight'])
+                
 
             sit_weight['sit_weight'] = sit_weight['weight'] * sit_weight[self.target_var]
             sit_weight['sit_unc_weight'] = sit_weight['weight']**2 * sit_weight[self.target_var+'_l2_unc']**2

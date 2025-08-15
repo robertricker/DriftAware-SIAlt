@@ -55,13 +55,21 @@ class SeaIceConcentrationProducts:
                                 'epsg:4326', self.out_epsg)
 
         value = np.ma.getdata(data.variables['ice_conc'][0, :, :]).flatten()
+        value_lat = np.ma.getdata(data.variables['lat'][:, :]).flatten()
+        value_lon = np.ma.getdata(data.variables['lon'][:, :]).flatten()
+
         xc, yc = np.meshgrid(np.ma.getdata(data.variables['xc'][:] * 1000.0),
                              np.ma.getdata(data.variables['yc'][:] * 1000.0))
         coords = np.transpose(np.vstack((x, y)))
 
         ice_conc = griddata(coords, value, (xc, yc), method='nearest')
+        lat = griddata(coords, value_lat, (xc, yc), method='nearest')
+        lon = griddata(coords, value_lon, (xc, yc), method='nearest')
+
         ice_conc[ice_conc < 15] = 0
-        return {"xc": xc, "yc": yc, "ice_conc": ice_conc}
+        return {"xc": xc, "yc": yc, "ice_conc": ice_conc, 
+                "lat": lat, 
+                "lon": lon}
 
     @staticmethod
     def interp_ice_concentration(ice_conc, x, y):

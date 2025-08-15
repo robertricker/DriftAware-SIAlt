@@ -16,6 +16,7 @@ from data_handler.sea_ice_concentration_products import SeaIceConcentrationProdu
 from data_handler.sea_ice_drift_products import SeaIceDriftProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessMultiProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessProducts
+from data_handler.sea_ice_thickness_clim_products import SeaIceThicknessClimProducts
 
 from data_handler.air_temperature_products import AirTemperatureProducts
 from data_handler.ocean_heat_flux_products import OceanHeatFluxProducts
@@ -27,6 +28,7 @@ from io_tools import create_out_dir
 from io_tools import init_logger
 from io_tools import read_dasit_csv
 from io_tools import make_csv_filename
+from data_handler.filter_miz import compute_apply_flag
 
 
 def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, list_f, list_r, j):
@@ -178,6 +180,20 @@ def stack_proc(config, direct, grid):
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
             sit_product.get_product()
             sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
+            #if ICESAT-2, then we need to filter out the total freeboard (snow depth purposes)
+            if len(sensor) == 1 and sensor[0] == 'icesat2':
+                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='mms_clim',
+                                                          out_epsg=out_epsg)
+                sit_clim_product.get_file_list(config['auxiliary']['mms_clim'])
+                sit_clim_product.get_file_dates()
+                
+                sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
+
+                sit_clim_product.sit_clim = sit_clim_product.get_tFB_clim(sit_clim_product.target_files)
+
+                sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
+
+
             processor.baseline_proc(sic_product, hist_n_bins, hist_range)
 
 
