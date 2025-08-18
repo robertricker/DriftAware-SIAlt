@@ -152,6 +152,11 @@ def process_file(config, file_list, grid, region_grid):
     var, var_rename = prepare_netcdf.select_variables(data)
     if is_weight:
         master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['weighted_mean'], weight_var=weight_var)
+        # Take into account the weight for the uncertainty computation
+        #master[target_var + '_total_unc'] = master_unc[target_var + '_total_unc'].copy()
+        #master[target_var + '_growth_unc'] = master_unc[target_var + '_growth_unc'].copy()
+        #master[target_var + '_drift_unc'] = master_unc[target_var + '_drift_unc'].copy()
+        #master[target_var + '_l2_unc'] = master_unc[target_var + '_l2_unc'].copy()
     else:
         master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
 
