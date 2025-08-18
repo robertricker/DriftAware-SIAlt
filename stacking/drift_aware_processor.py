@@ -76,7 +76,7 @@ class DriftAwareProcessor:
                                               self.add_variable+['time'], agg_mode=['mean'])
             frac_mission_grid = gridding_lib.grid_data(sit, self.grid, self.sensor,
                                               self.sensor, agg_mode=['mean', 'sum'])
-            
+            """
             # In order to give the same weight to sentinel3 and cs2 even in the case of there are several sensors 
             # for the same grid cell, we give the same weight to CS2 and (s3a + s3b). So only the number of point influence 
             # the final value and no systematic bias is introduced
@@ -95,20 +95,23 @@ class DriftAwareProcessor:
                 sit_weight['weight'] = np.where(sit_weight.sensor == 'cryosat2', 0.5, sit_weight['weight'])
                 
 
-            sit_weight['sit_weight'] = sit_weight['weight'] * sit_weight[self.target_var]
-            sit_weight['sit_unc_weight'] = sit_weight['weight']**2 * sit_weight[self.target_var+'_l2_unc']**2
+                sit_weight['sit_weight'] = sit_weight['weight'] * sit_weight[self.target_var]
+                sit_weight['sit_unc_weight'] = sit_weight['weight']**2 * sit_weight[self.target_var+'_l2_unc']**2
 
-            sum_weight = gridding_lib.grid_data(sit_weight, self.grid, ['weight'],
-                                              ['weight'], agg_mode=['sum'])
-            sum_sit_weight = gridding_lib.grid_data(sit_weight, self.grid, ['sit_weight', 'sit_unc_weight'],
-                                              ['sit_weight', 'sit_unc_weight'], agg_mode=['sum'])
-            sit_weighted = sum_sit_weight.sit_weight_sum / sum_weight.weight_sum
-            sit_unc_weighted = sum_sit_weight.sit_unc_weight_sum / (sum_weight.weight_sum**2)
+                sum_weight = gridding_lib.grid_data(sit_weight, self.grid, ['weight'],
+                                                ['weight'], agg_mode=['sum'])
+                sum_sit_weight = gridding_lib.grid_data(sit_weight, self.grid, ['sit_weight', 'sit_unc_weight'],
+                                                ['sit_weight', 'sit_unc_weight'], agg_mode=['sum'])
+                sit_weighted = sum_sit_weight.sit_weight_sum / sum_weight.weight_sum
+                sit_unc_weighted = sum_sit_weight.sit_unc_weight_sum / (sum_weight.weight_sum**2)
 
-            #tmp_grid[self.target_var+'_l2_unc'] = np.sqrt(unc_grid[self.target_var+'_l2_unc_sum'])/unc_grid[
-            #    self.target_var+'_l2_unc_cnt']
-            tmp_grid[self.target_var+'_l2_unc'] = np.sqrt(sit_unc_weighted)
-            tmp_grid[self.target_var] = sit_weighted
+
+                tmp_grid[self.target_var+'_l2_unc'] = np.sqrt(sit_unc_weighted)
+                tmp_grid[self.target_var] = sit_weighted
+                """
+
+            tmp_grid[self.target_var+'_l2_unc'] = np.sqrt(unc_grid[self.target_var+'_l2_unc_sum'])/unc_grid[
+                self.target_var+'_l2_unc_cnt']
 
             tmp_grid[self.add_variable] = add_grid[self.add_variable]
             tmp_grid[self.sensor] = frac_mission_grid[self.sensor]

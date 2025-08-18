@@ -63,7 +63,7 @@ def add_sic_variables_to_gdf(gdf, ds_ice_conc, griddef):
     }
 
     # Load SIC grid
-    ice_conc = ds_ice_conc["ice_conc"][:, :]
+    ice_conc = ds_ice_conc["ice_conc_no_0"][:, :]
     grid_lons = ds_ice_conc["lon"]
     grid_lats = ds_ice_conc["lat"]
 
@@ -159,13 +159,14 @@ def compute_apply_flag(sit_product, sic_product, sit_clim_product):
         #roll_std = rolling_merge.std()['total_freeboard']
         #roll_median_layer_flag = rolling_merge.median()['layer_flag']
         #roll_median_rms = rolling_merge.median()['height_segment_rms']
-        close_to_ocean = sel['distance_to_ocean_km'] <= 250
+        not_coastal_weddell = ~((sel['longitude'] > -60) & (sel['longitude'] < -45)) 
+        close_to_ocean = sel['distance_to_ocean_km'] <= 300
         #close_to_ice = sel['distance_to_low_sic_km'] <= 200
         out_of_clim = sel['total_freeboard'] > (sel['tFB_interp'] + 3*sel['sigma_tFB_interp'])
         #flags_bad = roll_median_layer_flag>=1
         #stats_bad = (roll_median > sel['median_15d_track']) & (roll_std > 0.20) & (roll_median_rms <= 0.3)
 
-        exclude_condition = close_to_ocean & out_of_clim #(flags_bad | stats_bad)
+        exclude_condition = close_to_ocean & out_of_clim & not_coastal_weddell #(flags_bad | stats_bad)
         flag = ~exclude_condition | (~close_to_ocean)  
         gdf = sel[(merge2['total_freeboard_quality_flag'] <= 2)][flag]
         gdf_list.append(gdf)

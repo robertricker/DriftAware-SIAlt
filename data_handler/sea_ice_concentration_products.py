@@ -63,11 +63,12 @@ class SeaIceConcentrationProducts:
         coords = np.transpose(np.vstack((x, y)))
 
         ice_conc = griddata(coords, value, (xc, yc), method='nearest')
+        ice_conc_no_0 = np.copy(ice_conc)
         lat = griddata(coords, value_lat, (xc, yc), method='nearest')
         lon = griddata(coords, value_lon, (xc, yc), method='nearest')
 
-        ice_conc[ice_conc < 15] = 0
-        return {"xc": xc, "yc": yc, "ice_conc": ice_conc, 
+        ice_conc[ice_conc < 15] = 0 # need to mask out the low sic values, see in the processing step for the 0 sic values
+        return {"xc": xc, "yc": yc, "ice_conc": ice_conc, "ice_conc_no_0": ice_conc_no_0,
                 "lat": lat, 
                 "lon": lon}
 
