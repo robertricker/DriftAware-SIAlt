@@ -17,6 +17,8 @@ from data_handler.sea_ice_drift_products import SeaIceDriftProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessMultiProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessProducts
 
+from data_handler.sea_ice_thickness_clim_products import SeaIceThicknessClimProducts
+
 from data_handler.air_temperature_products import AirTemperatureProducts
 from data_handler.ocean_heat_flux_products import OceanHeatFluxProducts
 from stacking.stack_structure import StackStructure
@@ -30,6 +32,7 @@ from io_tools import init_logger
 from io_tools import read_dasit_csv
 from io_tools import make_csv_filename
 from binning.merge_da_stacks import merge_bin_da_csv_files
+from data_handler.filter_miz import compute_apply_flag
 
 def merge_forward_reverse_da_stacks_compute_unc(config, grid, growth_cell_width, cell_width, list_f, list_r, j):
     init_logger(config)
@@ -92,8 +95,9 @@ def merge_forward_reverse_da_stacks_compute_unc(config, grid, growth_cell_width,
         merged["growth_interpolated"] = growth_interp
         merged["growth"] = growth
 
+    
     merged = merged.rename(columns={target_var: target_var + "_uncorrected"})
-
+    merged[target_var] = merged[target_var + "_uncorrected"]
     points = np.array([merged['geometry'].x, merged['geometry'].y]).transpose()
     tree = cKDTree(points)
     if target_var == 'sea_ice_thickness':
@@ -170,7 +174,21 @@ def binning_proc(config, direct, grid):
         if len(empty_lists)==0:
             logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(file_counts))
             sit_product.get_product()
-            processor.baseline_proc( hist_n_bins, hist_range)
+            if sensor == 'icesat2':
+                sic_product = SeaIceConcentrationProducts(hem=hem, product_id=config['options']['ice_conc_product'],
+                                              out_epsg=out_epsg)
+                sic_product.get_file_list(config['auxiliary']['ice_conc'][config['options']['ice_conc_product']])
+                sic_product.get_file_dates()
+                sic_product.target_files = sic_product.get_target_files(t0, t1)
+                sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
+
+                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='icesat2_clim',
+                                                          out_epsg=out_epsg)
+                sit_clim_product.get_file_list(config['auxiliary']['icesat2_clim'])
+                sit_clim_product.get_file_dates()
+                sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
+
+            processor.baseline_proc(hist_n_bins, hist_range)
 
         if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
             m = processor.binning_proc(stk_opt['t_window'], d_sgn, day_range[0])

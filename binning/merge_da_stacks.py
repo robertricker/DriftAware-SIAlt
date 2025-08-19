@@ -86,7 +86,7 @@ def merge_bin_da_csv_files(config, gdf_bin, bin_csv):
 
     print("Merging GeoDataFrames on the first point of their geometries...")
     target_var = config["options"]["target_variable"]
-    columns_to_add =  ['drift_unc']
+    columns_to_add =  ['drift_unc', 'shear', 'deformation', 'ice_conc']
 
     merged = merge_on_first_point(gdf_bin, gdf_da, columns_to_add)
     # Remove the origin geometry column 

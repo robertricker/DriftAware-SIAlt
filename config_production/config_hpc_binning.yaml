@@ -11,7 +11,7 @@ input_dir: # relative to base_dir
     
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/" #thermo/param/" #csv/v5/"  # MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/binning/" #thermo/param/" #csv/v5/"  # MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
   gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/no_weight" #thermo/param/" #netcdf/v5/"  # MIZ_filter_23/netcdf/thermo/param"  # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
@@ -80,12 +80,12 @@ options:
         oce_heat_flux : 2 #sose #either a constant or the name of the product to be used as ocean heat flux
 
     binning:                                                # Processing step: binning (Drift-Aware processing)
-      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-07-01_18-19-48'
+      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025_july_201811_202411'
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
       t_length: 45 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
-      t_start: 2022-08-18 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
-      t_window: 16                                     # length of the drift-aware window in days
+      t_start: 2022-08-01 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
+      t_window: 16                                    # length of the drift-aware window in days
       multiproc: False                                       # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
