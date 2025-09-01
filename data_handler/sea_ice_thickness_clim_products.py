@@ -64,21 +64,45 @@ class SeaIceThicknessClimProducts:
         config = self.config[self.product_id]
         date_str = config['date_str']
         date_pt = config['date_pt']
-        dates = [
-            datetime.datetime.strptime(re.search(r'icdc_\d' + date_str, file).group(), date_pt)
-            for file in self.file_list
-        ]
-        self.file_dates = [date + config['date_offset'] for date in dates]
 
+        dates = []
+        for file in self.file_list:
+            try:
+                date = datetime.datetime.strptime(
+                    re.search(r'icdc_\d' + date_str, file).group(), date_pt
+                )
+                dates.append(date)
+            except ValueError as e:
+                if "day is out of range" in str(e):  
+                    continue  
+                else:
+                    raise
+
+        self.file_dates = [date + config['date_offset'] for date in dates]
+    
     def get_target_files(self, t0, t1):
         dt1d = datetime.timedelta(days=1)
         dates = self.file_dates
         file_list = self.file_list
-        #file = [file_list[dates.index(d)] for d in dates if t0 <= d < t1]
-        file = [file for date, file in zip(dates, file_list) if (t0.month, t0.day) <= (date.month, date.day) < (t1.month, t1.day)]
+
+        def select_files(t0, t1, dates, file_list):
+            # Cas normal : pas de passage au 31/12
+            if (t0.month, t0.day) < (t1.month, t1.day):
+                candidates = [f for d, f in zip(dates, file_list)
+                            if (t0.month, t0.day) <= (d.month, d.day) < (t1.month, t1.day)]
+            else:
+                # Cas wrap-around : ex t0=12/31, t1=01/02
+                candidates = [f for d, f in zip(dates, file_list)
+                            if (d.month, d.day) >= (t0.month, t0.day) or
+                                (d.month, d.day) < (t1.month, t1.day)]
+            return candidates
+
+        file = select_files(t0, t1, dates, file_list)
+
         if len(file) == 0:
             t0i, t1i = t0, t1
             while not file and (abs(t0i - t0) < datetime.timedelta(days=8)):
-                file = [file_list[dates.index(d)] for d in dates if t0i <= d < t1i]
+                file = select_files(t0i, t1i, dates, file_list)
                 t0i, t1i = t0i - dt1d, t1i - dt1d
-        return file[0]
+
+        return file[0] if file else None

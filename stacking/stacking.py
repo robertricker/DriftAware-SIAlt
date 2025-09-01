@@ -190,11 +190,12 @@ def stack_proc(config, direct, grid):
                 sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
 
                 sit_clim_product.sit_clim = sit_clim_product.get_tFB_clim(sit_clim_product.target_files)
+                #keep only the total freeboard with quality flag <= 2
+                sit_product.product = sit_product.product[(sit_product.product['total_freeboard_quality_flag'] <= 4) & (sit_product.product['total_freeboard_quality_flag'] >= 0)]
+                #sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
 
-                sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
 
-
-            processor.baseline_proc(sic_product, hist_n_bins, hist_range)
+            processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim = sit_clim_product if 'sit_clim_product' in locals() else None)
 
 
         # The sea ice concentration is taken at t1 check data after beeing advected

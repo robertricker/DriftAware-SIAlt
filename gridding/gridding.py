@@ -91,7 +91,8 @@ def process_file(config, file_list, grid, region_grid):
     data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])
     data['dynamic_change_rate_tmp'] = data['divergence'].apply(lambda x: [np.exp(-val) for val in x])
     data['dynamic_change_rate'] = data.apply(lambda row: [-row[f"{target_var}_uncorrected"] * val for val in row["divergence"]], axis=1)
-    data['thermo_change_rate'] = data.apply(lambda row: [row["growth_interpolated"] - val for val in row["dynamic_change_rate"]], axis=1)
+    if 'growth_interpolated' in data.columns:
+        data['thermo_change_rate'] = data.apply(lambda row: [row["growth_interpolated"] - val for val in row["dynamic_change_rate"]], axis=1)
 
     #data['thermo_change_rate'] = data.apply(lambda row: row["growth_interpolated"] - row["dynamic_change_rate"], axis=1)
     data['shear'] = data['shear'].apply(lambda x: [float(val) for val in x.split()])
@@ -137,16 +138,21 @@ def process_file(config, file_list, grid, region_grid):
                                            hist_range,
                                            fill_nan=True,
                                            agg_mode=['sum'])
-
-    data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_growth_unc']**2 +
-                                            data[target_var+'_drift_unc']**2 +
-                                            data[target_var+'_l2_unc']**2)
+    if target_var + 'total_unc' not in data.columns:
+        if 'freeboard' not in target_var:
+            data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_growth_unc']**2 +
+                                                    data[target_var+'_drift_unc']**2 +
+                                                    data[target_var+'_l2_unc']**2)
+        else:
+            data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_drift_unc']**2 +
+                                                    data[target_var+'_l2_unc']**2)
 
     data['deformation'] = data.apply(get_deformation, axis=1)
     data['divergence'] = data["divergence"].apply(get_row_mean)
     data['shear'] = data["shear"].apply(get_row_mean)
     data['dynamic_change_rate'] = data['dynamic_change_rate'].apply(get_row_mean)
-    data['thermo_change_rate'] = data['thermo_change_rate'].apply(get_row_mean)
+    if 'thermo_change_rate' in data.columns:
+        data['thermo_change_rate'] = data['thermo_change_rate'].apply(get_row_mean)
 
     prepare_netcdf = PrepareNetcdf(config, file, region_grid)
     var, var_rename = prepare_netcdf.select_variables(data)

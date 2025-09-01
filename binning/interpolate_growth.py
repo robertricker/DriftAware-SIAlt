@@ -57,7 +57,6 @@ def interpolate_growth_gridd(data, interp_var, growth_range, grid, cell_width, m
     eps = 1.8
     lat_range = [40.0, 90.0] if hem == 'nh' else [-40.0, -90.0]
     fsm = interpolate.interp1d(np.array(lat_range), np.array([80, 10]))
-    #density = df.groupby('lat')['nombre de points'].sum().reset_index()
     # perform linear fit
     tmp['coeff'] = tmp.groupby('index_right').apply(
         lambda x: np.polyfit(x['dt_days'], x[interp_var], deg=1, cov=True))

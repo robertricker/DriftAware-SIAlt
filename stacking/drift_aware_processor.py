@@ -5,7 +5,7 @@ import numpy as np
 import sys
 from loguru import logger
 import datetime
-
+from data_handler.filter_miz import compute_apply_flag
 
 class DriftAwareProcessor:
     def __init__(self, parent, **kwargs):
@@ -21,7 +21,7 @@ class DriftAwareProcessor:
 
         self.i = None
 
-    def baseline_proc(self, sic_product, hist_n_bins, hist_range):
+    def baseline_proc(self, sic_product, hist_n_bins, hist_range, sit_clim=None):
         # adds the original measurements at t=0 (without drift correction) to the master structure
         sit = self.parent.product
         sit[self.target_var + '_l2_unc'] **= 2
@@ -58,11 +58,14 @@ class DriftAwareProcessor:
                 tmp_grid = gpd.GeoDataFrame(
                     tmp_grid, geometry=gpd.points_from_xy(tmp_grid['xu'].values, tmp_grid['yu'].values),
                     crs=self.out_epsg)
+                if sit_clim is not None:
+                    tmp_grid = compute_apply_flag(tmp_grid, sic_product, sit_clim, crs=self.out_epsg)
                 tmp_grid["geometry"] = tmp_grid["geometry"].apply(lambda gdf: [gdf])
                 tmp_grid["ice_conc"] = sic_product.interp_ice_concentration(
                     sic_product.ice_conc, tmp_grid['xu'].values, tmp_grid['yu'].values)
                 tmp_grid[self.target_var+'_drift_unc'] = 0.0
                 tmp_grid['divergence'], tmp_grid['shear'] = [[0]] * len(tmp_grid), [[0]] * len(tmp_grid)
+                
                 self.master[beam][self.i][0] = tmp_grid
                 self.scheme[(beams == beam).argmax(), self.i, 0] = 1
 
