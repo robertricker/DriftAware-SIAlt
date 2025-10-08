@@ -121,6 +121,12 @@ variables:
       - "shear"
       - "divergence"
       - "snow_depth"
+      - "sentinel3a"
+      - "sentinel3b"
+      - "cryosat2"
+      - "sentinel3a_cnt"
+      - "sentinel3b_cnt"
+      - "cryosat2_cnt"
     rename:
       - "{{ target_var }}"
       - "{{ target_var }}_l2_unc"
@@ -134,6 +140,13 @@ variables:
       - "shear"
       - "divergence"
       - "snow_depth"
+      - "sentinel3a_frac"
+      - "sentinel3b_frac"
+      - "cryosat2_frac"
+      - "sentinel3a_cnt"
+      - "sentinel3b_cnt"
+      - "cryosat2_cnt"
+      #- "nb_tiepoints"
 
 variable_attributes:
   xc:
