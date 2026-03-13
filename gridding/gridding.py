@@ -66,6 +66,7 @@ def process_file(config, file_list, grid, region_grid):
 
     # declare gridding options
     gridding_mode = grd_opt['mode']
+    dt_days_max = grd_opt['dt_days_max']
     var_range = grd_opt['target_variable_range']["freeboard" if "freeboard" in target_var else "thickness"]
     out_dir = config['output_dir']['gridded_data']
     is_weight = config['options']['proc_step_options']['gridding']['weighting']['is_weight']
@@ -79,14 +80,16 @@ def process_file(config, file_list, grid, region_grid):
             data_tmp = read_dasit_csv(file)
             data = pd.concat([data, data_tmp], ignore_index=True)
             
-    # TEST of growth interpolation
+
     traj_geom = data['geometry']
     start_location = data["geometry"].apply(lambda g: g.geoms[0])
     target_location = data["geometry"].apply(lambda g: g.geoms[-1])
     data["geometry"] = target_location
-
     data.to_crs(crs=out_epsg, inplace=True)
-
+    data = data[data['dt_days'].abs() <= dt_days_max]
+    if data.empty:
+        logger.warning(f"No data within the specified dt_days_max of {dt_days_max} days in file: {file}")
+        return  
     data['dist_acquisition'] = start_location.distance(target_location) / 1000.0
     data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])
     data['dynamic_change_rate_tmp'] = data['divergence'].apply(lambda x: [np.exp(-val) for val in x])

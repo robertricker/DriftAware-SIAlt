@@ -11,7 +11,7 @@ input_dir: # relative to base_dir
     
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/filter_04" #thermo/param/" #csv/v5/"  # MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/" #thermo/param/" #csv/v5/"  # MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
   gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/no_weight" #thermo/param/" #netcdf/v5/"  # MIZ_filter_23/netcdf/thermo/param"  # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
@@ -37,16 +37,16 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: ['icesat2'] #['sentinel3a', 'sentinel3b', 'cryosat2'] # ['icesat2'] # # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: ['sentinel3a', 'sentinel3b', 'cryosat2'] # ['icesat2'] # # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: stacking # Available options: stacking, gridding, and visualization
   ice_conc_product: c3s
   ice_drift_product: osi405 ##### !!!!!!!
   t2m_product : era5
   ohf_product : sose
 
-  target_variable: 'total_freeboard'                        # Available options: sea_ice_freeboard (radar altimeters),
+  target_variable: 'radar_freeboard'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: [] #['radar_freeboard', 'sea_ice_freeboard', 'snow_depth']                             # add variables to the trajectory data frame,
+  add_variable: ['sea_ice_thickness', 'sea_ice_freeboard', 'snow_depth']                             # add variables to the trajectory data frame,
                                                               # no growth correction, no histogram (list)
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
@@ -55,8 +55,8 @@ options:
     stacking:                                                 # Processing step: stacking (Drift-Aware processing)
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
-      t_length: 1752 #255 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
-      t_start: 2019-07-25 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
+      t_length: 80 #2141 #255 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
+      t_start: 2018-10-01 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
       t_window: 16                                     # length of the drift-aware window in days
       multiproc: True                                 # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing

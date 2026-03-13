@@ -62,14 +62,18 @@ def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg, hemisphere):
 def create_out_dir(config, parent_directory, cell_width):
     target_variable = config["options"]["target_variable"]
     hem = config["options"]["hemisphere"]
+    procstep = config['options']['proc_step']
     stk_opt = config['options']['proc_step_options']['stacking']
     t_window = stk_opt['t_window']
     mode = stk_opt['mode']
     epsg = 'epsg' + config['options']['out_epsg'].split(":")[1]
     res = "{:.0f}".format(cell_width / 100.0)
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
-    sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}-{timestamp}'
+    if procstep == 'gridding':
+        dt_days_max = config['options']['proc_step_options']['gridding']['dt_days_max']
+        sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}_{dt_days_max}-{timestamp}'
+    else:
+        sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}-{timestamp}'
     sub_dir_path = os.path.join(parent_directory, sub_dir_name)
     os.makedirs(sub_dir_path)
     return sub_dir_path + '/'
