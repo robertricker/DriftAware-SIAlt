@@ -32,7 +32,7 @@ def transform_coords(x: float, y: float, in_epsg: str, out_epsg: str) -> Tuple[f
     return transformer.transform(x, y)
 
 
-def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg):
+def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg, hemisphere):
     xmin, xmax = netcdf_bounds[0], netcdf_bounds[2]
     ymin, ymax = netcdf_bounds[1], netcdf_bounds[3]
 
@@ -46,10 +46,14 @@ def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg):
     reg_data = netCDF4.Dataset(file)
     xc, yc = np.meshgrid(np.ma.getdata(reg_data.variables['x'][:]),
                          np.ma.getdata(reg_data.variables['y'][:]))
+    
+    dict_region = {'epsg': {'sh': 'epsg:6932',
+                'nh': 'epsg:6931'}, 'var' : {'nh' : 'sea_ice_region', 'sh': 'sea_ice_region_NASA_modified'}}
+
     lon, lat = transform_coords(np.ma.getdata(xc).flatten(),
                                 np.ma.getdata(yc).flatten(),
-                                'epsg:6931', 'epsg:4326')
-    value = np.ma.getdata(reg_data.variables['sea_ice_region'][:, :]).flatten()
+                                dict_region['epsg'][hemisphere], 'epsg:4326')
+    value = np.ma.getdata(reg_data.variables[dict_region['var'][hemisphere]][:, :]).flatten()
     coords = np.transpose(np.vstack((lon, lat)))
     region = griddata(coords, value, (lon_grid, lat_grid), method='nearest')
     return region
@@ -58,14 +62,18 @@ def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg):
 def create_out_dir(config, parent_directory, cell_width):
     target_variable = config["options"]["target_variable"]
     hem = config["options"]["hemisphere"]
+    procstep = config['options']['proc_step']
     stk_opt = config['options']['proc_step_options']['stacking']
     t_window = stk_opt['t_window']
     mode = stk_opt['mode']
     epsg = 'epsg' + config['options']['out_epsg'].split(":")[1]
     res = "{:.0f}".format(cell_width / 100.0)
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
-    sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}-{timestamp}'
+    if procstep == 'gridding':
+        dt_days_max = config['options']['proc_step_options']['gridding']['dt_days_max']
+        sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}_{dt_days_max}-{timestamp}'
+    else:
+        sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}-{timestamp}'
     sub_dir_path = os.path.join(parent_directory, sub_dir_name)
     os.makedirs(sub_dir_path)
     return sub_dir_path + '/'
@@ -99,15 +107,18 @@ def make_csv_filename(config, t0, direct):
     var_map = {
         "sea_ice_thickness": "SITHICK",
         "sea_ice_freeboard": "SIFB",
+        "radar_freeboard": "RFB",
         "total_freeboard": "TFB"}
     var = var_map.get(config['options']['target_variable'])
     instr_map = {
         "envisat": "RA2_ENVISAT",
         "cryosat2": "SIRAL_CRYOSAT2",
-        "sentinel3a": "SRAL_SENTINAL3A",
-        "sentinel3b": "SRAL_SENTINAL3B",
+        "sentinel3a": "SRAL_SENTINEL3A",
+        "sentinel3b": "SRAL_SENTINEL3B",
         "icesat2": "ATLAS_ICESAT2"}
-    instr = instr_map.get(config['options']['sensor'])
+    
+    instr_list = [instr_map.get(config['options']['sensor'][i]) for i in range(len(config['options']['sensor']))]
+    instr = "_".join(instr_list)
     region = config['options']['hemisphere'].upper()
     mode = 'DA_'+direct.upper()
     period = t0.strftime('%Y%m%d')

@@ -17,7 +17,8 @@ from gridding.prepare_netcdf import PrepareNetcdf
 from gridding import gridding_lib
 from loguru import logger
 from io_tools import init_logger
-
+from stacking.interpolate_growth import interpolate_growth_gridd
+from stacking.interpolate_growth import interpolate_growth
 
 def organize_files_by_date(source_dir, target_dir):
     files = [f for f in os.listdir(source_dir) if f.endswith('.nc')]
@@ -52,13 +53,12 @@ def get_row_mean(row):
     return np.mean(row)
 
 
-def process_file(config, file, grid, region_grid):
+def process_file(config, file_list, grid, region_grid):
     init_logger(config)
     target_var = config['options']['target_variable']
     out_epsg = config["options"]["out_epsg"]
     stk_opt = config['options']['proc_step_options']['stacking']
     grd_opt = config['options']['proc_step_options']['gridding']
-
     # declare histogram options
     hist_n_bins = stk_opt['hist']['n_bins']
     hist_range = stk_opt['hist']['range']["freeboard" if "freeboard" in target_var else "thickness"]
@@ -66,17 +66,38 @@ def process_file(config, file, grid, region_grid):
 
     # declare gridding options
     gridding_mode = grd_opt['mode']
+    dt_days_max = grd_opt['dt_days_max']
     var_range = grd_opt['target_variable_range']["freeboard" if "freeboard" in target_var else "thickness"]
     out_dir = config['output_dir']['gridded_data']
+    is_weight = config['options']['proc_step_options']['gridding']['weighting']['is_weight']
+    weight_var = config['options']['proc_step_options']['gridding']['weighting']['var_to_weight_with']
 
-    logger.info('process csv file: ' + os.path.basename(file))
+    for i, file in enumerate(file_list):
+        logger.info('process csv file: ' + os.path.basename(file))
+        if i == 0:
+            data = read_dasit_csv(file)
+        else:
+            data_tmp = read_dasit_csv(file)
+            data = pd.concat([data, data_tmp], ignore_index=True)
+            
 
-    data = read_dasit_csv(file)
-    data.to_crs(crs=out_epsg, inplace=True)
+    traj_geom = data['geometry']
     start_location = data["geometry"].apply(lambda g: g.geoms[0])
     target_location = data["geometry"].apply(lambda g: g.geoms[-1])
+    data["geometry"] = target_location
+    data.to_crs(crs=out_epsg, inplace=True)
+    data = data[data['dt_days'].abs() <= dt_days_max]
+    if data.empty:
+        logger.warning(f"No data within the specified dt_days_max of {dt_days_max} days in file: {file}")
+        return  
     data['dist_acquisition'] = start_location.distance(target_location) / 1000.0
     data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])
+    data['dynamic_change_rate_tmp'] = data['divergence'].apply(lambda x: [np.exp(-val) for val in x])
+    data['dynamic_change_rate'] = data.apply(lambda row: [-row[f"{target_var}_uncorrected"] * val for val in row["divergence"]], axis=1)
+    if 'growth_interpolated' in data.columns:
+        data['thermo_change_rate'] = data.apply(lambda row: [row["growth_interpolated"] - val for val in row["dynamic_change_rate"]], axis=1)
+
+    #data['thermo_change_rate'] = data.apply(lambda row: row["growth_interpolated"] - row["dynamic_change_rate"], axis=1)
     data['shear'] = data['shear'].apply(lambda x: [float(val) for val in x.split()])
 
     if gridding_mode == 'da':
@@ -93,7 +114,7 @@ def process_file(config, file, grid, region_grid):
     data = data.dropna(subset=data.columns.difference(['growth']))
     data = data.reset_index()
     time_center = datetime.datetime.strptime(
-        re.split('-', os.path.basename(file))[6], '%Y%m%d') + datetime.timedelta(hours=12)
+        re.split('-', os.path.basename(file))[-2], '%Y%m%d') + datetime.timedelta(hours=12)
     # extract histogram
     data_hist = data[target_var + '_hist'].str.split(expand=True).astype(int)
     data_hist.columns = np.arange(hist_n_bins).astype(str)
@@ -120,17 +141,42 @@ def process_file(config, file, grid, region_grid):
                                            hist_range,
                                            fill_nan=True,
                                            agg_mode=['sum'])
-
-    data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_growth_unc']**2 +
-                                            data[target_var+'_drift_unc']**2 +
-                                            data[target_var+'_l2_unc']**2)
+    if target_var + 'total_unc' not in data.columns:
+        if 'freeboard' not in target_var:
+            data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_growth_unc']**2 +
+                                                    data[target_var+'_drift_unc']**2 +
+                                                    data[target_var+'_l2_unc']**2)
+        else:
+            data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_drift_unc']**2 +
+                                                    data[target_var+'_l2_unc']**2)
 
     data['deformation'] = data.apply(get_deformation, axis=1)
     data['divergence'] = data["divergence"].apply(get_row_mean)
     data['shear'] = data["shear"].apply(get_row_mean)
+    data['dynamic_change_rate'] = data['dynamic_change_rate'].apply(get_row_mean)
+    if 'thermo_change_rate' in data.columns:
+        data['thermo_change_rate'] = data['thermo_change_rate'].apply(get_row_mean)
+
     prepare_netcdf = PrepareNetcdf(config, file, region_grid)
-    var, var_rename = prepare_netcdf.select_variables()
-    master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
+    var, var_rename = prepare_netcdf.select_variables(data)
+    if is_weight:
+        master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['weighted_mean'], weight_var=weight_var)
+        # Take into account the weight for the uncertainty computation
+        #master[target_var + '_total_unc'] = master_unc[target_var + '_total_unc'].copy()
+        #master[target_var + '_growth_unc'] = master_unc[target_var + '_growth_unc'].copy()
+        #master[target_var + '_drift_unc'] = master_unc[target_var + '_drift_unc'].copy()
+        #master[target_var + '_l2_unc'] = master_unc[target_var + '_l2_unc'].copy()
+    else:
+        master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
+
+    
+    if 'cryosat2_cnt' in merged.columns:
+        master['cryosat2_cnt'] = gridding_lib.grid_data(data, grid, ['cryosat2_cnt'], ['cryosat2_cnt'], fill_nan=True, agg_mode=['sum'])['cryosat2_cnt_sum']
+    if 'sentinel3a_cnt' in merged.columns:
+        master['sentinel3a_cnt'] = gridding_lib.grid_data(data, grid, ['sentinel3a_cnt'], ['sentinel3a_cnt'], fill_nan=True, agg_mode=['sum'])['sentinel3a_cnt_sum']
+    if 'sentinel3b_cnt' in merged.columns:
+        master['sentinel3b_cnt'] = gridding_lib.grid_data(data, grid, ['sentinel3b_cnt'], ['sentinel3b_cnt'], fill_nan=True, agg_mode=['sum'])['sentinel3b_cnt_sum']
+    
     master[target_var + '_std'] = gridding_lib.grid_data(
         data, grid, [target_var], [target_var], fill_nan=True, agg_mode=['std'])[target_var + '_std']
     master = master.join(tmp_hist_grid.drop(columns=['geometry']))
@@ -157,6 +203,8 @@ def process_file(config, file, grid, region_grid):
 
 
 def gridding(config):
+    sensor = config['options']['sensor']
+    hemisphere = config['options']['hemisphere']
     grd_opt = config['options']['proc_step_options']['gridding']
     netcdf_bounds = grd_opt['netcdf_grid']['bounds']
     if grd_opt['csv_dir'] == "all":
@@ -175,20 +223,42 @@ def gridding(config):
         grid_type='circular')
 
     config['output_dir']['gridded_data'] = create_out_dir(config, config['output_dir']['gridded_data'], cell_width)
-    region_grid = get_sea_ice_regions(config['auxiliary']['reg_mask'], netcdf_bounds,
+    region_grid = get_sea_ice_regions(config['auxiliary']['reg_mask'][hemisphere], netcdf_bounds,
                                       round(0.5 * np.sqrt(2) * cell_width),
-                                      config['options']['out_epsg'])
+                                      config['options']['out_epsg'], hemisphere)
+
+    date_pattern = re.compile(r"\b(20\d{6})\b")
+
+    grouped_files = []
+
+    while file_list:
+        file = file_list.pop(0)  
+        match = date_pattern.search(file)
+        
+        if match:
+            date = match.group(1)
+            sublist = [file]  
+            
+            remaining_files = []
+            for other_file in file_list:
+                if date_pattern.search(other_file) and date_pattern.search(other_file).group(1) == date:
+                    sublist.append(other_file)
+                else:
+                    remaining_files.append(other_file)
+
+            grouped_files.append(sublist)
+            file_list = remaining_files
 
     if grd_opt['multiproc']:
         logger.info('start multiprocessing')
         pool = mp.Pool(grd_opt['num_cpus'])
-        for file in file_list:
-            pool.apply_async(process_file, args=(config, file, grid, region_grid))
+        for i in range(len(grouped_files)):
+            pool.apply_async(process_file, args=(config, grouped_files[i], grid, region_grid))
         pool.close()
         pool.join()
     else:
-        for file in file_list:
-            process_file(config, file, grid, region_grid)
+        for i in range(len(grouped_files)):
+            process_file(config, grouped_files[i], grid, region_grid)
 
     if grd_opt["organize_files"]:
         organize_files_by_date(config['output_dir']['gridded_data'],

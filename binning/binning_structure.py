@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class StackStructure:
+class BinningStructure:
     def __init__(self, sensor, t_window_length, t_series_length):
         self.sensor = sensor
         self.t_window_length = t_window_length

@@ -15,6 +15,8 @@ class PrepareNetcdf:
     def __init__(self, config, file, region_grid):
         with open(os.path.join(os.path.dirname(__file__), 'netcdf_config.yaml'), 'r') as f:
             self.netcdf_config = yaml.safe_load(f)
+        
+        self.sensor = config['options']['sensor']
         self.target_var = config["options"]["target_variable"]
         self.hist_n_bins = config['options']['proc_step_options']['stacking']['hist']['n_bins']
         self.hist_range = config['options']['proc_step_options']['stacking']['hist']['range'][
@@ -33,24 +35,44 @@ class PrepareNetcdf:
         centr = grid['geometry'][0].centroid
         dist = [centr.distance(Point(vertex)) for vertex in list(grid['geometry'][0].exterior.coords)]
         dist_km = "{:.0f}".format(round(min(dist) * np.sqrt(2)) / 1e3)
-        prefix = '-'.join(re.split('-', os.path.basename(self.file))[:2])
+        prefix = '-'.join(re.split('-', os.path.basename(self.file))[:-6])
         prdlvl = 'L3C'
-        var = re.split('-', os.path.basename(self.file))[3]
-        instr = re.split('-', os.path.basename(self.file))[4]
+        var = re.split('-', os.path.basename(self.file))[-5]
+        instr = re.split('-', os.path.basename(self.file))[-4]
         proj_map = {
             "EPSG:6931": "EASE2",
             "EPSG:6932": "EASE2"}
         extra = (f"{self.hem.upper()}_"
                  f"{dist_km}KM_{proj_map.get(self.out_epsg)}_{gridding_mode.upper()}")
-        period = re.split('-', os.path.basename(self.file))[6]
+        period = re.split('-', os.path.basename(self.file))[-2] 
         version = re.search(r'(fv\d+)', os.path.basename(self.file)).group(1)
         return f"{prefix}-{prdlvl}-{var}-{instr}-{extra}-{period}-{version}.nc"
 
-    def select_variables(self):
-        var = [Template(item).render(target_var=self.target_var)
-               for item in self.netcdf_config['variables'][self.mode]['include']]
-        var_rename = [Template(item).render(target_var=self.target_var)
-                      for item in self.netcdf_config['variables'][self.mode]['rename']]
+    def select_variables(self, data):
+        var = [Template(item).render(target_var=self.target_var) #Exception for is2
+               for item in self.netcdf_config['variables'][self.mode]['include']
+               if not (self.sensor == 'icesat2' and item == 'snow_depth') 
+               and Template(item).render(target_var=self.target_var) in data.columns] 
+                #if Template(item).render(target_var=self.target_var) in data.columns and item!='snow_depth']
+
+        var_rename = []
+
+        include_items = self.netcdf_config['variables'][self.mode]['include']
+        rename_items = self.netcdf_config['variables'][self.mode]['rename']
+
+        for i, item in enumerate(rename_items):
+            if self.sensor == 'icesat2' and include_items[i] == 'snow_depth':
+                continue  # exception spéciale
+    
+            input_var = Template(include_items[i]).render(target_var=self.target_var)
+            output_var = Template(item).render(target_var=self.target_var)
+
+            if input_var in data.columns:
+                var_rename.append(output_var)
+        #var_rename = [Template(item).render(target_var=self.target_var) #Same exception for is2
+        #              for item in self.netcdf_config['variables'][self.mode]['rename']
+        #              if not (self.sensor == 'icesat2' and item == 'snow_depth')
+        #              and item in data.columns] 
         return var, var_rename
 
     def set_var_attrbs(self, dataset):

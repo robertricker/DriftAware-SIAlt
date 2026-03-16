@@ -1,2 +1,4 @@
 .idea/
 config/config.yaml
+*.pyc
+config/config*.yaml

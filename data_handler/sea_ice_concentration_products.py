@@ -20,7 +20,8 @@ class SeaIceConcentrationProducts:
 
         self.function_map = {
             'osi430b': self.get_ice_concentration,
-            'osi450': self.get_ice_concentration
+            'osi450': self.get_ice_concentration,
+            'c3s': self.get_ice_concentration
         }
 
         self.config = {
@@ -37,6 +38,13 @@ class SeaIceConcentrationProducts:
                 'date_str': '{12}',
                 'date_pt': '%Y%m%d%H%M',
                 'date_offset': datetime.timedelta(days=0)
+            },
+            'c3s': {
+                'hem_nh': '_nh_',
+                'hem_sh': '_sh_',
+                'date_str': '{12}',
+                'date_pt': '%Y%m%d%H%M',
+                'date_offset': datetime.timedelta(days=0)
             }
         }
 
@@ -47,13 +55,22 @@ class SeaIceConcentrationProducts:
                                 'epsg:4326', self.out_epsg)
 
         value = np.ma.getdata(data.variables['ice_conc'][0, :, :]).flatten()
+        value_lat = np.ma.getdata(data.variables['lat'][:, :]).flatten()
+        value_lon = np.ma.getdata(data.variables['lon'][:, :]).flatten()
+
         xc, yc = np.meshgrid(np.ma.getdata(data.variables['xc'][:] * 1000.0),
                              np.ma.getdata(data.variables['yc'][:] * 1000.0))
         coords = np.transpose(np.vstack((x, y)))
 
         ice_conc = griddata(coords, value, (xc, yc), method='nearest')
-        ice_conc[ice_conc < 15] = 0
-        return {"xc": xc, "yc": yc, "ice_conc": ice_conc}
+        ice_conc_no_0 = np.copy(ice_conc)
+        lat = griddata(coords, value_lat, (xc, yc), method='nearest')
+        lon = griddata(coords, value_lon, (xc, yc), method='nearest')
+
+        ice_conc[ice_conc < 15] = 0 # need to mask out the low sic values, see in the processing step for the 0 sic values
+        return {"xc": xc, "yc": yc, "ice_conc": ice_conc, "ice_conc_no_0": ice_conc_no_0,
+                "lat": lat, 
+                "lon": lon}
 
     @staticmethod
     def interp_ice_concentration(ice_conc, x, y):
@@ -95,7 +112,7 @@ class SeaIceConcentrationProducts:
         file = [file_list[dates.index(d)] for d in dates if t0 <= d < t1]
         if len(file) == 0:
             t0i, t1i = t0, t1
-            while not file and (abs(t0i - t0) < datetime.timedelta(days=5)):
+            while not file and (abs(t0i - t0) < datetime.timedelta(days=8)):
                 file = [file_list[dates.index(d)] for d in dates if t0i <= d < t1i]
                 t0i, t1i = t0i - dt1d, t1i - dt1d
         return file[0]

@@ -16,7 +16,6 @@ from data_handler.sea_ice_concentration_products import SeaIceConcentrationProdu
 from data_handler.sea_ice_drift_products import SeaIceDriftProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessMultiProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessProducts
-from data_handler.sea_ice_thickness_clim_products import SeaIceThicknessClimProducts
 
 from data_handler.air_temperature_products import AirTemperatureProducts
 from data_handler.ocean_heat_flux_products import OceanHeatFluxProducts
@@ -28,7 +27,6 @@ from io_tools import create_out_dir
 from io_tools import init_logger
 from io_tools import read_dasit_csv
 from io_tools import make_csv_filename
-from data_handler.filter_miz import compute_apply_flag
 
 
 def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, list_f, list_r, j):
@@ -180,22 +178,7 @@ def stack_proc(config, direct, grid):
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
             sit_product.get_product()
             sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
-            #if ICESAT-2, then we need to filter out the total freeboard (snow depth purposes)
-            if len(sensor) == 1 and sensor[0] == 'icesat2':
-                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='mms_clim',
-                                                          out_epsg=out_epsg)
-                sit_clim_product.get_file_list(config['auxiliary']['mms_clim'])
-                sit_clim_product.get_file_dates()
-                
-                sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
-
-                sit_clim_product.sit_clim = sit_clim_product.get_tFB_clim(sit_clim_product.target_files)
-                #keep only the total freeboard with quality flag <= 2
-                sit_product.product = sit_product.product[(sit_product.product['total_freeboard_quality_flag'] <= 4) & (sit_product.product['total_freeboard_quality_flag'] >= 0)]
-                #sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
-
-
-            processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim = sit_clim_product if 'sit_clim_product' in locals() else None)
+            processor.baseline_proc(sic_product, hist_n_bins, hist_range)
 
 
         # The sea ice concentration is taken at t1 check data after beeing advected
@@ -243,7 +226,7 @@ def stack_proc(config, direct, grid):
         if thermo_model:
             gdf_final['rate_thermo_change_mod'] = gdf_final.apply(lambda row: row['thermo_change_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
             gdf_final['rate_thermo_growth_mod'] = gdf_final.apply(lambda row: row['thermo_growth_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-            """
+
             gdf_final['rate_thermo_change_mod2'] = gdf_final.apply(lambda row: row['thermo_change_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
             gdf_final['rate_thermo_growth_mod2'] = gdf_final.apply(lambda row: row['thermo_growth_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
 
@@ -258,7 +241,6 @@ def stack_proc(config, direct, grid):
 
             gdf_final['rate_thermo_change_mod6'] = gdf_final.apply(lambda row: row['thermo_change_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
             gdf_final['rate_thermo_growth_mod6'] = gdf_final.apply(lambda row: row['thermo_growth_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-            """
         outfile = make_csv_filename(config, t0, direct)
         logger.info(t0.strftime("%Y%m%d")+': generated csv file: ' + outfile)
         gdf_final['divergence'] = gdf_final['divergence'].apply(

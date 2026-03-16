@@ -96,12 +96,18 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
                           "time_bnds": time_bnds}
 
     def drift_correction(self, x, y):
+        """
+        This function interpolates the drift speed on the point (x,y)
+        """
         time_span = self.config[self.product_id]['time_span']
         xc, yc = self.ice_drift["xc"][0, :], self.ice_drift["yc"][:, 0]
         dx, dy = self.ice_drift['dx'], self.ice_drift['dy']
         dx_dy_unc = self.ice_drift['dx_dy_unc']
         np.ma.getdata(dx)[np.ma.getdata(dx) == -1e+10] = 0
         np.ma.getdata(dy)[np.ma.getdata(dy) == -1e+10] = 0
+        # infinite values can occure in drift files
+        np.ma.getdata(dx)[np.ma.getdata(dx) == np.inf] = 0
+        np.ma.getdata(dy)[np.ma.getdata(dy) == np.inf] = 0
         # Check if xc and yc are in descending order
         if xc[0] > xc[-1]:
             xc = xc[::-1]
@@ -126,6 +132,11 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
         return dx_proj.flatten() / time_span, dy_proj.flatten() / time_span, dx_dy_unc_proj / time_span
 
     def deformation(self, x, y):
+        """
+        This function compute the shear and the ice deformation from the drift derivative, 
+        the derivatives are computed using a sobel filter see :
+        https://tc.copernicus.org/articles/15/2167/2021/tc-15-2167-2021.pdf
+        """
         time_span = self.config[self.product_id]['time_span']
         xc, yc = self.ice_drift["xc"][0, :], self.ice_drift["yc"][:, 0]
         dx, dy = self.ice_drift['dx'], self.ice_drift['dy']
