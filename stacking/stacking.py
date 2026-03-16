@@ -243,7 +243,7 @@ def stack_proc(config, direct, grid):
         if thermo_model:
             gdf_final['rate_thermo_change_mod'] = gdf_final.apply(lambda row: row['thermo_change_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
             gdf_final['rate_thermo_growth_mod'] = gdf_final.apply(lambda row: row['thermo_growth_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-
+            """
             gdf_final['rate_thermo_change_mod2'] = gdf_final.apply(lambda row: row['thermo_change_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
             gdf_final['rate_thermo_growth_mod2'] = gdf_final.apply(lambda row: row['thermo_growth_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
 
@@ -258,6 +258,7 @@ def stack_proc(config, direct, grid):
 
             gdf_final['rate_thermo_change_mod6'] = gdf_final.apply(lambda row: row['thermo_change_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
             gdf_final['rate_thermo_growth_mod6'] = gdf_final.apply(lambda row: row['thermo_growth_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
+            """
         outfile = make_csv_filename(config, t0, direct)
         logger.info(t0.strftime("%Y%m%d")+': generated csv file: ' + outfile)
         gdf_final['divergence'] = gdf_final['divergence'].apply(
