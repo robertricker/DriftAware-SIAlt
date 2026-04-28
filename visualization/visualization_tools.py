@@ -54,8 +54,6 @@ def visu_xarray(x, y, z, figsize, vmin, vmax, n_level, cmap, time_string, label,
     lon = np.linspace(0, 2 * np.pi, 100) * 180 / np.pi
     if hem=='nh':
         ax.plot(lon, 88.0 * np.ones_like(lon), transform=ccrs.Geodetic(), linestyle='--', color='black', linewidth=1.0)
-    else:
-        ax.plot(lon, -88.0 * np.ones_like(lon), transform=ccrs.Geodetic(), linestyle='--', color='black', linewidth=1.0)
     cax = ax.inset_axes([0, -0.05, 1, 0.025], transform=ax.transAxes)
     cb = plt.colorbar(im, ax=ax, orientation='horizontal', cax=cax)
     cb.set_label(label=label, size=fontsize, color='black')
