@@ -24,7 +24,8 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
 
         self.function_map = {
             'osi405': self.get_ice_drift,
-            'osi455': self.get_ice_drift
+            'osi455': self.get_ice_drift,
+            'osi435_455': self.get_ice_drift
         }
 
         self.config = {
@@ -47,7 +48,17 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
                 'ref_daytime_corr': datetime.timedelta(days=0).total_seconds(),
                 'time_span': 24,
                 'date_offset': datetime.timedelta(days=0)
-            }
+            },
+            'osi435_455': {
+                'hem_nh': '_nh_',
+                'hem_sh': '_sh_',
+                'date_str': '{12}',
+                'date_pt': '%Y%m%d%H%M',
+                'ref_time': datetime.datetime(1978, 1, 1, 0, 0, 0),
+                'ref_daytime_corr': datetime.timedelta(days=0).total_seconds(),
+                'time_span': 24,
+                'date_offset': datetime.timedelta(days=0)
+            },
         }
 
     def get_ice_drift(self, target_files, ice_conc):
@@ -75,13 +86,28 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
         xc, yc = ice_conc["xc"], ice_conc["yc"]
         ice_conc = ice_conc["ice_conc"]
 
-        dx_i = griddata(coords, dx, (xc, yc), method='linear')
-        dy_i = griddata(coords, dy, (xc, yc), method='linear')
-        dx_dy_unc_i = griddata(coords, dx_dy_unc[dx_dy_unc != -1e10], (xc, yc), method='linear')
+        if coords.shape[0] == 0:
+            dx_i = np.zeros_like(xc)
+            dy_i = np.zeros_like(xc)
+            dx_dy_unc_i = np.zeros_like(xc)
+            dx_fill = np.zeros_like(xc)
+            dy_fill = np.zeros_like(xc)
+            dx_dy_unc_fill = np.zeros_like(xc)
+        else:
+            if coords.shape[0] < 4:
+                # Too few valid drift points for a Delaunay triangulation.
+                # Use nearest neighbour interpolation instead of linear.
+                interp_method = 'nearest'
+            else:
+                interp_method = 'linear'
 
-        dx_fill = griddata(coords, dx, (xc, yc), method='nearest')
-        dy_fill = griddata(coords, dy, (xc, yc), method='nearest')
-        dx_dy_unc_fill = griddata(coords, dx_dy_unc[dx_dy_unc != -1e10], (xc, yc), method='nearest')
+            dx_i = griddata(coords, dx, (xc, yc), method=interp_method)
+            dy_i = griddata(coords, dy, (xc, yc), method=interp_method)
+            dx_dy_unc_i = griddata(coords, dx_dy_unc[dx_dy_unc != -1e10], (xc, yc), method=interp_method)
+
+            dx_fill = griddata(coords, dx, (xc, yc), method='nearest')
+            dy_fill = griddata(coords, dy, (xc, yc), method='nearest')
+            dx_dy_unc_fill = griddata(coords, dx_dy_unc[dx_dy_unc != -1e10], (xc, yc), method='nearest')
 
         invalid = np.isnan(dx_i) | np.isnan(dy_i)
         dx_i[invalid] = dx_fill[invalid]

@@ -18,6 +18,8 @@ class PrepareNetcdf:
         
         self.sensor = config['options']['sensor']
         self.target_var = config["options"]["target_variable"]
+        self.add_variables = config['options'].get('add_variable',
+                                                  config['options']['proc_step_options']['gridding'].get('add_variables', []))
         self.hist_n_bins = config['options']['proc_step_options']['stacking']['hist']['n_bins']
         self.hist_range = config['options']['proc_step_options']['stacking']['hist']['range'][
             "freeboard" if "freeboard" in self.target_var else "thickness"]
@@ -98,12 +100,7 @@ class PrepareNetcdf:
         xarray['region_flag'].attrs = {'standard_name': 'region_flag',
                                        'long_name': 'NSIDC region mask v2',
                                        'coordinates': 'time longitude latitude',
-                                       'flag_meanings': 'undefined_region central_arctic beaufort_sea chukchi_sea '
-                                                        'east_siberian_sea laptev_sea kara_sea barents_sea '
-                                                        'east_greenland_sea baffin_bay_and_davis_strait '
-                                                        'gulf_of_st_lawrence hudson_bay canadian_archipelago '
-                                                        'bering_sea sea_of_okhotsk sea_of_japan bohai_sea baltic_sea '
-                                                        'gulf_of_alaska',
+                                       'flag_meanings': 'ocean_no_region_specified east_weddell_sea indian_ocean south_pacific_ocean ross_sea amundsen_and_bellingshausen_seas coastal_amundsen_and_bellingshausen_seas west_weddell_sea',
                                        'flag_values': np.byte(np.arange(19)),
                                        'units': '1',
                                        'grid_mapping': 'crs',

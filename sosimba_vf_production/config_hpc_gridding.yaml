@@ -1,64 +1,54 @@
 base_dir: "/cluster/projects/108541-SO-SIMBA/data_tmp/" # main project data directory
 #-----------------------------------DATA REPOSITORY---------------------------------------------------------------------
 input_dir: # relative to base_dir
-  envisat: "output_data/SOSIMBA/cdr/envisat/v3p0-ss/sh/l2p_release_miz_23/" #TODO UPDATE
-  cryosat2: "output_data/SOSIMBA/cdr/cryosat2/v4p0-preview1-ss/sh/l2p_release/" 
-  sentinel3a: "output_data/SOSIMBA/cdr/sentinel3a/v4p0-preview1-ss/sh/l2p_release/" 
-  sentinel3b: "output_data/SOSIMBA/cdr/sentinel3b/v4p0-preview1-ss/sh/l2p_release/" 
+  envisat: "output_data/SOSIMBA/cdr/envisat/v3p0-ss/sh/l2p_release_miz_23/" #TODO update
+  cryosat2: "output_data/SOSIMBA/cdr/cryosat2/v4p0-preview1-ss/sh/l2p_release/"
+  sentinel3a: "output_data/SOSIMBA/cdr/sentinel3a/v4p0-preview1-ss/sh/l2p_release"
+  sentinel3b: "output_data/SOSIMBA/cdr/sentinel3b/v4p0-preview1-ss/sh/l2p_release"
   icesat2:
     total_freeboard: "input_data/alti/l2/icesat2/ATL10/v6"
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
-    
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/" #thermo/param/" #csv/v5/"  # MIZ_filter_23/csv/thermo/param"  # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/no_weight" #thermo/param/" #netcdf/v5/"  # MIZ_filter_23/netcdf/thermo/param"  # Gridded DA data as daily NetCDFs
+  trajectories: "output_data/DA/product/{sensor}/" # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/Ubremen/osi455/"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
     osi450: "input_data/auxdata/sic/c3s/cdr" #v3.0: 1978-2020
     osi430b: "input_data/auxdata/sic/c3s/icdr" #v3.0: 2021-
-    c3s: "input_data/auxdata/sic/c3s"
   ice_drift:
-    osi455: "input_data/auxdata/sidrift/drift_lr" #1991-2020
-    osi405: "/cluster/projects/108541-SO-SIMBA/data_tmp/input_data/auxdata/sidrift/osi-405" #2009- # TODO UPDATE
+    osi455: "input_data/auxdata/sidrift" #1991-2020
+    osi405: "auxiliary/osi405" #2009-
   reg_mask: 
-    nh: "input_data/auxdata/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc" # SETUP
-    sh: "input_data/auxdata/arctic_regions/NSIDC-0780_SeaIceRegions_EASE2-S12.5km_v1.0.nc"
-  t2m:
-    era5: "input_data/auxdata/air_temperature/ERA5/2m_temperature/"
-  ohf:
-    sose: "input_data/auxdata/ocean_heat_flux/SOSE/OHF_compute/iter156/5DAY/DAILY"
-  mms_clim : "output_data/climatologies_from_alti/"
-
+    nh: "/cluster/projects/108541-SO-SIMBA/data_tmp/input_data/auxdata/masks/nsidc_2021/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc"
+    sh: "/cluster/projects/108541-SO-SIMBA/data_tmp/input_data/auxdata/masks/nsidc_2021/MODIFIED_NSIDC-0780_SeaIceRegions_EASE2-S12.5km_v1.0.nc"
 #-----------------------------------VISUALIZATION-----------------------------------------------------------------------
 visualization: "visualization/plots"
 #-----------------------------------LOGGING-----------------------------------------------------------------------------
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: ['sentinel3a', 'sentinel3b', 'cryosat2'] # ['icesat2'] # # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
-  proc_step: stacking # Available options: stacking, gridding, and visualization
+  sensor: envisat #sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  proc_step: gridding # Available options: stacking, gridding, and visualization
   ice_conc_product: c3s
-  ice_drift_product: osi405 ##### !!!!!!!
-  t2m_product : era5
-  ohf_product : sose
-
-  target_variable: 'radar_freeboard'                        # Available options: sea_ice_freeboard (radar altimeters),
+  ice_drift_product: osi455
+  target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['sea_ice_thickness', 'sea_ice_freeboard', 'snow_depth']                             # add variables to the trajectory data frame,
-                                                              # no growth correction, no histogram (list)
+  add_variable: ['snow_depth'] #['snow_depth', 'radar_freeboard', 'sea_ice_freeboard', 'sea_ice_thickness_uncorrected']                                # add variables to the trajectory data frame,
+                                                              # no growth correction, no histogram
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
 
   proc_step_options:                                          # Processing options for each processing step
+
     stacking:                                                 # Processing step: stacking (Drift-Aware processing)
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
-      t_length: 150 #2141 #255 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
-      t_start: 2024-11-01 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
-      t_window: 16                                     # length of the drift-aware window in days
-      multiproc: True                                 # Parallel processing
+      t_start: 2020-09-01 00:00:00                            # Start of processing period
+      t_length: season                                        # length of processing period in days
+      t_window: 16                                            # length of the drift-aware window in days
+      multiproc: True                                        # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
@@ -76,23 +66,24 @@ options:
         growth_range:
           freeboard: [ -0.25, 0.25 ] # min/max limits for freeboard growth, neglected if outside
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
-      thermo_change:
-        model :  #'winter_2layers' # If None -> no thermodynamic computation
-        oce_heat_flux : 2 #sose #either a constant or the name of the product to be used as ocean heat flux
-          
+
     gridding:                                                 # Processing step: gridding
-      csv_dir: 'sea_ice_thickness-sh-16fr-epsg6932_141-2025-02-20_10-00-39'
-      mode: 'da'                                             # drift-aware: da, conventional: cv
-      multiproc: True                                       # Parallel processing
-      num_cpus: 16                                           # Number of CPUs for parallel processing
+      csv_dir: MIZ_filter_2/csv/Ubremen/osi455/sea_ice_thickness-sh-16fr-epsg6932_141-2026-04-28_00-18-22  #radar_freeboard_202411_202503_extension_SOSIMBA #MIZ_filter_2/csv/v5/sit_2019_2024/* #'MIZ_filter_2/csv/filter_04/*' #'MIZ_filter_2/csv/v5/sit_2019_2024/*' #sea_ice_thickness-sh-16fr-epsg6932_141-2025-08-11_19-54-08' #'iter156_meeting_hamburg'
+      add_variable: 'radar_freeboard'
+      mode: 'da'                      # if true then it will look here to get the variable to weigth with
+      weighting : 
+        is_weight : False                                  # if true then it will look here to get the variable to weigth with
+        var_to_weight_with : 'counts'  #['dt_days', 'sea_ice_thickness_total_unc']               # if not specified : '' -> dt_days
+      multiproc: True                                    # Parallel processing
+      num_cpus: 16                                          # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month
       netcdf_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
-        dim: 432
+        dim: 432 #216 #864 #864 #864 #216 #432 #864
       target_variable_range:
-        freeboard: [ 0, 2]
+        freeboard: [ 0, 2 ]
         thickness: [ 0, 10 ]
-
+      dt_days_max: 15
     visualization:                                            # Processing step: visualization
       gridded_data_dir: 'crdp_figs'                           # directory relative to output_dir.gridded_data
       variable: "sea_ice_thickness_growth_interpolated"       # netcdf variable

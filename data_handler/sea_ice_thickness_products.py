@@ -523,6 +523,8 @@ class SeaIceThicknessMultiProducts:
             # icesat-2 orbit_info group
             atl10_data['orbit_info'] = {}
             for key, val in fileid['orbit_info'].items():
+                if 'bounding_polygons' in key:
+                    continue
                 atl10_data['orbit_info'][key] = val[:]
 
             atl10_data['ancillary_data'] = {}

@@ -19,6 +19,8 @@ variables:
       - "divergence"
       - "dynamic_change_rate"
       - "thermo_change_rate"
+      - "radar_freeboard"
+      - "sea_ice_freeboard"
       - "snow_depth"
       - "sit_corr_thermo_mod"
       - "rate_thermo_change_mod"
@@ -72,6 +74,8 @@ variables:
       - "divergence"
       - "dynamic_change_rate"
       - "thermo_change_rate"
+      - "radar_freeboard"
+      - "sea_ice_freeboard"
       - "snow_depth"
       - "sit_corr_thermo_mod"
       - "rate_change_model"
@@ -259,6 +263,22 @@ variable_attributes:
   sea_ice_thickness_total_unc:
     standard_name: 'sea_ice_thickness standard_error'
     long_name: "combined sea ice thickness uncertainty"
+    coordinates: "time longitude latitude"
+    units: "m"
+    grid_mapping: 'crs'
+    comment: ""
+
+  radar_freeboard:
+    standard_name: 'radar_freeboard'
+    long_name: "radar freeboard"
+    coordinates: "time longitude latitude"
+    units: "m"
+    grid_mapping: 'crs'
+    comment: ""
+
+  sea_ice_freeboard:
+    standard_name: 'sea_ice_freeboard'
+    long_name: "sea ice freeboard"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
