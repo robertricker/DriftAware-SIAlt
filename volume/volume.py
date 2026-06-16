@@ -48,13 +48,18 @@ def volume(config):
     target_var = config['options']['target_variable']
 
     config['output_dir']['volume_data'] = config['output_dir']['volume'] + '/' + volume_opt['sub_dir']
-    file_list = sorted(glob.glob(os.path.join(config['output_dir']['gridded_data']+volume_opt['sub_dir'], '**', '*.nc'), recursive=True))
+    file_list = sorted(glob.glob(os.path.join(config['output_dir']['gridded_data'] + volume_opt['sub_dir'], '**', '*.nc'), recursive=True))
+    if len(file_list) == 0:
+        logger.error('No NetCDF files found for volume computation in: %s', os.path.join(config['output_dir']['gridded_data'] + volume_opt['sub_dir'], '**', '*.nc'))
+        return
     out_dir = config['output_dir']['volume']
     si_density_param = volume_opt['sea_ice_density']
     snow_density_param = volume_opt['snow_density']
+    interp_missing_sit = volume_opt.get('interp_missing_sit', True)
+    sic_interp_threshold = volume_opt.get('sic_interp_threshold', 15)
     mode = file_list[0][-20:-18].lower()
 
-    resolution = file_list[0][-31:-29]
+    resolution = config['options']['proc_step_options']['volume']['resolution']
 
     sic_product = SeaIceConcentrationProducts(hem=hem, product_id=config['options']['ice_conc_product'],
                                               out_epsg=out_epsg)
@@ -77,7 +82,16 @@ def volume(config):
         else:
             ice_conc = data['sea_ice_concentration']
 
-        dataset = compute_volume.compute_volume_and_mass(data, ice_conc, target_var, si_density_param, snow_density_param, resolution)
+        dataset = compute_volume.compute_volume_and_mass(
+            data,
+            ice_conc,
+            target_var,
+            si_density_param,
+            snow_density_param,
+            resolution,
+            interp_missing_sit=interp_missing_sit,
+            sic_threshold=sic_interp_threshold
+        )
 
         if not os.path.exists(out_dir):
             try:
@@ -121,13 +135,16 @@ def volume(config):
         dataset.to_netcdf(outfile, encoding = encoding, format="NETCDF4")
         logger.info('Volumes and masses saved as : %s' %outfile)
 
-        # Update the csv file with volumes and mass
-        ds_vol_mass = dataset[['snow_volume', 
-                                    'snow_mass', 
-                                    'sea_ice_volume', 
-                                    'sea_ice_mass']]
+        # Update the csv file with volumes, mass, area, and extent totals
+        csv_vars = ['snow_volume', 'snow_mass', 'sea_ice_volume', 'sea_ice_mass',
+                    'sea_ice_extent', 'sea_ice_area',
+                    'sea_ice_extent_total', 'sea_ice_area_total',
+                    'sea_ice_volume_total', 'sea_ice_mass_total']
+        csv_vars = [var for var in csv_vars if var in dataset]
+
+        ds_vol_mass = dataset[csv_vars]
         df_vol_mass_temp = ds_vol_mass.sum(dim=['xc', 'yc']).to_dataframe()
-        
+
         region_flag = dataset.region_flag
         region_codes = region_flag.attrs["flag_values"]
         region_names = region_flag.attrs["flag_meanings"].split()        #unique_regions = np.unique(regions[regions!=0])  # suppress the 0 (undefined region)

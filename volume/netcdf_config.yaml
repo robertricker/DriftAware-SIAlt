@@ -23,6 +23,12 @@ variables:
       - "rate_thermo_growth_mod"
       - "sea_ice_volume"
       - "sea_ice_mass"
+      - "sea_ice_extent"
+      - "sea_ice_area"
+      - "sea_ice_extent_total"
+      - "sea_ice_area_total"
+      - "sea_ice_volume_total"
+      - "sea_ice_mass_total"
       - "snow_volume"
       - "snow_mass"
       #- "drift_unc"
@@ -67,6 +73,12 @@ variables:
       - "snow_depth"
       - "sea_ice_volume"
       - "sea_ice_mass"
+      - "sea_ice_extent"
+      - "sea_ice_area"
+      - "sea_ice_extent_total"
+      - "sea_ice_area_total"
+      - "sea_ice_volume_total"
+      - "sea_ice_mass_total"
       - "snow_volume"
       - "snow_mass"
     rename:
@@ -231,7 +243,40 @@ variable_attributes:
     units: "m"
     grid_mapping: 'crs'
     comment: ""
-    
+  sea_ice_extent:
+    standard_name: 'sea_ice_extent'
+    long_name: "sea ice extent per cell"
+    coordinates: "time longitude latitude"
+    units: "m2"
+    grid_mapping: 'crs'
+    comment: "Cell area when concentration exceeds the threshold"
+  sea_ice_area:
+    standard_name: 'sea_ice_area'
+    long_name: "sea ice area per cell"
+    coordinates: "time longitude latitude"
+    units: "m2"
+    grid_mapping: 'crs'
+    comment: "Sea ice area within the cell based on concentration fraction"
+  sea_ice_extent_total:
+    standard_name: 'sea_ice_extent'
+    long_name: "total sea ice extent"
+    units: "m2"
+    comment: "Total sea ice extent over the domain"
+  sea_ice_area_total:
+    standard_name: 'sea_ice_area'
+    long_name: "total sea ice area"
+    units: "m2"
+    comment: "Total sea ice area over the domain"
+  sea_ice_volume_total:
+    standard_name: 'sea_ice_volume'
+    long_name: "total sea ice volume"
+    units: "m3"
+    comment: "Total sea ice volume over the domain"
+  sea_ice_mass_total:
+    standard_name: 'sea_ice_mass'
+    long_name: "total sea ice mass"
+    units: "kg"
+    comment: "Total sea ice mass over the domain"
   snow_mass:
     standard_name: 'surface_snow_mass_where_sea_ice'
     long_name: "mass of the snow layer"
