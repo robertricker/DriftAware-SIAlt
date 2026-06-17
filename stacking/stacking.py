@@ -47,6 +47,9 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     if stk_opt['mode'] == 'fr':
         file_f = [i for i in list_f if subs in re.search('-(.+?)-*.csv', os.path.basename(i)).group(1)]
         file_r = [i for i in list_r if subs in re.search('-(.+?)-*.csv', os.path.basename(i)).group(1)]
+        if len(file_f) == 0 or len(file_r) == 0:
+            logger.warning(subs + ': No files found for this date. Skipping.')
+            return
         stack_f = read_dasit_csv(file_f[0])
         stack_r = read_dasit_csv(file_r[0])
         stack_r = stack_r[stack_r.dt_days != 0].reset_index(drop=True)
@@ -57,6 +60,9 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     else:
         listfr = list_f + list_r
         file = [i for i in listfr if subs in re.search('-(.+?)-*.csv', os.path.basename(i)).group(1)]
+        if len(file) == 0:
+            logger.warning(subs + ': No files found for this date. Skipping.')
+            return
         data = read_dasit_csv(file[0])
         outfile = os.path.basename(file[0])
         os.remove(file[0])
@@ -173,15 +179,22 @@ def stack_proc(config, direct, grid):
 
         # Number of empty list for missions
         empty_lists = [k for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) == 0]
+        sit_product.target_files = {k: (None if isinstance(v, list) and len(v) == 0 else v) for k, v in (sit_product.target_files or {}).items()}
+        sensor_k = [s for s in sensor if sit_product.target_files.get(s) is not None]
+        print(sensor_k)
         file_counts = {k: len(v) for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) > 0}
         # Build the baseline so the line that corresponds to the actual time, without any advection needed
-        if len(empty_lists)==0 and sic_product.target_files:
+        
+        if 'icesat2' not in sensor_k and len(empty_lists) >= len(sensor_k):
+            logger.warning(t0.strftime("%Y%m%d") + ': Missing sea ice thickness files for: ' + str(empty_lists) + '. Skipping this date.')
+            continue
+        if (('icesat2' not in sensor_k and len(empty_lists) < len(sensor_k)) or ('icesat2'  in sensor_k)) and sic_product.target_files:
             logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(file_counts))
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
-            sit_product.get_product()
+            sit_product.get_product(sensor_k)
             sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
             #if ICESAT-2, then we need to filter out the total freeboard (snow depth purposes)
-            if len(sensor) == 1 and sensor[0] == 'icesat2':
+            if (len(sensor_k) == 1) and (sensor_k[0] == 'icesat2'):
                 sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='mms_clim',
                                                           out_epsg=out_epsg)
                 sit_clim_product.get_file_list(config['auxiliary']['mms_clim'])
