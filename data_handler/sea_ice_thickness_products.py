@@ -738,8 +738,8 @@ class SeaIceThicknessMultiProducts:
             file_list = self.file_list[sens]
             self.target_files[sens] = [file for date, file in zip(dates, file_list) if t0 <= date < t1]
 
-    def get_product(self):
-        for sens in self.sensor:
+    def get_product(self, sensor):
+        for sens in sensor:
             key = (sens, self.target_var)
             product_temp = self.function_map[key](sens)
             product_temp[sens] = 1
@@ -750,7 +750,7 @@ class SeaIceThicknessMultiProducts:
             [gdf.assign(sensor=k) 
              for k, gdf in self.product_dict.items() if gdf is not None], 
              ignore_index=True)
-        for sens in self.sensor:
+        for sens in sensor:
             product[sens] = product[sens].fillna(0)
         self.product = product
         
