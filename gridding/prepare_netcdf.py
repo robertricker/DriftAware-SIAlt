@@ -101,7 +101,7 @@ class PrepareNetcdf:
                                        'long_name': 'NSIDC region mask v2',
                                        'coordinates': 'time longitude latitude',
                                        'flag_meanings': 'ocean_no_region_specified east_weddell_sea indian_ocean south_pacific_ocean ross_sea amundsen_and_bellingshausen_seas coastal_amundsen_and_bellingshausen_seas west_weddell_sea',
-                                       'flag_values': np.byte(np.arange(19)),
+                                       'flag_values': np.byte(np.arange(8)),
                                        'units': '1',
                                        'grid_mapping': 'crs',
                                        'comment': ""}
