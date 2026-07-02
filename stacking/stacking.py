@@ -185,19 +185,20 @@ def stack_proc(config, direct, grid):
         file_counts = {k: len(v) for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) > 0}
         # Build the baseline so the line that corresponds to the actual time, without any advection needed
         
-        if 'icesat2' not in sensor_k and len(empty_lists) >= len(sensor_k):
+        if len(empty_lists) >= len(sensor_k):
             logger.warning(t0.strftime("%Y%m%d") + ': Missing sea ice thickness files for: ' + str(empty_lists) + '. Skipping this date.')
-            continue
-        if (('icesat2' not in sensor_k and len(empty_lists) < len(sensor_k)) or ('icesat2'  in sensor_k)) and sic_product.target_files:
+            #continue
+        if (len(empty_lists) < len(sensor_k)) and sic_product.target_files:
             logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(file_counts))
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
             sit_product.get_product(sensor_k)
             sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
+
             #if ICESAT-2, then we need to filter out the total freeboard (snow depth purposes)
             if (len(sensor_k) == 1) and (sensor_k[0] == 'icesat2'):
-                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='mms_clim',
+                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='tFB_clim',
                                                           out_epsg=out_epsg)
-                sit_clim_product.get_file_list(config['auxiliary']['mms_clim'])
+                sit_clim_product.get_file_list(config['auxiliary']['tFB_clim'])
                 sit_clim_product.get_file_dates()
                 
                 sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
@@ -206,11 +207,18 @@ def stack_proc(config, direct, grid):
                 #keep only the total freeboard with quality flag <= 2
                 sit_product.product = sit_product.product[(sit_product.product['total_freeboard_quality_flag'] <= 4) & (sit_product.product['total_freeboard_quality_flag'] >= 0)]
                 #sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
+            elif (sensor_k[0] != 'icesat2') and (target_var == 'sea_ice_thickness'):
+                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='sit_clim',
+                                                          out_epsg=out_epsg)
+                sit_clim_product.get_file_list(config['auxiliary']['sit_clim'])
+                sit_clim_product.get_file_dates()
+                
+                sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
 
-
+                sit_clim_product.sit_clim = sit_clim_product.get_SIT_clim(sit_clim_product.target_files)
+                
             processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim = sit_clim_product if 'sit_clim_product' in locals() else None)
-
-
+        
         # The sea ice concentration is taken at t1 check data after beeing advected
         sic_product.target_files = sic_product.get_target_files(t0 + d_sgn * dt1d, t1 + d_sgn * dt1d)
         # The sea ice drift to advect parcel at t0 is the one referenced as t1

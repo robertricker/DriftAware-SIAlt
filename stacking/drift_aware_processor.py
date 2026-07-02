@@ -59,7 +59,7 @@ class DriftAwareProcessor:
                     tmp_grid, geometry=gpd.points_from_xy(tmp_grid['xu'].values, tmp_grid['yu'].values),
                     crs=self.out_epsg)
                 if sit_clim is not None:
-                    tmp_grid = compute_apply_flag(tmp_grid, sic_product, sit_clim, crs=self.out_epsg)
+                    tmp_grid = compute_apply_flag(tmp_grid, sic_product, sit_clim, self.target_var, self.sensor, crs=self.out_epsg)
                 tmp_grid["geometry"] = tmp_grid["geometry"].apply(lambda gdf: [gdf])
                 tmp_grid["ice_conc"] = sic_product.interp_ice_concentration(
                     sic_product.ice_conc, tmp_grid['xu'].values, tmp_grid['yu'].values)
@@ -115,7 +115,9 @@ class DriftAwareProcessor:
 
             tmp_grid[self.target_var+'_l2_unc'] = np.sqrt(unc_grid[self.target_var+'_l2_unc_sum'])/unc_grid[
                 self.target_var+'_l2_unc_cnt']
-
+            print(sit_clim)
+            if sit_clim is not None:
+                tmp_grid = compute_apply_flag(tmp_grid, sic_product, sit_clim, self.target_var, self.sensor, crs=self.out_epsg)
             tmp_grid[self.add_variable] = add_grid[self.add_variable]
             tmp_grid[self.sensor] = frac_mission_grid[self.sensor]
             tmp_grid[[s + '_cnt' for s in self.sensor]] = frac_mission_grid[[s + '_sum' for s in self.sensor]]

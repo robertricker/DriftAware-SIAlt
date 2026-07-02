@@ -20,13 +20,28 @@ class SeaIceThicknessClimProducts:
 
         self.function_map = {
             'mms_clim': self.get_tFB_clim,
+            'sit_clim': self.get_SIT_clim,
+            'tFB_clim': self.get_tFB_clim
         }
 
         self.config = {
             'mms_clim': {
                 'date_str': '{4}',
-                'date_pt': 'icdc_%m%d',
-                'date_offset': datetime.timedelta(days=0)
+                'date_pt': 'SOSIMBA_s3c2_total_freeboard_climatology_icdc_%m%d',
+                'date_offset': datetime.timedelta(days=0),
+                'file_pattern': 'SOSIMBA_s3c2_total_freeboard_climatology_icdc_'
+            },
+            'sit_clim': {
+                'date_str': '{4}',
+                'date_pt': 'SOSIMBA_mms_sit_climatology_%m%d',
+                'date_offset': datetime.timedelta(days=0),
+                'file_pattern': 'SOSIMBA_mms_sit_climatology_'
+            },
+            'tFB_clim': {
+                'date_str': '{4}',
+                'date_pt': 'SOSIMBA_is2_total_freeboard_climatology_%m%d',
+                'date_offset': datetime.timedelta(days=0),
+                'file_pattern': 'SOSIMBA_is2_total_freeboard_climatology_'
             },
         }
 
@@ -53,10 +68,32 @@ class SeaIceThicknessClimProducts:
                 "longitude": longitude_value, 
                 "latitude": latitude_value}
 
-    
+    def get_SIT_clim(self, target_files):
+        data = netCDF4.Dataset(target_files)
+        x, y = transform_coords(np.ma.getdata(data.variables['lon'][:, :]).flatten(),
+                                np.ma.getdata(data.variables['lat'][:, :]).flatten(),
+                                'epsg:4326', self.out_epsg)
+
+        tFB_interp = np.ma.getdata(data.variables['SIT_interp'][:, :]).flatten()
+        sigma_tFB_interp = np.ma.getdata(data.variables['sigma_SIT_interp'][:, :]).flatten()
+        longitude_value = np.ma.getdata(data.variables['lon'][:, :]).flatten()
+        latitude_value = np.ma.getdata(data.variables['lat'][:, :]).flatten()
+
+        xc, yc = np.meshgrid(np.ma.getdata(data.variables['xc'][:]),
+                             np.ma.getdata(data.variables['yc'][:]))
+        coords = np.transpose(np.vstack((x, y)))
+
+        tFB_interp = griddata(coords, tFB_interp, (xc, yc), method='nearest')
+        sigma_tFB_interp = griddata(coords, sigma_tFB_interp, (xc, yc), method='nearest')
+        return {"xc": xc, "yc": yc, 
+                "SIT_interp": tFB_interp,
+                "sigma_SIT_interp": sigma_tFB_interp,
+                "longitude": longitude_value, 
+                "latitude": latitude_value}
+
     def get_file_list(self, directory):
         config = self.config[self.product_id]
-        pattern = os.path.join(directory, "**", "SOSIMBA_s3c2_total_freeboard_climatology_icdc_" + "*.nc")
+        pattern = os.path.join(directory, "**", "*.nc")
         file_list = sorted(glob.glob(pattern, recursive=True))
         self.file_list = file_list
 
@@ -64,12 +101,12 @@ class SeaIceThicknessClimProducts:
         config = self.config[self.product_id]
         date_str = config['date_str']
         date_pt = config['date_pt']
-
+        pattern = config['file_pattern']
         dates = []
         for file in self.file_list:
             try:
                 date = datetime.datetime.strptime(
-                    re.search(r'icdc_\d' + date_str, file).group(), date_pt
+                    re.search(rf'{pattern}\d' + date_str, file).group(), date_pt
                 )
                 dates.append(date)
             except ValueError as e:
