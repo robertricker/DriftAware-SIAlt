@@ -101,7 +101,11 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
            
 
         for i in range(0, len(var)):
-            tmp_grid.loc[dissolve_weighted_mean.index, var_str[i]] = dissolve_weighted_mean[var[i]].values
+            if np.size(dissolve_weighted_mean[var[i]].shape)>1:
+                diss = dissolve_weighted_mean[var[i]].values[:, 0]
+            else: 
+                diss = dissolve_weighted_mean[var[i]].values
+            tmp_grid.loc[dissolve_weighted_mean.index, var_str[i]] = diss
             #tmp_grid_unc.loc[dissolve_weighted_unc_mean.index, var_str[i]] = dissolve_weighted_unc_mean[var[i]].values
         if not fill_nan:
             tmp_grid = tmp_grid.dropna()
