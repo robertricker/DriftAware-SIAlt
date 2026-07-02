@@ -73,15 +73,15 @@ def add_sic_variables_to_gdf(gdf, ds_ice_conc, griddef, sensor, crs):
     # Proj and track coords
     proj = compute_projection(griddef)
     gdf_lonlat = gdf.to_crs("EPSG:4326")
-    if sensor == "icesat2":
+    if "icesat2" in sensor:
         gdf["longitude"] = gdf_lonlat.geometry.x
         gdf["latitude"] = gdf_lonlat.geometry.y
     else:
         points = gpd.GeoDataFrame(geometry=gpd.points_from_xy(gdf.reset_index().x, 
                                                               gdf.reset_index().y),crs="EPSG:6932" )
         
-        gdf["longitude"] = points.to_crs('EPSG:4326').geometry.x
-        gdf["latitude"] = points.to_crs('EPSG:4326').geometry.y
+        gdf["longitude"][:] = points.to_crs('EPSG:4326').geometry.x
+        gdf["latitude"][:] = points.to_crs('EPSG:4326').geometry.y
     ix, iy = get_image_coords(gdf["longitude"].values, gdf["latitude"].values,
                               proj, grid_lons, grid_lats, griddef)
     # Interpolate SIC
