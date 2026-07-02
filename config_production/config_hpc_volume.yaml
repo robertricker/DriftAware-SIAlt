@@ -10,15 +10,16 @@ input_dir: # relative to base_dir
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_23/csv/no_weight/"  # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_23/netcdf/no_weight/DA/"  # Gridded DA data as daily NetCDFs
-  visu: "output_data/DA/product/{sensor}/MIZ_filter_23/visu/no_weight/"
-  volume: "output_data/DA/product/{sensor}/MIZ_filter_23/volume/no_weight/DA/"
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/no_weight/"  # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/" #/Ubremen/osi435_455/"  # Gridded DA data as daily NetCDFs
+  visu: "output_data/DA/product/{sensor}/MIZ_filter_2/visu/no_weight/"
+  volume: "output_data/DA/product/{sensor}/MIZ_filter_2/volume/"
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
     osi450: "input_data/auxdata/sic/c3s/cdr" #v3.0: 1978-2020
     osi430b: "input_data/auxdata/sic/c3s/icdr" #v3.0: 2021-
+    c3s: "input_data/auxdata/sic/c3s"
   ice_drift:
     osi455: "input_data/auxdata/sidrift" #1991-2020
     osi405: "auxiliary/osi405" #2009-
@@ -29,9 +30,9 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: volume # Available options: stacking, gridding, and visualization
-  ice_conc_product: osi450
+  ice_conc_product: c3s
   ice_drift_product: osi455
   target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
@@ -88,12 +89,13 @@ options:
     
     volume:
       # Assume that the projection is ease2 
-      sub_dir: 'sea_ice_thickness_year_round'
-      ice_conc :  #or osi450 (for instance)
+      sub_dir: 'v5/sit_25km_2019_2024_laku/2019'
+      ice_conc : c3s #or osi450 (for instance)
       sea_ice_density : ice_fons_2022 #if constant give the value
       snow_density : snow_fons_2022 #if constant give the value e.g 320
-      
-
+      interp_missing_sit: true # interpolate missing target variable where SIC > threshold
+      sic_interp_threshold: 15 # percent
+      resolution: 25 # grid resolution in km for the volume calculation (used for cell area calculation)
 
 
 version: 100                                                  # version of DA-SIT python software

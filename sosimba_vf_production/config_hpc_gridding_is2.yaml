@@ -10,8 +10,8 @@ input_dir: # relative to base_dir
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/" # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/Ubremen/osi455/"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/v7/" # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/v7/"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -29,13 +29,13 @@ visualization: "visualization/plots"
 logging: "logging"
 #-----------------------------------PROCESSING OPTIONS BLOCK------------------------------------------------------------
 options:
-  sensor: envisat #sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
+  sensor: icesat2 #sentinel3a_sentinel3b_cryosat2 # Available options: envisat, cryosat2, sentinel3a, sentinel3b, icesat2
   proc_step: gridding # Available options: stacking, gridding, and visualization
   ice_conc_product: c3s
   ice_drift_product: osi455
-  target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
+  target_variable: 'total_freeboard'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['snow_depth'] #['snow_depth', 'radar_freeboard', 'sea_ice_freeboard', 'sea_ice_thickness_uncorrected']                                # add variables to the trajectory data frame,
+  add_variable: [''] #['snow_depth', 'radar_freeboard', 'sea_ice_freeboard', 'sea_ice_thickness_uncorrected']                                # add variables to the trajectory data frame,
                                                               # no growth correction, no histogram
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
@@ -68,13 +68,13 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: MIZ_filter_2/csv/Ubremen/osi455/sea_ice_thickness-sh-16fr-epsg6932_141-2026-04-28_00-18-22  #radar_freeboard_202411_202503_extension_SOSIMBA #MIZ_filter_2/csv/v5/sit_2019_2024/* #'MIZ_filter_2/csv/filter_04/*' #'MIZ_filter_2/csv/v5/sit_2019_2024/*' #sea_ice_thickness-sh-16fr-epsg6932_141-2025-08-11_19-54-08' #'iter156_meeting_hamburg'
-      add_variable: 'radar_freeboard'
+      csv_dir: total_freeboard-sh-16fr-epsg6932_141-2026-07-01_00-19-48  #radar_freeboard_202411_202503_extension_SOSIMBA #MIZ_filter_2/csv/v5/sit_2019_2024/* #'MIZ_filter_2/csv/filter_04/*' #'MIZ_filter_2/csv/v5/sit_2019_2024/*' #sea_ice_thickness-sh-16fr-epsg6932_141-2025-08-11_19-54-08' #'iter156_meeting_hamburg'
+      add_variable: #'' #'radar_freeboard'
       mode: 'da'                      # if true then it will look here to get the variable to weigth with
       weighting : 
         is_weight : False                                  # if true then it will look here to get the variable to weigth with
         var_to_weight_with : 'counts'  #['dt_days', 'sea_ice_thickness_total_unc']               # if not specified : '' -> dt_days
-      multiproc: True                                    # Parallel processing
+      multiproc: True # True                                    # Parallel processing
       num_cpus: 16                                          # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month
       netcdf_grid:

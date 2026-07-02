@@ -31,7 +31,9 @@ auxiliary:
     era5: "input_data/auxdata/air_temperature/ERA5/2m_temperature/"
   ohf:
     sose: "input_data/auxdata/ocean_heat_flux/SOSE/OHF_compute/iter156/5DAY/DAILY"
-  mms_clim : "output_data/climatologies_from_alti/"
+  mms_clim : "output_data/climatologies_from_alti/s3a_s3b_cs2_icdc"
+  tFB_clim : "output_data/climatologies_from_alti/icesat2/tFB"
+  SIT_clim : "output_data/climatologies_from_alti/mms/SIT"
 
 #-----------------------------------VISUALIZATION-----------------------------------------------------------------------
 visualization: "visualization/plots"
@@ -57,10 +59,10 @@ options:
     stacking:                                                 # Processing step: stacking (Drift-Aware processing)
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
       mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
-      t_length: 1751 #70 #361 #2141 #255 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
-      t_start: 2019-07-25 00:00:00 #2024-06-22 00:00:00 #2019-07-25 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
+      t_length: 1752 #467 #2543 # 466 #70 #361 #2141 #255 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
+      t_start: 2019-07-25 00:00:00 #2024-06-22 00:00:00 #2024-06-22 00:00:00 #2019-07-25 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
       t_window: 16                                     # length of the drift-aware window in days
-      multiproc: True                                 # Parallel processing
+      multiproc: False                                 # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
