@@ -18,6 +18,22 @@ def get_image_coords(lon, lat, proj, grid_lons, grid_lats, griddef):
     iy = (y_track - y_min) / griddef["dimension"]["dy"]
     return ix, iy
 
+def interp_var(gridvar, gridvar_x, gridvar_y, x, y):
+    from scipy.interpolate import RegularGridInterpolator
+    
+    xc, yc = gridvar_x[0, :], gridvar_y[:, 0]
+    # Check if xc and yc are in descending order
+    if xc[0] > xc[-1]:
+        xc = xc[::-1]
+        gridvar = gridvar[:, ::-1]
+    if yc[0] > yc[-1]:
+        yc = yc[::-1]
+        gridvar = gridvar[::-1, :]
+
+    interp_func = RegularGridInterpolator((xc, yc), gridvar.T, method='linear')
+    interp = interp_func((x, y))
+    return interp
+
 def extract_along_track(gridvar, ix, iy, flipud=False, order=1):
     if flipud:
         gridvar = np.flipud(gridvar)
@@ -64,8 +80,6 @@ def add_sic_variables_to_gdf(gdf, ds_ice_conc, griddef, sensor, crs):
 
     # Load SIC grid
     ice_conc = ds_ice_conc["ice_conc_no_0"][:, :]
-    grid_lons = ds_ice_conc["lon"]
-    grid_lats = ds_ice_conc["lat"]
 
     # Mask invalid
     ice_conc = np.where(ice_conc < 0, np.nan, ice_conc)
@@ -73,19 +87,11 @@ def add_sic_variables_to_gdf(gdf, ds_ice_conc, griddef, sensor, crs):
     # Proj and track coords
     proj = compute_projection(griddef)
     gdf_lonlat = gdf.to_crs("EPSG:4326")
-    if "icesat2" in sensor:
-        gdf["longitude"] = gdf_lonlat.geometry.x
-        gdf["latitude"] = gdf_lonlat.geometry.y
-    else:
-        points = gpd.GeoDataFrame(geometry=gpd.points_from_xy(gdf.reset_index().x, 
-                                                              gdf.reset_index().y),crs="EPSG:6932" )
-        
-        gdf["longitude"][:] = points.to_crs('EPSG:4326').geometry.x
-        gdf["latitude"][:] = points.to_crs('EPSG:4326').geometry.y
-    ix, iy = get_image_coords(gdf["longitude"].values, gdf["latitude"].values,
-                              proj, grid_lons, grid_lats, griddef)
-    # Interpolate SIC
-    sic_track = extract_along_track(ice_conc, ix, iy, flipud=True)
+    
+    gdf["longitude"] = gdf_lonlat.geometry.x
+    gdf["latitude"] = gdf_lonlat.geometry.y
+
+    sic_track = interp_var(ice_conc, ds_ice_conc["xc"], ds_ice_conc["yc"], gdf.geometry.x, gdf.geometry.y)
 
     # Compute distances
     dx = float(griddef["dimension"]["dx"]) # can be determined without the griddef
@@ -93,8 +99,8 @@ def add_sic_variables_to_gdf(gdf, ds_ice_conc, griddef, sensor, crs):
     dist_to_low_sic = compute_proximity(ice_conc, 70., dx)
 
     # Interpolate distances
-    dist_ocean_track = extract_along_track(dist_to_ocean, ix, iy, flipud=True, order=1)
-    dist_low_sic_track = extract_along_track(dist_to_low_sic, ix, iy, flipud=True, order=1)
+    dist_ocean_track = interp_var(dist_to_ocean, ds_ice_conc["xc"], ds_ice_conc["yc"], gdf.geometry.x, gdf.geometry.y)
+    dist_low_sic_track = interp_var(dist_to_low_sic, ds_ice_conc["xc"], ds_ice_conc["yc"], gdf.geometry.x, gdf.geometry.y)
 
     # Mask distance where SIC < 15%
     dist_ocean_track[sic_track < 15.] = np.nan
@@ -114,27 +120,16 @@ def add_tFB_clim_variables_to_gdf(gdf, ds_clim_product, griddef, sensor, crs, ta
     elif target_var == "sea_ice_thickness":
         clim_interp = ds_clim_product["SIT_interp"]
         sigma_clim_interp = ds_clim_product["sigma_SIT_interp"]
-    grid_lons = ds_clim_product["longitude"]
-    grid_lats = ds_clim_product["latitude"]
 
     # Proj and track coords
-    proj = compute_projection(griddef)
     gdf_lonlat = gdf.to_crs("EPSG:4326")
-    if sensor == "icesat2":
-        gdf["longitude"] = gdf_lonlat.geometry.x
-        gdf["latitude"] = gdf_lonlat.geometry.y
-    else:
-        points = gpd.GeoDataFrame(geometry=gpd.points_from_xy(gdf.reset_index().x, 
-                                                              gdf.reset_index().y),crs="EPSG:6932" )
-        
-        gdf["longitude"] = points.to_crs('EPSG:4326').geometry.x
-        gdf["latitude"] = points.to_crs('EPSG:4326').geometry.y
-    ix, iy = get_image_coords(gdf["longitude"].values, gdf["latitude"].values,
-                              proj, grid_lons, grid_lats, griddef)
 
-    # Interpolate SIC
-    clim_interp = extract_along_track(clim_interp, ix, iy, flipud=True)
-    sigma_clim_interp = extract_along_track(sigma_clim_interp, ix, iy, flipud=True)
+    gdf["longitude"] = gdf_lonlat.geometry.x
+    gdf["latitude"] = gdf_lonlat.geometry.y
+
+    # Interpolate SIT
+    clim_interp = interp_var(clim_interp, ds_clim_product["xc"], ds_clim_product["yc"], gdf.geometry.x, gdf.geometry.y)
+    sigma_clim_interp = interp_var(sigma_clim_interp, ds_clim_product["xc"], ds_clim_product["yc"], gdf.geometry.x, gdf.geometry.y)
     
     # Add to GeoDataFrame
     gdf["clim_interp"] = clim_interp

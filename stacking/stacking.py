@@ -208,6 +208,7 @@ def stack_proc(config, direct, grid):
                 sit_product.product = sit_product.product[(sit_product.product['total_freeboard_quality_flag'] <= 4) & (sit_product.product['total_freeboard_quality_flag'] >= 0)]
                 #sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
             elif (sensor_k[0] != 'icesat2') and (target_var == 'sea_ice_thickness'):
+                
                 sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='sit_clim',
                                                           out_epsg=out_epsg)
                 sit_clim_product.get_file_list(config['auxiliary']['sit_clim'])
