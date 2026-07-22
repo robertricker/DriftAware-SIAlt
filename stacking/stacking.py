@@ -231,7 +231,7 @@ def stack_proc(config, direct, grid):
         # The sea ice drift to advect parcel at t0 is the one referenced as t1
         # Indeed the reference correspond to the end of the 24h data range that cover each file
         sid_product.target_files = sid_product.get_target_files(t0 + d_sgn_drift * dt1d, t1 + d_sgn_drift * dt1d)
-        if thermo_model!=None and not isinstance(ohf_product, int):
+        if thermo_model!=None:
             t2m_product.target_files = t2m_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
         else:
             t2m_product.target_files = None
