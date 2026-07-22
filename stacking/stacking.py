@@ -145,13 +145,14 @@ def stack_proc(config, direct, grid):
     thermo_model = config['options']['proc_step_options']['stacking']['thermo_change']['model']
     #if thermo_model=='None' : thermo_model = None
     if type(config['options']['proc_step_options']['stacking']['thermo_change']['oce_heat_flux']) is not int:
-        print('Need to be implemented with a reanalysis')
+        logger.info('Need to be implemented with a reanalysis')
         ohf_product = OceanHeatFluxProducts(hem=hem, product_id=config['options']['ohf_product'], out_epsg=out_epsg)
         ohf_product.get_file_list(config['auxiliary']['ohf'][config['options']['ohf_product']])
         ohf_product.get_file_dates()
 
     else:
         ohf_product = config['options']['proc_step_options']['stacking']['thermo_change']['oce_heat_flux']
+        logger.info(f"The Ocean heat flux used is a constant : {config['options']['proc_step_options']['stacking']['thermo_change']['oce_heat_flux']}")
 
     if direct == 'f':
         d_sgn = 1
@@ -196,27 +197,32 @@ def stack_proc(config, direct, grid):
 
             #if ICESAT-2, then we need to filter out the total freeboard (snow depth purposes)
             if (len(sensor_k) == 1) and (sensor_k[0] == 'icesat2'):
-                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='tFB_clim',
-                                                          out_epsg=out_epsg)
-                sit_clim_product.get_file_list(config['auxiliary']['tFB_clim'])
-                sit_clim_product.get_file_dates()
-                
-                sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
+                if 'tFB_clim' in config['auxiliary']:
 
-                sit_clim_product.sit_clim = sit_clim_product.get_tFB_clim(sit_clim_product.target_files)
+                    sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='tFB_clim',
+                                                            out_epsg=out_epsg)
+                    logger.info(f"Climatology is used to filter out MIZ outliers from : {config['auxiliary']['tFB_clim']}")
+                    sit_clim_product.get_file_list(config['auxiliary']['tFB_clim'])
+                    sit_clim_product.get_file_dates()
+                    
+                    sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
+
+                    sit_clim_product.sit_clim = sit_clim_product.get_tFB_clim(sit_clim_product.target_files)
                 #keep only the total freeboard with quality flag <= 2
                 sit_product.product = sit_product.product[(sit_product.product['total_freeboard_quality_flag'] <= 4) & (sit_product.product['total_freeboard_quality_flag'] >= 0)]
                 #sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
             elif (sensor_k[0] != 'icesat2') and (target_var == 'sea_ice_thickness'):
-                
-                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='sit_clim',
-                                                          out_epsg=out_epsg)
-                sit_clim_product.get_file_list(config['auxiliary']['sit_clim'])
-                sit_clim_product.get_file_dates()
-                
-                sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
+                if 'SIT_clim' in config['auxiliary']:
 
-                sit_clim_product.sit_clim = sit_clim_product.get_SIT_clim(sit_clim_product.target_files)
+                    sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='sit_clim',
+                                                            out_epsg=out_epsg)
+                    logger.info(f"Climatology is used to filter out MIZ outliers from : {config['auxiliary']['SIT_clim']}")
+                    sit_clim_product.get_file_list(config['auxiliary']['sit_clim'])
+                    sit_clim_product.get_file_dates()
+                    
+                    sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
+
+                    sit_clim_product.sit_clim = sit_clim_product.get_SIT_clim(sit_clim_product.target_files)
                 
             processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim = sit_clim_product if 'sit_clim_product' in locals() else None)
         
@@ -225,7 +231,7 @@ def stack_proc(config, direct, grid):
         # The sea ice drift to advect parcel at t0 is the one referenced as t1
         # Indeed the reference correspond to the end of the 24h data range that cover each file
         sid_product.target_files = sid_product.get_target_files(t0 + d_sgn_drift * dt1d, t1 + d_sgn_drift * dt1d)
-        if thermo_model!=None:
+        if thermo_model!=None and not isinstance(ohf_product, int):
             t2m_product.target_files = t2m_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
         else:
             t2m_product.target_files = None
