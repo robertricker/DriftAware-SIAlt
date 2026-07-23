@@ -112,7 +112,7 @@ def add_sic_variables_to_gdf(gdf, ds_ice_conc, griddef, sensor, crs):
 
     return gdf
 
-def add_tFB_clim_variables_to_gdf(gdf, ds_clim_product, griddef, sensor, crs, target_var):
+def add_tfb_clim_variables_to_gdf(gdf, ds_clim_product, griddef, sensor, crs, target_var):
     # Load clim tFB grid
     if target_var == "total_freeboard":
         clim_interp = ds_clim_product["tFB_interp"]
@@ -159,7 +159,7 @@ def compute_apply_flag(gdf, sic_product, sit_clim_product, target_var, sensor, c
     }
 
     merge = add_sic_variables_to_gdf(gdf, sic, griddef, sensor, crs)
-    merge2 = add_tFB_clim_variables_to_gdf(merge, sit_clim, griddef, sensor, crs, target_var)
+    merge2 = add_tfb_clim_variables_to_gdf(merge, sit_clim, griddef, sensor, crs, target_var)
     
     window_size_float = 5000 / 10
     window_size = int(int(window_size_float) // 2 * 2 + 1)

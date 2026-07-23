@@ -19,13 +19,13 @@ class SeaIceConcentrationProducts:
         self.file_dates = None
 
         self.function_map = {
-            'osi430b': self.get_ice_concentration,
+            'osi430': self.get_ice_concentration,
             'osi450': self.get_ice_concentration,
             'c3s': self.get_ice_concentration
         }
 
         self.config = {
-            'osi430b': {
+            'osi430': {
                 'hem_nh': '_nh_',
                 'hem_sh': '_sh_',
                 'date_str': '{12}',

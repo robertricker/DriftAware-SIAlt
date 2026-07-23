@@ -13,6 +13,7 @@ from io_tools import transform_coords
 from io_tools import get_sea_ice_regions
 from io_tools import create_out_dir
 from io_tools import read_dasit_csv
+from io_tools import read_dasit_metadata
 from gridding.prepare_netcdf import PrepareNetcdf
 from gridding import gridding_lib
 from loguru import logger
@@ -53,15 +54,44 @@ def get_row_mean(row):
     return np.mean(row)
 
 
-def process_file(config, file_list, grid, region_grid):
+def get_source_stack_metadata(config, file_list):
+    """Return common stack metadata and reject incompatible trajectory files."""
+    fallback = config['gridding'].get('source_stack')
+    expected_target = config['options']['target_variable']
+    source_stack = None
+
+    for file in file_list:
+        metadata = read_dasit_metadata(file)
+        file_source_stack = metadata.get('source_stack', fallback)
+        if file_source_stack is None:
+            raise ValueError(
+                f'{file} uses the legacy CRS-only header. Regenerate the trajectory '
+                'CSV with format_version 1 or provide source_stack in the gridding '
+                'configuration as a temporary compatibility fallback.')
+
+        file_target = metadata.get('target_variable')
+        if file_target and file_target != expected_target:
+            raise ValueError(
+                f'trajectory target_variable {file_target!r} in {file} does not '
+                f'match configured target_variable {expected_target!r}')
+
+        if source_stack is None:
+            source_stack = file_source_stack
+        elif file_source_stack != source_stack:
+            raise ValueError(
+                f'incompatible source_stack metadata found in trajectory file: {file}')
+
+    return source_stack
+
+
+def process_file(config, file_list, grid, region_grid, region_metadata, source_stack):
     init_logger(config)
     target_var = config['options']['target_variable']
     out_epsg = config["options"]["out_epsg"]
-    stk_opt = config['options']['proc_step_options']['stacking']
-    grd_opt = config['options']['proc_step_options']['gridding']
+    grd_opt = config['gridding']
     # declare histogram options
-    hist_n_bins = stk_opt['hist']['n_bins']
-    hist_range = stk_opt['hist']['range']["freeboard" if "freeboard" in target_var else "thickness"]
+    hist_n_bins = source_stack['histogram']['n_bins']
+    hist_range = source_stack['histogram']['range']["freeboard" if "freeboard" in target_var else "thickness"]
     hist_bin_size = (hist_range[1] - hist_range[0]) / hist_n_bins
 
     # declare gridding options
@@ -69,8 +99,8 @@ def process_file(config, file_list, grid, region_grid):
     dt_days_max = grd_opt['dt_days_max']
     var_range = grd_opt['target_variable_range']["freeboard" if "freeboard" in target_var else "thickness"]
     out_dir = config['output_dir']['gridded_data']
-    is_weight = config['options']['proc_step_options']['gridding']['weighting']['is_weight']
-    weight_var = config['options']['proc_step_options']['gridding']['weighting']['var_to_weight_with']
+    is_weight = grd_opt['weighting']['is_weight']
+    weight_var = grd_opt['weighting']['var_to_weight_with']
 
     for i, file in enumerate(file_list):
         logger.info('process csv file: ' + os.path.basename(file))
@@ -169,7 +199,8 @@ def process_file(config, file_list, grid, region_grid):
     if 'thermo_change_rate' in data.columns:
         data['thermo_change_rate'] = data['thermo_change_rate'].apply(get_row_mean)
 
-    prepare_netcdf = PrepareNetcdf(config, file, region_grid)
+    prepare_netcdf = PrepareNetcdf(
+        config, file, region_grid, region_metadata, source_stack)
     var, var_rename = prepare_netcdf.select_variables(data)
     if is_weight:
         master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['weighted_mean'], weight_var=weight_var)
@@ -203,7 +234,7 @@ def process_file(config, file_list, grid, region_grid):
     master = master.set_coords(("longitude", "latitude"))
     master = prepare_netcdf.add_projection_field(master)
     master = prepare_netcdf.add_time_bnds(master, data['t0'].min(), data['t0'].max())
-    master = prepare_netcdf.add_region_flag(master)
+    master = prepare_netcdf.add_region_code(master)
     master = prepare_netcdf.add_histogram(master)
     master = prepare_netcdf.set_var_attrbs(master)
     master = prepare_netcdf.set_glob_attrbs(master)
@@ -217,7 +248,7 @@ def process_file(config, file_list, grid, region_grid):
 def gridding(config):
     sensor = config['options']['sensor']
     hemisphere = config['options']['hemisphere']
-    grd_opt = config['options']['proc_step_options']['gridding']
+    grd_opt = config['gridding']
     netcdf_bounds = grd_opt['netcdf_grid']['bounds']
     if grd_opt['csv_dir'] == "all":
         file_list = sorted([os.path.join(root, file)
@@ -228,16 +259,25 @@ def gridding(config):
         csv_dir = os.path.join(config['output_dir']['trajectories'], grd_opt['csv_dir'])
         file_list = sorted(glob.glob(os.path.join(csv_dir,'*.csv')))
 
+    if not file_list:
+        raise FileNotFoundError('no trajectory CSV files found for gridding')
+
+    source_stack = get_source_stack_metadata(config, file_list)
+
     grid, cell_width = gridding_lib.define_grid(
         netcdf_bounds,
         grd_opt['netcdf_grid']['dim'],
         config['options']['out_epsg'],
         grid_type='circular')
 
-    config['output_dir']['gridded_data'] = create_out_dir(config, config['output_dir']['gridded_data'], cell_width)
-    region_grid = get_sea_ice_regions(config['auxiliary']['reg_mask'][hemisphere], netcdf_bounds,
-                                      round(0.5 * np.sqrt(2) * cell_width),
-                                      config['options']['out_epsg'], hemisphere)
+    config['output_dir']['gridded_data'] = create_out_dir(
+        config, config['output_dir']['gridded_data'], cell_width, source_stack)
+    region_grid, region_metadata = get_sea_ice_regions(
+        config['auxiliary']['reg_mask'][hemisphere],
+        netcdf_bounds,
+        round(0.5 * np.sqrt(2) * cell_width),
+        config['options']['out_epsg'],
+        hemisphere)
 
     date_pattern = re.compile(r"\b(20\d{6})\b")
 
@@ -265,12 +305,17 @@ def gridding(config):
         logger.info('start multiprocessing')
         pool = mp.Pool(grd_opt['num_cpus'])
         for i in range(len(grouped_files)):
-            pool.apply_async(process_file, args=(config, grouped_files[i], grid, region_grid))
+            pool.apply_async(
+                process_file,
+                args=(config, grouped_files[i], grid, region_grid,
+                      region_metadata, source_stack))
         pool.close()
         pool.join()
     else:
         for i in range(len(grouped_files)):
-            process_file(config, grouped_files[i], grid, region_grid)
+            process_file(
+                config, grouped_files[i], grid, region_grid,
+                region_metadata, source_stack)
 
     if grd_opt["organize_files"]:
         organize_files_by_date(config['output_dir']['gridded_data'],

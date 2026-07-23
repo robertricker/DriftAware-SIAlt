@@ -3,71 +3,46 @@ import time
 import yaml
 import argparse
 import os
-from gridding import gridding
-from visualization import visualization
-from volume import volume
 from typing import Dict
 from loguru import logger
-from stacking import stacking
-from binning import binning
-from io_tools import init_logger
-
-
-def resolve_paths(config_dict, sensor):
-    if isinstance(config_dict, dict):
-        return {key: resolve_paths(value, sensor) for key, value in config_dict.items()}
-    elif isinstance(config_dict, list):
-        return [resolve_paths(item, sensor) for item in config_dict]
-    elif isinstance(config_dict, str):
-        return config_dict.format(sensor=sensor)
-    else:
-        return config_dict
-
-
-def resolve_absolute_paths(config_dict, base_dir):
-    for key, value in config_dict.items():
-        if key == 'options':
-            break
-        if isinstance(value, str):
-            if not value.startswith("/") and not value.startswith(base_dir):
-                config_dict[key] = os.path.join(base_dir, value)
-        elif isinstance(value, dict):
-            resolve_absolute_paths(value, base_dir)
-    return config_dict
+from config_loader import load_config
 
 
 def main(configure: Dict[str, object]) -> None:
     logger.info('configuration settings:\n{}'.format(yaml.dump(configure)))
 
-    proc_step = configure["options"]["proc_step"]
+    stage = configure["stage"]
 
-    if proc_step == 'stacking':
+    if stage == 'stacking':
+        from stacking import stacking
+
         logger.info('start stacking')
         stacking.stacking(configure)
         logger.info('finished stacking')
 
-    elif proc_step == 'gridding':
+    elif stage == 'gridding':
+        from gridding import gridding
+
         logger.info('start evaluation on grid')
         gridding.gridding(configure)
         logger.info('finished evaluation on grid')
 
-    elif proc_step == 'visualization':
+    elif stage == 'visualization':
+        from visualization import visualization
+
         logger.info('start visualization')
         visualization.visualization(configure)
         logger.info('finished visualization')
 
-    elif proc_step == 'binning':
-        logger.info('start binning')
-        binning.binning(configure)
-        logger.info('finished binning')        
+    elif stage == 'volume':
+        from volume import volume
 
-    elif proc_step == 'volume':
         logger.info('start volume computation')
         volume.volume(configure)
         logger.info('finished volume computation')
 
     else:
-        raise ValueError('unexpected proc_step: %s' % proc_step)
+        raise ValueError('unexpected processing stage: %s' % stage)
 
     elapsed_time = time.time() - start_time
     time_str = time.strftime('%H:%M:%S', time.gmtime(elapsed_time))
@@ -81,18 +56,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     start_time = time.time()
-    # Load the configuration settings from a YAML file
-    with open(args.config_file, 'r') as f:
-        config = yaml.safe_load(f)
-
-    config = resolve_paths(config, config["options"]["sensor"])
-    config = resolve_absolute_paths(config, config["base_dir"])
-    if config['options']['sensor'] == 'icesat2':
-        config['input_dir']['icesat2'] = config['input_dir']['icesat2'][config["options"]["target_variable"]]
+    config = load_config(args.config_file)
 
     # Set up the logging configuration
-    log_file = f"{config['options']['proc_step']}{'_'}"\
+    log_file = f"{config['stage']}{'_'}"\
                f"{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
     config['logging'] = os.path.join(config['logging'], log_file)
+    from io_tools import init_logger
+
     init_logger(config)
     main(config)

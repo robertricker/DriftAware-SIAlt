@@ -25,28 +25,8 @@ variables:
       - "sit_corr_thermo_mod"
       - "rate_thermo_change_mod"
       - "rate_thermo_growth_mod"
-      #- "sit_corr_thermo_mod2"
-      #- "rate_thermo_change_mod2"
-      #- "rate_thermo_growth_mod2"
-      #- "sit_corr_thermo_mod3"
-      #- "rate_thermo_change_mod3"
-      #- "rate_thermo_growth_mod3"
-      #- "sit_corr_thermo_mod4"
-      #- "rate_thermo_change_mod4"
-      #- "rate_thermo_growth_mod4"
-      #- "sit_corr_thermo_mod5"
-      #- "rate_thermo_change_mod5"
-      #- "rate_thermo_growth_mod5"
-      #- "sit_corr_thermo_mod6"
-      #- "rate_thermo_change_mod6"
-      #- "rate_thermo_growth_mod6"    
       - "drift_unc"
       - "ohf"
-      - "ohf2"
-      - "ohf3"
-      - "ohf4"
-      - "ohf5"
-      - "ohf6"
       - "t2m"
       - "sentinel3a"
       - "sentinel3b"
@@ -60,12 +40,12 @@ variables:
       - "{{ target_var }}"
       - "{{ target_var }}_l2_unc"
       - "{{ target_var }}_drift_unc"
-      - "{{ target_var }}_growth_unc"
+      - "{{ target_var }}_change_unc"
       - "{{ target_var }}_total_unc"
       #- "{{ target_var }}_mode"
       - "{{ target_var }}_uncorrected"
-      - "{{ target_var }}_growth"
-      - "{{ target_var }}_growth_interpolated"
+      - "{{ target_var }}_change"
+      - "{{ target_var }}_change_interpolated"
       - "dist_acquisition"
       - "time_offset_acquisition"
       - "sea_ice_concentration"
@@ -73,36 +53,16 @@ variables:
       - "shear"
       - "divergence"
       - "dynamic_change_rate"
-      - "thermo_change_rate"
+      - "sea_ice_thickness_thermodynamic_tendency"
       - "radar_freeboard"
       - "sea_ice_freeboard"
       - "snow_depth"
-      - "sit_corr_thermo_mod"
-      - "rate_change_model"
-      - "rate_growth_model"
-      #- "sit_corr_thermo_mod2"
-      #- "rate_change_model2"
-      #- "rate_growth_model2"
-      #- "sit_corr_thermo_mod3"
-      #- "rate_change_model3"
-      #- "rate_growth_model3"
-      #- "sit_corr_thermo_mod4"
-      #- "rate_change_model4"
-      #- "rate_growth_model4"
-      #- "sit_corr_thermo_mod5"
-      #- "rate_change_model5"
-      #- "rate_growth_model5"
-      #- "sit_corr_thermo_mod6"
-      #- "rate_change_model6"
-      #- "rate_growth_model6"
-      - "quad_sum_drift_unc"
-      - "ohf"
-      - "ohf2"
-      - "ohf3"
-      - "ohf4"
-      - "ohf5"
-      - "ohf6"
-      - "t2m"
+      - "model_sea_ice_thickness"
+      - "model_sea_ice_thickness_change_rate"
+      - "model_sea_ice_thickness_thermodynamic_tendency"
+      - "sea_ice_displacement_uncertainty"
+      - "model_ocean_heat_flux"
+      - "model_air_temperature"
       - "sentinel3a_frac"
       - "sentinel3b_frac"
       - "cryosat2_frac"
@@ -194,6 +154,7 @@ variable_attributes:
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
+    ancillary_variables: "sea_ice_thickness_l2_unc sea_ice_thickness_drift_unc sea_ice_thickness_change_unc sea_ice_thickness_total_unc"
     comment: ""
 
   sea_ice_thickness_std:
@@ -220,19 +181,17 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: "grid cells contain the absolute counts for each bin"
 
-  sea_ice_thickness_growth:
-    standard_name: 'sea_ice_thickness_change'
-    long_name: "rate of change in sea ice thickness per day"
+  sea_ice_thickness_change:
+    long_name: "sea ice thickness change rate estimated along trajectories"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "m day-1"
     grid_mapping: 'crs'
     comment: ""
 
-  sea_ice_thickness_growth_interpolated:
-    standard_name: 'sea_ice_thickness_change'
-    long_name: "interpolated sea ice thickness growth"
+  sea_ice_thickness_change_interpolated:
+    long_name: "spatially interpolated sea ice thickness change rate"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "m day-1"
     grid_mapping: 'crs'
     comment: ""
 
@@ -244,9 +203,9 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: ""
 
-  sea_ice_thickness_growth_unc:
-    standard_name: 'sea_ice_thickness_change standard_error'
-    long_name: "sea ice thickness uncertainty associated with the sea ice thickness growth per day"
+  sea_ice_thickness_change_unc:
+    standard_name: 'sea_ice_thickness standard_error'
+    long_name: "sea ice thickness uncertainty associated with the interpolated thickness change correction"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
@@ -292,9 +251,59 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: ""
 
-  drift_unc:
-    standard_name: 'sea_ice_displacement standard_error'
-    long_name: "uncertainty of the accumulated sea ice displacement"
+  model_sea_ice_thickness:
+    standard_name: 'sea_ice_thickness'
+    long_name: "sea ice thickness propagated by the thermodynamic model"
+    coordinates: "time longitude latitude"
+    units: "m"
+    grid_mapping: 'crs'
+    model: "winter_2layers"
+    comment: ""
+
+  sea_ice_thickness_thermodynamic_tendency:
+    standard_name: 'tendency_of_sea_ice_thickness_due_to_thermodynamics'
+    long_name: "thermodynamic tendency of sea ice thickness inferred from observed thickness change and ice divergence"
+    coordinates: "time longitude latitude"
+    units: "m day-1"
+    grid_mapping: 'crs'
+    comment: ""
+
+  model_sea_ice_thickness_change_rate:
+    long_name: "modeled sea ice thickness correction rate along the trajectory direction"
+    coordinates: "time longitude latitude"
+    units: "m day-1"
+    grid_mapping: 'crs'
+    model: "winter_2layers"
+    comment: "The sign follows the forward or reverse trajectory direction."
+
+  model_sea_ice_thickness_thermodynamic_tendency:
+    standard_name: 'tendency_of_sea_ice_thickness_due_to_thermodynamics'
+    long_name: "modeled forward-time thermodynamic tendency of sea ice thickness"
+    coordinates: "time longitude latitude"
+    units: "m day-1"
+    grid_mapping: 'crs'
+    model: "winter_2layers"
+    comment: ""
+
+  model_air_temperature:
+    standard_name: 'air_temperature'
+    long_name: "air temperature used by the thermodynamic model"
+    coordinates: "time longitude latitude"
+    units: "degree_Celsius"
+    grid_mapping: 'crs'
+    model: "winter_2layers"
+    comment: ""
+
+  model_ocean_heat_flux:
+    long_name: "ocean heat flux used by the thermodynamic model"
+    coordinates: "time longitude latitude"
+    units: "W m-2"
+    grid_mapping: 'crs'
+    model: "winter_2layers"
+    comment: "Positive values reduce modeled sea ice growth."
+
+  sea_ice_displacement_uncertainty:
+    long_name: "uncertainty of the accumulated sea ice parcel displacement along the trajectory"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'

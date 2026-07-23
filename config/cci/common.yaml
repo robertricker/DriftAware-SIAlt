@@ -1,0 +1,47 @@
+# Shared project, repository, and scientific settings.
+base_dir: "/Volumes/Files/Forskningsdata/600/60090/105517-CCI+SeaIce"
+version: 1.1
+
+input_dir:
+  envisat: "input/altimetry/l2p/nh/envisat"
+  cryosat2: "input/altimetry/l2p/nh/cryosat2"
+  sentinel3a: "input/altimetry/l2p/nh/sentinel3a"
+  sentinel3b: "input/altimetry/l2p/nh/sentinel3b"
+  icesat2:
+    total_freeboard: "input/icesat2/ATL10.005"
+    sea_ice_thickness: "input/icesat2/is2sitdata"
+
+output_dir:
+  trajectories: "output/{version}/trajectories/{sensor}"
+  gridded_data: "output/{version}/l3c/{sensor}"
+  visu: "output/{version}/visualization/{sensor}"
+
+auxiliary:
+  ice_conc:
+    osi450: "input/ice_conc/osi450"
+    osi430: "input/ice_conc/osi430"
+  ice_drift:
+    osi455: "input/ice_drift/osi455"
+    osi435: "input/ice_drift/osi435"
+    osi405: "input/ice_drift/osi405"
+  reg_mask:
+    nh: "input/auxiliary/region_mask/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc"
+    sh: "input/auxiliary/region_mask/NSIDC-0780_SeaIceRegions_EASE2-S12.5km_v1.0.nc"
+  t2m:
+    era5:
+      nh: "input/auxiliary/air_temperature/ERA5/nh"
+      sh: "input/auxiliary/air_temperature/ERA5/sh"
+  ohf:
+    sose: "input/auxiliary/ocean_heat_flux/SOSE/OHF_compute/iter156/5DAY/DAILY"
+  land_mask: "input/auxiliary/land_mask/ne_50m_land.shp"
+
+logging: "logging"
+
+options:
+  sensor: [cryosat2]
+  target_variable: sea_ice_thickness
+  add_variable: [snow_depth]
+  hemisphere: nh
+  out_epsg: "EPSG:6931"
+  ice_conc_product: osi430
+  ice_drift_product: osi435

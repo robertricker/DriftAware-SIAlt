@@ -1,0 +1,10 @@
+extends: common.yaml
+
+stage: visualization
+
+visualization:
+  # Empty means search all NetCDF files below output_dir.gridded_data.
+  sub_dir: ""
+  variable: sea_ice_thickness
+  gif:
+    enabled: false

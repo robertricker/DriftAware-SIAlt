@@ -1,0 +1,52 @@
+extends: common.yaml
+
+stage: stacking
+
+stacking:
+  filename_prefix: ESACCI-SEAICE
+  mode: fr
+  t_start: 2020-12-01 00:00:00
+  t_length: 100
+  t_window: 5
+
+  parallel:
+    enabled: false
+    workers: 16
+
+  parcel_grid:
+    bounds: [-5400000, -5400000, 5400000, 5400000]
+    dim: 1080
+
+  hist:
+    n_bins: 40
+    range:
+      freeboard: [0, 1]
+      thickness: [0, 10]
+
+  growth_estimation:
+    growth_grid:
+      bounds: [-5400000, -5400000, 5400000, 5400000]
+      dim: 432
+    min_n_tiepoints: 3
+    growth_range:
+      freeboard: [-0.25, 0.25]
+      thickness: [-2.5, 2.5]
+    land_area_correction:
+      enabled: true
+
+  climatology:
+    sit:
+      enabled: false
+      path:
+    tfb:
+      enabled: false
+      path:
+
+  thermo_change:
+    enabled: True
+    model: winter_2layers
+    air_temperature:
+      product: era5
+    ocean_heat_flux:
+      source: constant
+      value: 2.0

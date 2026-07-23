@@ -43,7 +43,7 @@ def volume(config):
     sensor = config['options']['sensor']
     hem = config["options"]["hemisphere"]
     out_epsg = config["options"]["out_epsg"]
-    volume_opt = config['options']['proc_step_options']['volume']
+    volume_opt = config['volume']
     which_ice_conc = volume_opt['ice_conc']
     target_var = config['options']['target_variable']
 
@@ -59,7 +59,7 @@ def volume(config):
     sic_interp_threshold = volume_opt.get('sic_interp_threshold', 15)
     mode = file_list[0][-20:-18].lower()
 
-    resolution = config['options']['proc_step_options']['volume']['resolution']
+    resolution = config['volume']['resolution']
 
     sic_product = SeaIceConcentrationProducts(hem=hem, product_id=config['options']['ice_conc_product'],
                                               out_epsg=out_epsg)
@@ -145,14 +145,14 @@ def volume(config):
         ds_vol_mass = dataset[csv_vars]
         df_vol_mass_temp = ds_vol_mass.sum(dim=['xc', 'yc']).to_dataframe()
 
-        region_flag = dataset.region_flag
-        region_codes = region_flag.attrs["flag_values"]
-        region_names = region_flag.attrs["flag_meanings"].split()        #unique_regions = np.unique(regions[regions!=0])  # suppress the 0 (undefined region)
+        region_code = dataset.region_code
+        region_codes = region_code.attrs["flag_values"]
+        region_names = region_code.attrs["flag_meanings"].split()        #unique_regions = np.unique(regions[regions!=0])  # suppress the 0 (undefined region)
 
         for region in region_codes:
 
             # select data for a specific region :
-            df_region = ds_vol_mass.where(dataset.region_flag == region).sum(dim=['xc', 'yc']).to_dataframe()/1000000000
+            df_region = ds_vol_mass.where(dataset.region_code == region).sum(dim=['xc', 'yc']).to_dataframe()/1000000000
             df_region_renamed = df_region.rename(columns={
                 var: f"{var}_{region}" for var in df_region.columns
                 })
@@ -175,7 +175,3 @@ def volume(config):
                            os.path.dirname(config['output_dir']['volume']+ '/' + volume_opt['sub_dir'] + '/')) ## check 
     df_vol_mass.to_csv(outfile_csv)
     logger.info('csv files for volume saved as : %s' %outfile_csv )
-
-
-
-        

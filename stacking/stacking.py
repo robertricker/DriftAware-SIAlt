@@ -8,6 +8,7 @@ import re
 import sys
 import multiprocessing as mp
 import json
+from numbers import Real
 from loguru import logger
 from shapely.geometry import MultiPoint
 from scipy.spatial import cKDTree
@@ -17,17 +18,17 @@ from data_handler.sea_ice_drift_products import SeaIceDriftProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessMultiProducts
 from data_handler.sea_ice_thickness_products import SeaIceThicknessProducts
 from data_handler.sea_ice_thickness_clim_products import SeaIceThicknessClimProducts
-
 from data_handler.air_temperature_products import AirTemperatureProducts
 from data_handler.ocean_heat_flux_products import OceanHeatFluxProducts
 from stacking.stack_structure import StackStructure
 from stacking.drift_aware_processor import DriftAwareProcessor
 from stacking.drift_aware_uncertainties import get_neighbor_dyn_range
-from stacking.interpolate_growth import interpolate_growth
+from stacking.interpolate_growth import interpolate_growth, get_land_area_correction
 from io_tools import create_out_dir
 from io_tools import init_logger
 from io_tools import read_dasit_csv
 from io_tools import make_csv_filename
+from io_tools import write_dasit_csv
 from data_handler.filter_miz import compute_apply_flag
 
 
@@ -37,7 +38,7 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     target_var = config["options"]["target_variable"]
     csv_dir = config['output_dir']['trajectories']
     out_epsg = config['options']['out_epsg']
-    stk_opt = config['options']['proc_step_options']['stacking']
+    stk_opt = config['stacking']
     start_date = stk_opt['t_start']
     growth_range = stk_opt['growth_estimation']['growth_range']["freeboard" if "free" in target_var else "thickness"]
     min_n_tps = stk_opt['growth_estimation']['min_n_tiepoints']
@@ -74,7 +75,8 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     data["geometry"] = target_location
     if len(data["dt_days"].unique()) >= min_n_tps:
         f_growth, f_growth_unc, growth, nb_tie_points, counts = interpolate_growth(
-            data, target_var, growth_range, grid, growth_cell_width, min_n_tps, nbs, config["options"]["hemisphere"])
+            data, target_var, growth_range, grid, growth_cell_width, min_n_tps, nbs,
+            config["options"]["hemisphere"], get_land_area_correction(config))
         growth_interp = f_growth(
             np.array([np.array(data.geometry.x), np.array(data.geometry.y)]).transpose())
         growth_unc_interp = f_growth_unc(
@@ -93,9 +95,7 @@ def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, li
     data[target_var + '_drift_unc'] = data.apply(
         get_neighbor_dyn_range, args=(data, target_var, tree, cell_width/2), axis=1)
     data["geometry"] = traj_geom
-    with open(os.path.join(csv_dir, outfile), 'w') as f:
-        f.write(f"# {out_epsg}\n")
-        data.to_csv(f, index=False)
+    write_dasit_csv(data, os.path.join(csv_dir, outfile), config)
     
     # Only if you want to save the density of point per lat band
     # if type(counts)!=float:
@@ -115,7 +115,7 @@ def stack_proc(config, direct, grid):
     hem = config["options"]["hemisphere"]
     out_epsg = config["options"]["out_epsg"]
     # declare stacking processing options
-    stk_opt = config['options']['proc_step_options']['stacking']
+    stk_opt = config['stacking']
     hist_n_bins = stk_opt['hist']['n_bins']
     hist_range = stk_opt['hist']['range']["freeboard" if "freeboard" in target_var else "thickness"]
     # define data structure
@@ -138,20 +138,74 @@ def stack_proc(config, direct, grid):
     sid_product.get_file_list(config['auxiliary']['ice_drift'][config['options']['ice_drift_product']])
     sid_product.get_file_dates()
 
-    t2m_product = AirTemperatureProducts(hem=hem, product_id=config['options']['t2m_product'], out_epsg=out_epsg)
-    t2m_product.get_file_list(config['auxiliary']['t2m'][config['options']['t2m_product']])
-    t2m_product.get_file_dates()
+    thermo_options = stk_opt['thermo_change']
+    thermo_enabled = thermo_options.get('enabled', thermo_options.get('model') is not None)
+    thermo_model = thermo_options.get('model') if thermo_enabled else None
+    t2m_product = None
+    if thermo_enabled:
+        t2m_product = AirTemperatureProducts(
+            hem=hem, product_id=config['options']['t2m_product'], out_epsg=out_epsg)
+        t2m_product.get_file_list(
+            config['auxiliary']['t2m'][config['options']['t2m_product']][hem])
+        t2m_product.get_file_dates()
 
-    thermo_model = config['options']['proc_step_options']['stacking']['thermo_change']['model']
-    #if thermo_model=='None' : thermo_model = None
-    if type(config['options']['proc_step_options']['stacking']['thermo_change']['oce_heat_flux']) is not int:
+    climatology_options = stk_opt.get('climatology', {})
+    sit_clim_enabled = climatology_options.get('sit', {}).get(
+        'enabled', bool(config.get('auxiliary', {}).get('sit_clim')))
+    sit_clim_source = None
+    sit_clim_dir = config.get('auxiliary', {}).get('sit_clim')
+    if target_var == 'sea_ice_thickness' and sit_clim_enabled and sit_clim_dir:
+        if os.path.isdir(sit_clim_dir):
+            candidate = SeaIceThicknessClimProducts(
+                hem=hem, product_id='sit_clim', out_epsg=out_epsg)
+            candidate.get_file_list(sit_clim_dir)
+            if candidate.file_list:
+                candidate.get_file_dates()
+                sit_clim_source = candidate
+            else:
+                logger.warning(
+                    'No compatible SIT climatology files found in %s; '
+                    'continuing without climatology filtering.' % sit_clim_dir)
+        else:
+            logger.warning(
+                'Configured auxiliary.sit_clim directory does not exist: %s; '
+                'continuing without climatology filtering.' % sit_clim_dir)
+    elif target_var == 'sea_ice_thickness' and not sit_clim_enabled:
+        logger.info(
+            'SIT climatology filtering is disabled.')
+
+    tfb_clim_enabled = climatology_options.get('tfb', {}).get(
+        'enabled', bool(config.get('auxiliary', {}).get('tfb_clim')))
+    tfb_clim_source = None
+    tfb_clim_dir = config.get('auxiliary', {}).get('tfb_clim')
+    if target_var == 'total_freeboard' and 'icesat2' in sensor and tfb_clim_enabled and tfb_clim_dir:
+        if os.path.isdir(tfb_clim_dir):
+            candidate = SeaIceThicknessClimProducts(
+                hem=hem, product_id='tfb_clim', out_epsg=out_epsg)
+            candidate.get_file_list(tfb_clim_dir)
+            if candidate.file_list:
+                candidate.get_file_dates()
+                tfb_clim_source = candidate
+            else:
+                logger.warning(
+                    'No compatible total-freeboard climatology files found in %s; '
+                    'continuing without climatology filtering.' % tfb_clim_dir)
+        else:
+            logger.warning(
+                'Configured auxiliary.tfb_clim directory does not exist: %s; '
+                'continuing without climatology filtering.' % tfb_clim_dir)
+    elif target_var == 'total_freeboard' and 'icesat2' in sensor and not tfb_clim_enabled:
+        logger.info(
+            'ICESat-2 total-freeboard climatology filtering is disabled.')
+
+    heat_flux = thermo_options.get('oce_heat_flux', 0.0)
+    if thermo_enabled and not isinstance(heat_flux, Real):
         print('Need to be implemented with a reanalysis')
         ohf_product = OceanHeatFluxProducts(hem=hem, product_id=config['options']['ohf_product'], out_epsg=out_epsg)
         ohf_product.get_file_list(config['auxiliary']['ohf'][config['options']['ohf_product']])
         ohf_product.get_file_dates()
-
     else:
-        ohf_product = config['options']['proc_step_options']['stacking']['thermo_change']['oce_heat_flux']
+        ohf_product = heat_flux
 
     if direct == 'f':
         d_sgn = 1
@@ -171,6 +225,7 @@ def stack_proc(config, direct, grid):
     for i in day_range:
 
         processor.i = i 
+        sit_clim_product = None
         t0 = stk_opt['t_start'] + datetime.timedelta(days=i) 
         t1 = stk_opt['t_start'] + datetime.timedelta(days=i + 1) 
         sit_product.get_target_files(t0, t1) 
@@ -196,57 +251,61 @@ def stack_proc(config, direct, grid):
 
             #if ICESAT-2, then we need to filter out the total freeboard (snow depth purposes)
             if (len(sensor_k) == 1) and (sensor_k[0] == 'icesat2'):
-                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='tFB_clim',
-                                                          out_epsg=out_epsg)
-                sit_clim_product.get_file_list(config['auxiliary']['tFB_clim'])
-                sit_clim_product.get_file_dates()
-                
-                sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
-
-                sit_clim_product.sit_clim = sit_clim_product.get_tFB_clim(sit_clim_product.target_files)
                 #keep only the total freeboard with quality flag <= 2
                 sit_product.product = sit_product.product[(sit_product.product['total_freeboard_quality_flag'] <= 4) & (sit_product.product['total_freeboard_quality_flag'] >= 0)]
+                if tfb_clim_source:
+                    tfb_clim_source.target_files = tfb_clim_source.get_target_files(t0, t1)
+                    if tfb_clim_source.target_files:
+                        tfb_clim_source.sit_clim = tfb_clim_source.get_tfb_clim(
+                            tfb_clim_source.target_files)
+                        sit_clim_product = tfb_clim_source
+                    else:
+                        logger.warning(
+                            t0.strftime('%Y%m%d')
+                            + ': No matching total-freeboard climatology file; '
+                            'processing this date without climatology filtering.')
                 #sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
-            elif (sensor_k[0] != 'icesat2') and (target_var == 'sea_ice_thickness'):
+            elif (sensor_k[0] != 'icesat2') and (target_var == 'sea_ice_thickness') and sit_clim_source:
+                sit_clim_source.target_files = sit_clim_source.get_target_files(t0, t1)
+                if sit_clim_source.target_files:
+                    sit_clim_source.sit_clim = sit_clim_source.get_SIT_clim(
+                        sit_clim_source.target_files)
+                    sit_clim_product = sit_clim_source
+                else:
+                    logger.warning(
+                        t0.strftime('%Y%m%d')
+                        + ': No matching SIT climatology file; '
+                        'processing this date without climatology filtering.')
                 
-                sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='sit_clim',
-                                                          out_epsg=out_epsg)
-                sit_clim_product.get_file_list(config['auxiliary']['sit_clim'])
-                sit_clim_product.get_file_dates()
-                
-                sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
-
-                sit_clim_product.sit_clim = sit_clim_product.get_SIT_clim(sit_clim_product.target_files)
-                
-            processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim = sit_clim_product if 'sit_clim_product' in locals() else None)
+            processor.baseline_proc(
+                sic_product, hist_n_bins, hist_range, sit_clim=sit_clim_product)
         
         # The sea ice concentration is taken at t1 check data after beeing advected
         sic_product.target_files = sic_product.get_target_files(t0 + d_sgn * dt1d, t1 + d_sgn * dt1d)
         # The sea ice drift to advect parcel at t0 is the one referenced as t1
         # Indeed the reference correspond to the end of the 24h data range that cover each file
         sid_product.target_files = sid_product.get_target_files(t0 + d_sgn_drift * dt1d, t1 + d_sgn_drift * dt1d)
-        if thermo_model!=None:
+        if thermo_enabled:
             t2m_product.target_files = t2m_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
-        else:
-            t2m_product.target_files = None
-        if type(ohf_product) is not int:
+        if thermo_enabled and not isinstance(ohf_product, Real):
             ohf_product.target_files = ohf_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
 
-        if sic_product.target_files and sid_product.target_files and (t2m_product.target_files or not thermo_model) :
+        if sic_product.target_files and sid_product.target_files and (
+                not thermo_enabled or t2m_product.target_files):
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day'+str(d_sgn)+': ' +
                         os.path.basename(sic_product.target_files))
             logger.info(t0.strftime("%Y%m%d") + ': ice_drift file: ' +
                         os.path.basename(sid_product.target_files))
-            
+
             sic_product.ice_conc_ahead = sic_product.get_ice_concentration(sic_product.target_files)
             sid_product.get_ice_drift(sid_product.target_files, sic_product.ice_conc_ahead)
-            
+
             if thermo_model:
                 logger.info(t0.strftime("%Y%m%d") + ': t2m file: ' +
                         os.path.basename(t2m_product.target_files))
                 t2m_product.get_air_temperature(t2m_product.target_files)
             
-            if type(ohf_product) is not int:
+            if thermo_enabled and not isinstance(ohf_product, Real):
                 ohf_product.get_ocean_heat_flux(ohf_product.target_files)
                 logger.info(t0.strftime("%Y%m%d") + ': ohf file: ' +
                         os.path.basename(ohf_product.target_files))
@@ -265,22 +324,7 @@ def stack_proc(config, direct, grid):
         if thermo_model:
             gdf_final['rate_thermo_change_mod'] = gdf_final.apply(lambda row: row['thermo_change_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
             gdf_final['rate_thermo_growth_mod'] = gdf_final.apply(lambda row: row['thermo_growth_mod'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-            """
-            gdf_final['rate_thermo_change_mod2'] = gdf_final.apply(lambda row: row['thermo_change_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-            gdf_final['rate_thermo_growth_mod2'] = gdf_final.apply(lambda row: row['thermo_growth_mod2'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
 
-            gdf_final['rate_thermo_change_mod3'] = gdf_final.apply(lambda row: row['thermo_change_mod3'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-            gdf_final['rate_thermo_growth_mod3'] = gdf_final.apply(lambda row: row['thermo_growth_mod3'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-
-            gdf_final['rate_thermo_change_mod4'] = gdf_final.apply(lambda row: row['thermo_change_mod4'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-            gdf_final['rate_thermo_growth_mod4'] = gdf_final.apply(lambda row: row['thermo_growth_mod4'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-
-            gdf_final['rate_thermo_change_mod5'] = gdf_final.apply(lambda row: row['thermo_change_mod5'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-            gdf_final['rate_thermo_growth_mod5'] = gdf_final.apply(lambda row: row['thermo_growth_mod5'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-
-            gdf_final['rate_thermo_change_mod6'] = gdf_final.apply(lambda row: row['thermo_change_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-            gdf_final['rate_thermo_growth_mod6'] = gdf_final.apply(lambda row: row['thermo_growth_mod6'] / abs(row['dt_days']) if row['dt_days'] != 0 else 0, axis=1)
-            """
         outfile = make_csv_filename(config, t0, direct)
         logger.info(t0.strftime("%Y%m%d")+': generated csv file: ' + outfile)
         gdf_final['divergence'] = gdf_final['divergence'].apply(
@@ -289,21 +333,23 @@ def stack_proc(config, direct, grid):
             lambda s: s.replace('[', '').replace(']', '').replace(',', ''))
 
         # optional for Luisa, save only last file
-        # if abs(gdf_final['dt_days']).max()+1 == config['options']['proc_step_options']['stacking']['t_window']:
-        with open(os.path.join(config['output_dir']['trajectories'], outfile), 'w') as f:
-            f.write(f"# {out_epsg}\n")
-            gdf_final.to_csv(f, index=False)
+        # if abs(gdf_final['dt_days']).max()+1 == config['stacking']['t_window']:
+        write_dasit_csv(
+            gdf_final,
+            os.path.join(config['output_dir']['trajectories'], outfile),
+            config)
 
     return scheme
 
 
 def stacking(config):
     sensor = config["options"]["sensor"]
-    stk_opt = config['options']['proc_step_options']['stacking']
+    stk_opt = config['stacking']
     multiproc = stk_opt['multiproc']
     parcel_grid_opt = stk_opt['parcel_grid']
     growth_grid_opt = stk_opt['growth_estimation']['growth_grid']
     csv_dir = config['output_dir']['trajectories']
+    get_land_area_correction(config)
     csv_dir = csv_dir.replace(f'{sensor}', "_".join(sensor))
     grid, cell_width = gridding_lib.define_grid(parcel_grid_opt["bounds"],
                                                 parcel_grid_opt["dim"],

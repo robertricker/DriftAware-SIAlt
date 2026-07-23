@@ -3,7 +3,9 @@ import netCDF4
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+import json
 import os
+import re
 from shapely.geometry import Point
 from shapely.wkt import loads
 from typing import Tuple
@@ -11,6 +13,9 @@ from scipy.interpolate import griddata
 from datetime import datetime
 from loguru import logger
 import sys
+
+
+TRAJECTORY_FORMAT_VERSION = 1
 
 
 def transform_coords(x: float, y: float, in_epsg: str, out_epsg: str) -> Tuple[float, float]:
@@ -43,34 +48,48 @@ def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg, hemisphere):
                                           np.ma.getdata(yc),
                                           grid_epsg, 'epsg:4326')
 
-    reg_data = netCDF4.Dataset(file)
-    xc, yc = np.meshgrid(np.ma.getdata(reg_data.variables['x'][:]),
-                         np.ma.getdata(reg_data.variables['y'][:]))
-    
     dict_region = {'epsg': {'sh': 'epsg:6932',
                 'nh': 'epsg:6931'}, 'var' : {'nh' : 'sea_ice_region', 'sh': 'sea_ice_region_NASA_modified'}}
+
+    with netCDF4.Dataset(file) as reg_data:
+        xc, yc = np.meshgrid(np.ma.getdata(reg_data.variables['x'][:]),
+                             np.ma.getdata(reg_data.variables['y'][:]))
+        region_variable = reg_data.variables[dict_region['var'][hemisphere]]
+        value = np.ma.getdata(region_variable[:, :]).flatten()
+        region_metadata = {
+            'long_name': region_variable.getncattr('long_name'),
+            'flag_values': np.asarray(region_variable.getncattr('flag_values')),
+            'flag_meanings': region_variable.getncattr('flag_meanings'),
+            'source': os.path.splitext(os.path.basename(file))[0],
+        }
 
     lon, lat = transform_coords(np.ma.getdata(xc).flatten(),
                                 np.ma.getdata(yc).flatten(),
                                 dict_region['epsg'][hemisphere], 'epsg:4326')
-    value = np.ma.getdata(reg_data.variables[dict_region['var'][hemisphere]][:, :]).flatten()
     coords = np.transpose(np.vstack((lon, lat)))
     region = griddata(coords, value, (lon_grid, lat_grid), method='nearest')
-    return region
+    return region, region_metadata
 
 
-def create_out_dir(config, parent_directory, cell_width):
+def create_out_dir(config, parent_directory, cell_width, source_stack=None):
     target_variable = config["options"]["target_variable"]
     hem = config["options"]["hemisphere"]
-    procstep = config['options']['proc_step']
-    stk_opt = config['options']['proc_step_options']['stacking']
-    t_window = stk_opt['t_window']
-    mode = stk_opt['mode']
+    stage = config['stage']
+    if stage == 'gridding':
+        if source_stack is None:
+            source_stack = config['gridding'].get('source_stack')
+        if source_stack is None:
+            raise ValueError('trajectory source metadata is required for gridding')
+        t_window = source_stack['window_days']
+        mode = source_stack['mode']
+    else:
+        t_window = config['stacking']['t_window']
+        mode = config['stacking']['mode']
     epsg = 'epsg' + config['options']['out_epsg'].split(":")[1]
     res = "{:.0f}".format(cell_width / 100.0)
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    if procstep == 'gridding':
-        dt_days_max = config['options']['proc_step_options']['gridding']['dt_days_max']
+    if stage == 'gridding':
+        dt_days_max = config['gridding']['dt_days_max']
         sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}_{dt_days_max}-{timestamp}'
     else:
         sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}-{timestamp}'
@@ -90,19 +109,75 @@ def init_logger(config):
                format="{time:YYYY-MM-DDTHH:mm:ss} {module} {function} {message}", enqueue=True)
 
 
-def read_dasit_csv(file):
-    with open(file, 'r') as f:
-        first_line = f.readline().strip()  # Read the first line
-        epsg_code = int(first_line.split(":")[1].strip())
+def build_trajectory_metadata(config):
+    """Build the metadata stored in the first line of a trajectory CSV."""
+    stack_options = config['stacking']
+
+    return {
+        'format_version': TRAJECTORY_FORMAT_VERSION,
+        'crs': config['options']['out_epsg'],
+        'target_variable': config['options']['target_variable'],
+        'source_stack': {
+            'mode': stack_options['mode'],
+            'window_days': stack_options['t_window'],
+            'histogram': {
+                'n_bins': stack_options['hist']['n_bins'],
+                'range': stack_options['hist']['range'],
+            },
+        },
+    }
+
+
+def write_dasit_csv(data, file, config):
+    """Write a trajectory CSV with a versioned JSON metadata header."""
+    metadata = build_trajectory_metadata(config)
+    with open(file, 'w') as stream:
+        stream.write('# ' + json.dumps(metadata, separators=(',', ':')) + '\n')
+        data.to_csv(stream, index=False)
+
+
+def read_dasit_metadata(file):
+    """Read trajectory metadata, including the legacy CRS-only header."""
+    with open(file, 'r') as stream:
+        first_line = stream.readline().strip()
+
+    if not first_line.startswith('#'):
+        raise ValueError(f'trajectory CSV has no metadata header: {file}')
+
+    payload = first_line[1:].strip()
+    if payload.startswith('{'):
+        metadata = json.loads(payload)
+        version = metadata.get('format_version')
+        if version != TRAJECTORY_FORMAT_VERSION:
+            raise ValueError(
+                f'unsupported trajectory format_version {version!r} in {file}')
+        if not metadata.get('crs'):
+            raise ValueError(f'trajectory metadata has no CRS: {file}')
+        return metadata
+
+    # Backward compatibility with headers such as ``# EPSG:6931``.
+    match = re.fullmatch(r'(?:EPSG\s*:\s*)?(\d+)', payload, re.IGNORECASE)
+    if not match:
+        raise ValueError(f'unrecognized trajectory metadata header in {file}')
+    return {
+        'format_version': 0,
+        'crs': f'EPSG:{match.group(1)}',
+    }
+
+
+def read_dasit_csv(file, return_metadata=False):
+    metadata = read_dasit_metadata(file)
     data = pd.read_csv(file, skiprows=1)
     data['geometry'] = data['geometry'].apply(loads)
     data = gpd.GeoDataFrame(data, geometry='geometry')
-    data.set_crs(epsg=epsg_code, allow_override=True, inplace=True)
+    data.set_crs(metadata['crs'], allow_override=True, inplace=True)
+    if return_metadata:
+        return data, metadata
     return data
 
 
 def make_csv_filename(config, t0, direct):
-    prefix = config['options']['proc_step_options']['stacking']['filename_prefix']
+    prefix = config['stacking']['filename_prefix']
     prdlvl = 'L2P'
     var_map = {
         "sea_ice_thickness": "SITHICK",
@@ -122,6 +197,6 @@ def make_csv_filename(config, t0, direct):
     region = config['options']['hemisphere'].upper()
     mode = 'DA_'+direct.upper()
     period = t0.strftime('%Y%m%d')
-    version = config['version']
+    version = f"fv{config['version']}"
 
-    return f"{prefix}-{prdlvl}-{var}-{instr}-{region}_{mode}-{period}-fv{version}.csv"
+    return f"{prefix}-{prdlvl}-{mode}-{var}-{instr}-{region}-{period}-{version}.csv"

@@ -19,9 +19,9 @@ class SeaIceThicknessClimProducts:
         self.file_dates = None
 
         self.function_map = {
-            'mms_clim': self.get_tFB_clim,
+            'mms_clim': self.get_tfb_clim,
             'sit_clim': self.get_SIT_clim,
-            'tFB_clim': self.get_tFB_clim
+            'tfb_clim': self.get_tfb_clim
         }
 
         self.config = {
@@ -37,7 +37,7 @@ class SeaIceThicknessClimProducts:
                 'date_offset': datetime.timedelta(days=0),
                 'file_pattern': 'SOSIMBA_mms_sit_climatology_'
             },
-            'tFB_clim': {
+            'tfb_clim': {
                 'date_str': '{4}',
                 'date_pt': 'SOSIMBA_is2_total_freeboard_climatology_%m%d',
                 'date_offset': datetime.timedelta(days=0),
@@ -45,7 +45,7 @@ class SeaIceThicknessClimProducts:
             },
         }
 
-    def get_tFB_clim(self, target_files):
+    def get_tfb_clim(self, target_files):
         data = netCDF4.Dataset(target_files)
         x, y = transform_coords(np.ma.getdata(data.variables['lon'][:, :]).flatten(),
                                 np.ma.getdata(data.variables['lat'][:, :]).flatten(),
@@ -93,7 +93,7 @@ class SeaIceThicknessClimProducts:
 
     def get_file_list(self, directory):
         config = self.config[self.product_id]
-        pattern = os.path.join(directory, "**", "*.nc")
+        pattern = os.path.join(directory, "**", config['file_pattern'] + "*.nc")
         file_list = sorted(glob.glob(pattern, recursive=True))
         self.file_list = file_list
 

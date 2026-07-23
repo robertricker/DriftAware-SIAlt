@@ -4,7 +4,6 @@ from scipy import ndimage
 from scipy import ndimage
 from scipy.spatial.distance import cdist
 from pyproj import Proj
-
 import pandas as pd
 import geopandas as gpd
 import glob

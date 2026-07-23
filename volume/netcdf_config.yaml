@@ -36,12 +36,12 @@ variables:
       - "{{ target_var }}"
       - "{{ target_var }}_l2_unc"
       - "{{ target_var }}_drift_unc"
-      - "{{ target_var }}_growth_unc"
+      - "{{ target_var }}_change_unc"
       - "{{ target_var }}_total_unc"
       #- "{{ target_var }}_mode"
       #- "{{ target_var }}_uncorrected"
-      - "{{ target_var }}_growth"
-      - "{{ target_var }}_growth_interpolated"
+      - "{{ target_var }}_change"
+      - "{{ target_var }}_change_interpolated"
       - "dist_acquisition"
       - "time_offset_acquisition"
       - "sea_ice_concentration"
@@ -49,9 +49,9 @@ variables:
       - "shear"
       - "divergence"
       - "snow_depth"
-      - "sit_corr_thermo_mod"
-      - "rate_change_model"
-      - "rate_growth_model"
+      - "model_sea_ice_thickness"
+      - "model_sea_ice_thickness_change_rate"
+      - "model_sea_ice_thickness_thermodynamic_tendency"
       - "sea_ice_volume"
       - "sea_ice_mass"
       - "snow_volume"
@@ -180,19 +180,17 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: "grid cells contain the absolute counts for each bin"
 
-  sea_ice_thickness_growth:
-    standard_name: 'sea_ice_thickness_change'
-    long_name: "rate of change in sea ice thickness per day"
+  sea_ice_thickness_change:
+    long_name: "sea ice thickness change rate estimated along trajectories"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "m day-1"
     grid_mapping: 'crs'
     comment: ""
 
-  sea_ice_thickness_growth_interpolated:
-    standard_name: 'sea_ice_thickness_change'
-    long_name: "interpolated sea ice thickness growth"
+  sea_ice_thickness_change_interpolated:
+    long_name: "spatially interpolated sea ice thickness change rate"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "m day-1"
     grid_mapping: 'crs'
     comment: ""
 
@@ -204,9 +202,9 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: ""
 
-  sea_ice_thickness_growth_unc:
-    standard_name: 'sea_ice_thickness_change standard_error'
-    long_name: "sea ice thickness uncertainty associated with the sea ice thickness growth per day"
+  sea_ice_thickness_change_unc:
+    standard_name: 'sea_ice_thickness standard_error'
+    long_name: "sea ice thickness uncertainty associated with the interpolated thickness change correction"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
@@ -285,9 +283,8 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: ""
 
-  drift_unc:
-    standard_name: 'sea_ice_displacement standard_error'
-    long_name: "uncertainty of the accumulated sea ice displacement"
+  sea_ice_displacement_uncertainty:
+    long_name: "uncertainty of the accumulated sea ice parcel displacement along the trajectory"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'

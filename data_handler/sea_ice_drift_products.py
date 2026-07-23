@@ -25,7 +25,7 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
         self.function_map = {
             'osi405': self.get_ice_drift,
             'osi455': self.get_ice_drift,
-            'osi435_455': self.get_ice_drift
+            'osi435': self.get_ice_drift
         }
 
         self.config = {
@@ -49,7 +49,7 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
                 'time_span': 24,
                 'date_offset': datetime.timedelta(days=0)
             },
-            'osi435_455': {
+            'osi435': {
                 'hem_nh': '_nh_',
                 'hem_sh': '_sh_',
                 'date_str': '{12}',

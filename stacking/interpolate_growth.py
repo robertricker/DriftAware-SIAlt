@@ -5,45 +5,22 @@ import numpy as np
 from scipy import interpolate
 from scipy.interpolate import RBFInterpolator
 from scipy.stats import linregress
-from shapely.geometry import box
-from pyproj import Geod
-from shapely.geometry import Polygon, MultiPolygon, GeometryCollection
-from loguru import logger
-import sys
-#from sklearn.linear_model import RANSACRegressor, LinearRegression
+import os
+from stacking.land_area import latitude_band_density
 
 
-def split_and_compute_area(poly, step=1):
-    geod = Geod(ellps="WGS84")
-    total_area = 0.0
-    for lon_min in range(-180, 180, step):
-        lon_max = lon_min + step
-        band = box(lon_min, -90, lon_max, 90)
-        clipped = poly.intersection(band)
-        if not clipped.is_empty:
-            # Peut être MultiPolygon si le clipping produit plusieurs morceaux
-            if clipped.geom_type == "Polygon":
-                area, _ = geod.geometry_area_perimeter(clipped)
-                total_area += abs(area)
-            elif clipped.geom_type == "MultiPolygon":
-                for part in clipped.geoms:
-                    area, _ = geod.geometry_area_perimeter(part)
-                    total_area += abs(area)
-    return total_area / 1e6  # Conversion en km²
-
-def shift_longitude_point(geom):
-    if geom.x < 0:
-        return type(geom)(geom.x + 360, geom.y)
-    return geom
-
-def fix_polygon_wraparound(polygon):
-    coords = list(polygon.exterior.coords)
-    fixed_coords = []
-    for lon, lat in coords:
-        # Ramener 360 à 0 pour continuité
-        lon_fixed = lon if lon < 180 else lon - 360
-        fixed_coords.append((lon_fixed, lat))
-    return Polygon(fixed_coords)
+def get_land_area_correction(config):
+    """Return resolved land-correction settings and fail early if misconfigured."""
+    growth_options = config['stacking']['growth_estimation']
+    settings = dict(growth_options.get('land_area_correction', {}))
+    settings.setdefault('enabled', False)
+    settings['path'] = config.get('auxiliary', {}).get('land_mask')
+    if settings['enabled'] and (
+            not settings['path'] or not os.path.isfile(settings['path'])):
+        raise FileNotFoundError(
+            'Land-area correction is enabled, but auxiliary.land_mask does not '
+            f"point to a file: {settings['path']}")
+    return settings
 
 def interpolate_growth_gridd(data, interp_var, growth_range, grid, cell_width, min_n_tiepoints, nbs, hem):
     merged = gpd.sjoin(data, grid, how='left', predicate='within')
@@ -57,7 +34,6 @@ def interpolate_growth_gridd(data, interp_var, growth_range, grid, cell_width, m
     eps = 1.8
     lat_range = [40.0, 90.0] if hem == 'nh' else [-40.0, -90.0]
     fsm = interpolate.interp1d(np.array(lat_range), np.array([80, 10]))
-    #density = df.groupby('lat')['nombre de points'].sum().reset_index()
     # perform linear fit
     tmp['coeff'] = tmp.groupby('index_right').apply(
         lambda x: np.polyfit(x['dt_days'], x[interp_var], deg=1, cov=True))
@@ -106,60 +82,40 @@ def interpolate_growth_gridd(data, interp_var, growth_range, grid, cell_width, m
                              kernel='gaussian', epsilon=eps/cell_width)
     return fg, fg_nb, fg_s10, fg_unc, growth_raw.values, n_tiepoints
 
-def compute_area_km2(poly):
-    geod = Geod(ellps="WGS84")
-    if poly.is_empty or poly.geom_type != "Polygon":
-        return 0.0
-    area, _ = geod.geometry_area_perimeter(poly)
-    return abs(area) / 1e6
-
-def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_tiepoints, nbs, hem):
+def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_tiepoints, nbs, hem,
+                       land_area_correction=None):
     merged = gpd.sjoin(data, grid, how='left', predicate='within')
     tmp = (merged.groupby(['index_right', 'dt_days'], as_index=False)
            .agg({'geometry': 'first', interp_var: 'mean'})
            .pipe(gpd.GeoDataFrame, geometry='geometry', crs=merged.crs))
     n_tiepoints = tmp.groupby('index_right')['dt_days'].count()
     valid_indices = n_tiepoints[n_tiepoints >= min_n_tiepoints].index
-    if len(valid_indices) == []:
-        logger.error('Number of tie points insufficiant for all the grid cell')
-        sys.exit()
+    if len(valid_indices) == 0:
+        raise ValueError('Number of tie points insufficient for all grid cells')
     tmp = tmp[tmp['index_right'].isin(valid_indices)]
     tmp.set_index('index_right', inplace=True)
     eps = 1.8
-    lat_range = [40.0, 90.0] if hem == 'nh' else [-40.0, -90.0]
-    gdf = data.to_crs("EPSG:4326")
-    #gdf["geometry"] = gdf["geometry"].apply(shift_longitude_point)
-    gdf["lat_band"] = gdf.geometry.y.round()
-    counts = gdf.groupby("lat_band").size().reset_index(name="count")
-    counts["geometry"] = counts["lat_band"].apply(lambda lat: box(-180, lat, 180, lat + 1))
-    
-    bands_gdf = gpd.GeoDataFrame(counts, geometry="geometry", crs="EPSG:4326")
-    geod = Geod(ellps="WGS84")
-    world = gpd.read_file("/cluster/projects/108541-SO-SIMBA/data_tmp/input_data/auxdata/land_mask_cartopy/ne_110m_land.shp")
-    land_gdf = world[world['geometry'].intersects(counts.geometry[0])]
+    land_options = land_area_correction or {}
+    counts = latitude_band_density(
+        data,
+        hem,
+        land_mask_path=land_options.get('path'),
+        exclude_land=land_options.get('enabled', False),
+    )
+    valid_density = counts.replace([np.inf, -np.inf], np.nan).dropna(
+        subset=['density_km2_no_land'])
+    if valid_density.empty:
+        raise ValueError('No latitude band has a positive ocean area for density estimation')
+    if len(valid_density) == 1 or valid_density['lat_band'].nunique() == 1:
+        slope, intercept = 0.0, valid_density['density_km2_no_land'].iloc[0]
+    else:
+        slope, intercept, *_ = linregress(
+            valid_density['lat_band'].values,
+            valid_density['density_km2_no_land'].values)
 
-    #ocean_polygon_without_land = counts['geometry'].difference(land_gdf.unary_union)
-    diff_geoms = counts['geometry'].apply(lambda geom: geom.difference(land_gdf.unary_union))
-
-    # Clean and get valid geometries
-    clean_geoms = []
-    for geom in diff_geoms:
-        if isinstance(geom, (Polygon, MultiPolygon)):
-            clean_geoms.append(geom)
-        elif isinstance(geom, GeometryCollection):
-            clean_geoms.extend([g for g in geom if isinstance(g, (Polygon, MultiPolygon))])
-
-    ocean_without_land_gdf = gpd.GeoDataFrame(geometry=clean_geoms, crs="EPSG:4326")
-
-    
-    counts["area_km2"] = counts.geometry.apply(split_and_compute_area)
-    counts["area_km2_no_land"] = ocean_without_land_gdf.geometry.apply(split_and_compute_area)
-
-    counts["density_km2"] = counts["count"] / counts["area_km2"]
-    counts["density_km2_no_land"] = counts["count"] / counts["area_km2_no_land"]
-
-    slope, intercept, *_ = linregress(counts['lat_band'].values, counts['density_km2_no_land'].values)
-    fsm = interpolate.interp1d([0, 0.035], np.array([80, 10])) # Notebook and SOSIMBA ATBD
+    def density_to_smoothing(density):
+        density = np.clip(np.asarray(density), 0.0, 0.035)
+        return np.interp(density, [0.0, 0.035], [80.0, 10.0])
     
     # perform linear fit
     tmp['coeff'] = tmp.groupby('index_right').apply(
@@ -178,19 +134,19 @@ def interpolate_growth(data, interp_var, growth_range, grid, cell_width, min_n_t
     centroidseries = growth_grid['geometry'].centroid
     growth_grid['yc'], growth_grid['xc'] = centroidseries.x, centroidseries.y
     arr_density = slope*(np.array(growth_grid.dropna().geometry.centroid.to_crs(4326).geometry.y))+intercept
-    arr_positif = np.where(arr_density < 0, 0, arr_density)
+    arr_positif = np.clip(arr_density, 0.0, 0.035)
     # interpolation of growth for all valid target variable data points
     fg = RBFInterpolator(np.vstack((np.array(growth_grid.dropna()['yc']),
                                     np.array(growth_grid.dropna()['xc']))).transpose(),
                          np.array(growth_grid.dropna()['growth']),
                          neighbors=nbs,
-                         smoothing=fsm(arr_positif),
+                         smoothing=density_to_smoothing(arr_positif),
                          kernel='gaussian', epsilon=eps/cell_width)
     
     fg_unc = RBFInterpolator(np.vstack((np.array(growth_grid.dropna()['yc']),
                                         np.array(growth_grid.dropna()['xc']))).transpose(),
                              np.array(growth_grid.dropna()['growth_unc']),
                              neighbors=nbs,
-                             smoothing=fsm(arr_positif),
+                             smoothing=density_to_smoothing(arr_positif),
                              kernel='gaussian', epsilon=eps/cell_width)
     return fg, fg_unc, growth_raw.values, n_tiepoints, counts

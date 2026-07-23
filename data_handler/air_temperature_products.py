@@ -24,8 +24,6 @@ class AirTemperatureProducts:
 
         self.config = {
             'era5': {
-                'hem_nh': 'NH/',
-                'hem_sh': 'SH/',
                 'date_str': '{8}',
                 'date_pt': '%Y%m%d',
                 'date_offset': datetime.timedelta(days=0)
@@ -66,9 +64,7 @@ class AirTemperatureProducts:
         return air_temp_interp.flatten()
 
     def get_file_list(self, directory):
-        config = self.config[self.product_id]
-        hem = config['hem_' + self.hem]
-        pattern = os.path.join(directory, hem + "*/*/*")
+        pattern = os.path.join(directory, "**", "*.nc")
         file_list = sorted(glob.glob(pattern, recursive=True))
         self.file_list = file_list
 
@@ -136,5 +132,4 @@ class AirTemperatureProducts:
             print('no other thermodynamical model implemented yet')
 
         return t2m, deltaH.values, Hf.values
-    
     

@@ -24,10 +24,11 @@ def visualization(config):
     sensor = config['options']['sensor']
     hem = config["options"]["hemisphere"]
     out_epsg = config["options"]["out_epsg"]
-    visu_opt = config['options']['proc_step_options']['visualization']
+    visu_opt = config['visualization']
     target_var = visu_opt['variable']
     make_gif = visu_opt['make_gif']
-    config['output_dir']['gridded_data'] = config['output_dir']['gridded_data'] + '/' + visu_opt['sub_dir']
+    config['output_dir']['gridded_data'] = os.path.join(
+        config['output_dir']['gridded_data'], visu_opt['sub_dir'])
     file_list = sorted(glob.glob(os.path.join(config['output_dir']['gridded_data'], '**', '*.nc'), recursive=True))
     out_dir = config['output_dir']['visu']
 
@@ -54,7 +55,7 @@ def visualization(config):
             label = 'Sea ice thickness (m)'
 
         elif target_var in ['sea_ice_thickness_l2_unc', 'sea_ice_thickness_total_unc',
-                            'sea_ice_thickness_growth_unc', 'sea_ice_thickness_drift_unc']:
+                            'sea_ice_thickness_change_unc', 'sea_ice_thickness_drift_unc']:
             vmin, vmax, n_level = 0, 1.0, 13
             cmap = plt.cm.cool
             scaling = 1.0
@@ -101,17 +102,17 @@ def visualization(config):
             scaling = 1.0
             label = 'Time offset to data acquisition (days)'
 
-        elif target_var == "sea_ice_freeboard_growth_interpolated":
+        elif target_var == "sea_ice_freeboard_change_interpolated":
             vmin, vmax, n_level = -0.5, 0.5, 20
             cmap = create_diverging_colormap()
             scaling = 100.0
-            label = 'Sea ice freeboard growth (cm day$^{-1}$)'
+            label = 'Sea ice freeboard change (cm day$^{-1}$)'
 
-        elif target_var in ['sea_ice_thickness_growth', 'sea_ice_thickness_growth_interpolated']:
+        elif target_var in ['sea_ice_thickness_change', 'sea_ice_thickness_change_interpolated']:
             vmin, vmax, n_level = -5, 5, 20
             cmap = create_diverging_colormap()
             scaling = 100.0
-            label = 'Sea ice thickness growth (cm day$^{-1}$)'
+            label = 'Sea ice thickness change (cm day$^{-1}$)'
 
         elif target_var in ["shear", "divergence"]:
             vmin, vmax, n_level = -0.1, 0.1, 20
@@ -122,13 +123,16 @@ def visualization(config):
         else:
             break
 
-        if not os.path.exists(out_dir + target_var):
+        target_dir = os.path.join(out_dir, target_var)
+        if not os.path.exists(target_dir):
             try:
-                os.makedirs(out_dir + target_var, exist_ok=True)
+                os.makedirs(target_dir, exist_ok=True)
             except OSError as error:
                 print(error)
 
-        outfile = out_dir + target_var + os.sep + re.split('.nc', os.path.basename(file))[0] + '_' + target_var + '.png'
+        outfile = os.path.join(
+            target_dir,
+            re.split('.nc', os.path.basename(file))[0] + '_' + target_var + '.png')
         print(outfile)
         if not os.path.exists(os.path.dirname(outfile)):
             try:
@@ -146,4 +150,4 @@ def visualization(config):
                                         #,iceconc=ice_conc)
 
     if make_gif:
-        visualization_tools.make_gif(out_dir+target_var, target_var)
+        visualization_tools.make_gif(os.path.join(out_dir, target_var), target_var)

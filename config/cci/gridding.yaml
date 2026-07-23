@@ -1,0 +1,26 @@
+extends: common.yaml
+
+stage: gridding
+
+gridding:
+  # "all" searches every trajectory subdirectory recursively.
+  csv_dir: "sea_ice_thickness-nh-5fr-epsg6931_141-2026-07-23_14-08-58"
+  mode: da
+  dt_days_max: 15
+  organize_files: true
+
+  parallel:
+    enabled: false
+    workers: 16
+
+  weighting:
+    enabled: false
+    var_to_weight_with: counts
+
+  netcdf_grid:
+    bounds: [-5400000, -5400000, 5400000, 5400000]
+    dim: 432
+
+  target_variable_range:
+    freeboard: [0, 1]
+    thickness: [0, 10]

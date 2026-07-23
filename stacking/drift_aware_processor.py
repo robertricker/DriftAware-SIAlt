@@ -170,21 +170,6 @@ class DriftAwareProcessor:
             tmp_grid['t2m'], thermodyn_growth, thermodyn_corr_sit = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
                                                 tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf'])
             
-            tmp_grid['t2m'], thermodyn_growth2, thermodyn_corr_sit2 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
-                                                tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf2'])
-            
-            tmp_grid['t2m'], thermodyn_growth3, thermodyn_corr_sit3 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
-                                                tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf3'])
-            
-            tmp_grid['t2m'], thermodyn_growth4, thermodyn_corr_sit4 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
-                                                tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf4'])
-            
-            tmp_grid['t2m'], thermodyn_growth5, thermodyn_corr_sit5 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
-                                                tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf5'])
-            
-            tmp_grid['t2m'], thermodyn_growth6, thermodyn_corr_sit6 = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
-                                                tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf6'])
-            
         dt = np.full(len(dx), 24)
         dt_corr = 0
         if tmp_grid['dt_days'][0] == 0:
