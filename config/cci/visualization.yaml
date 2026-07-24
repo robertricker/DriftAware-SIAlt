@@ -3,8 +3,12 @@ extends: common.yaml
 stage: visualization
 
 visualization:
-  # Empty means search all NetCDF files below output_dir.gridded_data.
+  # Empty searches recursively; otherwise use a subdirectory or absolute path.
   sub_dir: ""
+
+  # Must exist in the NetCDF file; supported presets are listed in README.md.
   variable: sea_ice_thickness
+
   gif:
+    # Requires the ImageMagick "convert" command when enabled.
     enabled: false

@@ -1,4 +1,9 @@
 .idea/
 config/config.yaml
-*.pyc
+*.py[cod]
+__pycache__/
+*.egg-info/
+.DS_Store
 config/config*.yaml
+.venv/
+slurm-*.out

@@ -3,24 +3,34 @@ extends: common.yaml
 stage: gridding
 
 gridding:
-  # "all" searches every trajectory subdirectory recursively.
-  csv_dir: "sea_ice_thickness-nh-5fr-epsg6931_141-2026-07-23_14-08-58"
+  # Run-directory name, absolute path, or "all" for recursive input.
+  csv_dir: "sea_ice_thickness-nh-5fr-epsg6931_141-2026-07-24_17-44-32"
+
+  # da = advected target location; cv = acquisition location, conventional.
   mode: da
+
+  # Maximum absolute trajectory time offset in days.
   dt_days_max: 15
+
+  # Move completed NetCDF files into YYYY/MM directories.
   organize_files: true
 
+  # Parallelize independent target dates.
   parallel:
-    enabled: false
-    workers: 16
+    enabled: true
+    workers: 6
 
+  # false uses ordinary means. See README.md for weighting options.
   weighting:
     enabled: false
     var_to_weight_with: counts
 
+  # [xmin, ymin, xmax, ymax] in metres; dim is cells per axis.
   netcdf_grid:
     bounds: [-5400000, -5400000, 5400000, 5400000]
     dim: 432
 
+  # variable range limits in metres.
   target_variable_range:
     freeboard: [0, 1]
     thickness: [0, 10]

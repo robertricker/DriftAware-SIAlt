@@ -4,19 +4,29 @@ stage: stacking
 
 stacking:
   filename_prefix: ESACCI-SEAICE
+
+  # f = forward, r = reverse, fr = both and merge.
   mode: fr
-  t_start: 2020-12-01 00:00:00
-  t_length: 100
-  t_window: 5
+
+  # First target date, formatted YYYY-MM-DD HH:MM:SS.
+  t_start: 2019-10-01 00:00:00
+
+  # Integer days, "season", or "all" for every available season.
+  t_length: season
+
+  # Maximum stacking/advection window in days. Default is 16.
+  t_window: 16
 
   parallel:
     enabled: false
-    workers: 16
+    workers: 6
 
+  # [xmin, ymin, xmax, ymax] in metres; dim is cells per axis.
   parcel_grid:
     bounds: [-5400000, -5400000, 5400000, 5400000]
     dim: 1080
 
+  # Parcel histogram ranges in metres.
   hist:
     n_bins: 40
     range:
@@ -24,29 +34,41 @@ stacking:
       thickness: [0, 10]
 
   growth_estimation:
+    # Coarser grid for daily-change estimation and interpolation.
     growth_grid:
       bounds: [-5400000, -5400000, 5400000, 5400000]
       dim: 432
+
     min_n_tiepoints: 3
+
+    # Accepted daily change in metres per day.
     growth_range:
       freeboard: [-0.25, 0.25]
       thickness: [-2.5, 2.5]
+
+    # Uses auxiliary.land_mask when enabled.
     land_area_correction:
       enabled: true
 
+  # Disabled entries and empty paths are not used.
   climatology:
+    # For target_variable: sea_ice_thickness.
     sit:
       enabled: false
       path:
+
+    # For ICESat-2 target_variable: total_freeboard.
     tfb:
       enabled: false
       path:
 
+  # Requires ERA5 air temperature and snow_depth.
   thermo_change:
     enabled: True
     model: winter_2layers
     air_temperature:
       product: era5
+
     ocean_heat_flux:
       source: constant
       value: 2.0
