@@ -341,7 +341,7 @@ class SeaIceThicknessMultiProducts:
                 'beam_type': "strong"
             }
             df = pd.DataFrame(data=d)
-            df = df.dropna(how='any')
+            df = df.dropna(subset=[self.target_var])
             gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
             gdf = gdf.to_crs(self.out_epsg)
             gdf = gdf[gdf['latitude'] > 50.0]
@@ -378,7 +378,7 @@ class SeaIceThicknessMultiProducts:
                 'time': selected_values("time")
             }
         df = pd.DataFrame(data=d)
-        df = df.dropna(how='any')
+        df = df.dropna(subset=[self.target_var])
         gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
         return gdf.to_crs(self.out_epsg)
 
