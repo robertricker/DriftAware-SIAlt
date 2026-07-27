@@ -34,11 +34,6 @@ class OceanHeatFluxProducts:
         xc = data['xc']
         yc = data['yc']
         ohf = data['OHF']
-        ohf2 = data['OHF2']
-        ohf3 = data['OHF3']
-        ohf4 = data['OHF4']
-        ohf5 = data['OHF5']
-        ohf6 = data['OHF6']
         xc, yc = np.meshgrid(xc,
                              yc)
         lon, lat = transform_coords(xc, yc, self.out_epsg, 'epsg:4326')
@@ -50,11 +45,6 @@ class OceanHeatFluxProducts:
     def interp_ocean_heat_flux(self, x, y):
         xc, yc = self.ohf["xc"][0, :], self.ohf["yc"][:, 0]
         arr = self.ohf["ohf"][0]
-        arr2 = self.ohf["ohf2"][0]
-        arr3 = self.ohf["ohf3"][0]
-        arr4 = self.ohf["ohf4"][0]
-        arr5 = self.ohf["ohf5"][0]
-        arr6 = self.ohf["ohf6"][0]
         # Check if xc and yc are in descending order
         if xc[0] > xc[-1]:
             xc = xc[::-1]
