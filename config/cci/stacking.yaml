@@ -9,10 +9,10 @@ stacking:
   mode: fr
 
   # First target date, formatted YYYY-MM-DD HH:MM:SS.
-  t_start: 2019-10-01 00:00:00
+  t_start: 2021-08-01 00:00:00
 
   # Integer days, "season", or "all" for every available season.
-  t_length: season
+  t_length: 32
 
   # Maximum stacking/advection window in days. Default is 16.
   t_window: 16
@@ -64,7 +64,7 @@ stacking:
 
   # Requires ERA5 air temperature and snow_depth.
   thermo_change:
-    enabled: True
+    enabled: false
     model: winter_2layers
     air_temperature:
       product: era5
