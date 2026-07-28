@@ -65,13 +65,16 @@ def _normalize(config):
         config["auxiliary"]["tfb_clim"] = climatology["tfb"].get("path")
 
         thermo = stacking["thermo_change"]
-        options["t2m_product"] = thermo["air_temperature"]["product"]
-        heat_flux = thermo["ocean_heat_flux"]
-        if heat_flux["source"] == "constant":
-            thermo["oce_heat_flux"] = heat_flux["value"]
-        else:
-            options["ohf_product"] = heat_flux["product"]
-            thermo["oce_heat_flux"] = heat_flux["product"]
+        thermo_enabled = thermo.get(
+            "enabled", thermo.get("model") is not None)
+        if thermo_enabled:
+            options["t2m_product"] = thermo["air_temperature"]["product"]
+            heat_flux = thermo["ocean_heat_flux"]
+            if heat_flux["source"] == "constant":
+                thermo["oce_heat_flux"] = heat_flux["value"]
+            else:
+                options["ohf_product"] = heat_flux["product"]
+                thermo["oce_heat_flux"] = heat_flux["product"]
 
     elif stage == "gridding":
         gridding = config["gridding"]
@@ -91,6 +94,7 @@ def _resolve_paths(config):
     sensors = config["options"]["sensor"]
     sensor_name = "_".join(sensors)
     version = config["version"]
+    hemisphere = config["options"]["hemisphere"]
 
     def expand(value):
         if isinstance(value, dict):
@@ -98,7 +102,11 @@ def _resolve_paths(config):
         if isinstance(value, list):
             return [expand(item) for item in value]
         if isinstance(value, str):
-            return value.format(sensor=sensor_name, version=version)
+            return value.format(
+                sensor=sensor_name,
+                version=version,
+                hemisphere=hemisphere,
+            )
         return value
 
     config = expand(config)
