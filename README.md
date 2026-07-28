@@ -68,9 +68,9 @@ used across stages; it no longer contains `proc_step` or `proc_step_options`.
 ### Configuration reference
 
 All relative input, output, auxiliary, and logging paths are resolved from
-`base_dir`. Absolute paths are accepted. `{version}` and `{sensor}` placeholders
-in paths are expanded while loading the configuration; multiple sensors are
-joined with underscores.
+`base_dir`. Absolute paths are accepted. `{version}`, `{sensor}`, and
+`{hemisphere}` placeholders in paths are expanded while loading the
+configuration; multiple sensors are joined with underscores.
 
 Supported sensor and target-variable combinations are:
 
@@ -108,10 +108,13 @@ run-directory name below `output_dir.trajectories`, an absolute directory, or
 Weighting can use `counts` for the combined CryoSat-2/Sentinel-3A/Sentinel-3B
 case, or a list of numeric trajectory columns such as `[dt_days]`.
 
-Visualization has plotting presets for thickness, freeboard, total freeboard,
-snow depth, their uncertainty/change fields, acquisition distance and time
-offset, shear, and divergence. The selected variable must exist in the input
-NetCDF files. GIF generation requires the ImageMagick `convert` command.
+Visualization presets use the current gridded NetCDF variable names. They cover
+sea-ice thickness and its uncertainty/change fields, model thickness and
+thermodynamic tendencies, radar and sea-ice freeboard, snow depth, sea-ice
+concentration, acquisition distance and time offset, displacement uncertainty,
+deformation, shear, divergence, model air temperature, and model ocean heat
+flux. The selected variable must exist in the input NetCDF files. GIF generation
+requires the ImageMagick `convert` command.
 
 Run the stages in order:
 
