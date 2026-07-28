@@ -1,9 +1,12 @@
 .idea/
-config/config.yaml
 *.py[cod]
 __pycache__/
 *.egg-info/
 .DS_Store
-config/config*.yaml
 .venv/
 slurm-*.out
+
+# Local configuration, utility scripts, and exploratory notebooks
+/config/
+/scripts/
+/notebooks/
