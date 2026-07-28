@@ -126,7 +126,6 @@ variable_attributes:
     units: "m"
 
   hist_bins:
-    standard_name: "bin_centers"
     long_name: "histogram bin centers"
     units: "m"
 
@@ -174,24 +173,23 @@ variable_attributes:
     comment: ""
 
   sea_ice_thickness_hist:
-    standard_name: 'sea_ice_thickness'
-    long_name: "thickness classes between 0 m and 10 m with 0.25m bin size"
+    long_name: "Counts per thickness class for classes between 0 m and 10 m with 0.25m bin size"
     coordinates: "time longitude latitude"
     units: "1"
     grid_mapping: 'crs'
     comment: "grid cells contain the absolute counts for each bin"
 
   sea_ice_thickness_change:
-    long_name: "sea ice thickness change rate estimated along trajectories"
+    long_name: "rate of change in sea ice thickness per day"
     coordinates: "time longitude latitude"
-    units: "m day-1"
+    units: "m"
     grid_mapping: 'crs'
     comment: ""
 
   sea_ice_thickness_change_interpolated:
-    long_name: "spatially interpolated sea ice thickness change rate"
+    long_name: "spatially interpolated rate of change in sea ice thickness per day"
     coordinates: "time longitude latitude"
-    units: "m day-1"
+    units: "m"
     grid_mapping: 'crs'
     comment: ""
 
@@ -205,7 +203,7 @@ variable_attributes:
 
   sea_ice_thickness_change_unc:
     standard_name: 'sea_ice_thickness standard_error'
-    long_name: "sea ice thickness uncertainty associated with the interpolated thickness change correction"
+    long_name: "sea ice thickness uncertainty associated with the rate of change in sea ice thickness per day"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
@@ -310,31 +308,27 @@ variable_attributes:
     comment: ""
 
   deformation:
-    standard_name: 'deformation'
     long_name: "mean deformation accumulated along the trajectory"
     coordinates: "time longitude latitude"
-    units: "1/day"
+    units: "day-1"
     grid_mapping: 'crs'
     comment: ""
 
   divergence:
-    standard_name: 'divergence'
     long_name: "mean divergence accumulated along the trajectory"
     coordinates: "time longitude latitude"
-    units: "1/day"
+    units: "day-1"
     grid_mapping: 'crs'
     comment: ""
 
   shear:
-    standard_name: 'shear'
     long_name: "mean shear accumulated along the trajectory"
     coordinates: "time longitude latitude"
-    units: "1/day"
+    units: "day-1"
     grid_mapping: 'crs'
     comment: ""
 
   dist_acquisition:
-    standard_name: 'geospatial_distance'
     long_name: "distance between target day and day of data acquisition location"
     coordinates: "time longitude latitude"
     units: "m"
@@ -354,7 +348,6 @@ variable_attributes:
     units: 'seconds since 1970-01-01 00:00:00'
 
   time_offset_acquisition:
-    standard_name: 'delta_time'
     long_name: "time since data acquisition"
     coordinates: "time longitude latitude"
     units: "days"
