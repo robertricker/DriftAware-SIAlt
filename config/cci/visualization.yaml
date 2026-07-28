@@ -4,7 +4,7 @@ stage: visualization
 
 visualization:
   # Empty searches recursively; otherwise use a subdirectory or absolute path.
-  sub_dir: ""
+  sub_dir: "test"
 
   # Must exist in the NetCDF file; supported presets are listed in README.md.
   variable: sea_ice_thickness
