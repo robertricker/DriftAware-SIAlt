@@ -16,6 +16,8 @@ from driftaware_sialt.io_tools import read_dasit_csv
 from driftaware_sialt.io_tools import read_dasit_metadata
 from driftaware_sialt.gridding.prepare_netcdf import PrepareNetcdf
 from driftaware_sialt.gridding import gridding_lib
+from driftaware_sialt.products.sea_ice_concentration import SeaIceConcentrationProducts
+from driftaware_sialt.products.selection import select_product
 from loguru import logger
 from driftaware_sialt.io_tools import init_logger
 
@@ -50,6 +52,32 @@ def get_deformation(row):
 
 def get_row_mean(row):
     return np.mean(row)
+
+
+def add_full_domain_ice_concentration(dataset, config, time_center):
+    """Sample the daily SIC product independently of thickness observations."""
+    products = SeaIceConcentrationProducts.load_products(
+        config['options']['ice_conc_products'],
+        config['auxiliary']['ice_conc'],
+        hem=config['options']['hemisphere'],
+        out_epsg=config['options']['out_epsg'])
+    product = select_product(
+        products, time_center.replace(hour=0),
+        time_center.replace(hour=0) + datetime.timedelta(days=1))
+    if product is None:
+        logger.warning(
+            f"{time_center:%Y%m%d}: no nearby concentration file; "
+            "retaining trajectory-sampled concentration")
+        return dataset
+
+    ice_conc = product.get_ice_concentration(product.target_files)
+    xc, yc = np.meshgrid(dataset.xc.values, dataset.yc.values)
+    values = product.interp_ice_concentration(
+        ice_conc, xc.ravel(), yc.ravel()).reshape(xc.shape) * 100.0
+    values[(values <= 0) | (values > 100)] = np.nan
+    dataset['sea_ice_concentration'] = (
+        ('time', 'yc', 'xc'), values[np.newaxis, :, :])
+    return dataset
 
 
 def get_source_stack_metadata(config, file_list):
@@ -235,6 +263,7 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
     master.drop(columns=['geometry'], inplace=True)
     master = xr.Dataset.from_dataframe(master)
     master = master.reindex(yc=list(reversed(master.yc)))
+    master = add_full_domain_ice_concentration(master, config, time_center)
     master = master.set_coords(("longitude", "latitude"))
     master = prepare_netcdf.add_projection_field(master)
     master = prepare_netcdf.add_time_bnds(master, data['t0'].min(), data['t0'].max())
