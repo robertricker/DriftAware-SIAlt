@@ -47,13 +47,31 @@ def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg, hemisphere):
                                           np.ma.getdata(yc),
                                           grid_epsg, 'epsg:4326')
 
-    dict_region = {'epsg': {'sh': 'epsg:6932',
-                'nh': 'epsg:6931'}, 'var' : {'nh' : 'sea_ice_region', 'sh': 'sea_ice_region_NASA_modified'}}
+    dict_region = {
+        'epsg': {'sh': 'epsg:6932', 'nh': 'epsg:6931'},
+        'var': {
+            'nh': ('sea_ice_region',),
+            'sh': (
+                'sea_ice_region_NASA_modified',
+                'sea_ice_region_NASA',
+            ),
+        },
+    }
 
     with netCDF4.Dataset(file) as reg_data:
         xc, yc = np.meshgrid(np.ma.getdata(reg_data.variables['x'][:]),
                              np.ma.getdata(reg_data.variables['y'][:]))
-        region_variable = reg_data.variables[dict_region['var'][hemisphere]]
+        region_name = next(
+            (name for name in dict_region['var'][hemisphere]
+             if name in reg_data.variables),
+            None,
+        )
+        if region_name is None:
+            expected = ', '.join(dict_region['var'][hemisphere])
+            raise KeyError(
+                f'no supported {hemisphere} sea-ice region variable in '
+                f'{file}; expected one of: {expected}')
+        region_variable = reg_data.variables[region_name]
         value = np.ma.getdata(region_variable[:, :]).flatten()
         region_metadata = {
             'long_name': region_variable.getncattr('long_name'),
