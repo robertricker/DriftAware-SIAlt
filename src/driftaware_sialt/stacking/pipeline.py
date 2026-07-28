@@ -311,7 +311,8 @@ def process_direction(config, direct, grid):
                         'processing this date without climatology filtering.')
                 
             processor.baseline_proc(
-                sic_product, hist_n_bins, hist_range, sit_clim=sit_clim_product)
+                sic_product, hist_n_bins, hist_range,
+                sit_clim=sit_clim_product, thermo_model=thermo_model)
         
         # The sea ice concentration is taken at t1 check data after beeing advected
         sic_request_t0 = t0 + d_sgn * dt1d
