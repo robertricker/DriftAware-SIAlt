@@ -1,5 +1,5 @@
 # Relative paths are resolved from base_dir; absolute paths are also accepted.
-# {version} and {sensor} are expanded when the configuration is loaded.
+# {version}, {sensor}, and {hemisphere} are expanded when loaded.
 base_dir: "/Volumes/Files/Forskningsdata/600/60090/105517-CCI+SeaIce"
 
 # Output paths below turn 1.1 into v1.1.
@@ -7,10 +7,10 @@ version: 1.1
 
 # Supported sensors: envisat, cryosat2, sentinel3a, sentinel3b, icesat2.
 input_dir:
-  envisat: "input/altimetry/l2p/nh/envisat"
-  cryosat2: "input/altimetry/l2p/nh/cryosat2"
-  sentinel3a: "input/altimetry/l2p/nh/sentinel3a"
-  sentinel3b: "input/altimetry/l2p/nh/sentinel3b"
+  envisat: "input/altimetry/l2p/{hemisphere}/envisat"
+  cryosat2: "input/altimetry/l2p/{hemisphere}/cryosat2"
+  sentinel3a: "input/altimetry/l2p/{hemisphere}/sentinel3a"
+  sentinel3b: "input/altimetry/l2p/{hemisphere}/sentinel3b"
   icesat2:
     total_freeboard: "input/icesat2/ATL10.005"
     sea_ice_thickness: "input/icesat2/is2sitdata"
@@ -19,7 +19,7 @@ input_dir:
 output_dir:
   trajectories: "output/v{version}/trajectories/{sensor}"
   gridded_data: "output/v{version}/l3c/{sensor}"
-  visu: "output/v{version}/visualization/{sensor}"
+  visu: "visualization/v{version}/{sensor}"
 
 # Product keys selected under options must have a directory here.
 auxiliary:
@@ -64,8 +64,8 @@ options:
   add_variable: [snow_depth]
 
   # nh uses EPSG:6931; sh uses EPSG:6932.
-  hemisphere: nh
-  out_epsg: "EPSG:6931"
+  hemisphere: sh
+  out_epsg: "EPSG:6932"
 
   # Priority ordered; the temporal fallback is limited to seven days.
   ice_conc_products: [osi450, osi430]
