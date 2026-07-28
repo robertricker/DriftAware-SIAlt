@@ -21,7 +21,9 @@ class DriftAwareProcessor:
 
         self.i = None
 
-    def baseline_proc(self, sic_product, hist_n_bins, hist_range, sit_clim=None):
+    def baseline_proc(
+            self, sic_product, hist_n_bins, hist_range, sit_clim=None,
+            thermo_model=None):
         # adds the original measurements at t=0 (without drift correction) to the master structure
         sit = self.parent.product
         sit[self.target_var + '_l2_unc'] **= 2
@@ -139,11 +141,12 @@ class DriftAwareProcessor:
             tmp_grid['_ice_drift_products'] = ''
             tmp_grid[self.target_var+'_drift_unc'] = 0.0
             tmp_grid['divergence'], tmp_grid['shear'] = [[0]] * len(tmp_grid), [[0]] * len(tmp_grid)
-            tmp_grid['sit_corr_thermo_mod'] = tmp_grid['sea_ice_thickness']
-            tmp_grid['thermo_change_mod'] = [0] * len(tmp_grid)
-            tmp_grid['thermo_growth_mod'] = [0] * len(tmp_grid)
-            tmp_grid['t2m'] = [0] * len(tmp_grid)
-            tmp_grid['ohf'] = [0] * len(tmp_grid)
+            if thermo_model:
+                tmp_grid['sit_corr_thermo_mod'] = tmp_grid['sea_ice_thickness']
+                tmp_grid['thermo_change_mod'] = [0] * len(tmp_grid)
+                tmp_grid['thermo_growth_mod'] = [0] * len(tmp_grid)
+                tmp_grid['t2m'] = [0] * len(tmp_grid)
+                tmp_grid['ohf'] = [0] * len(tmp_grid)
 
             self.master[self.i][0] = tmp_grid
             self.scheme[self.i, 0] = 1  
