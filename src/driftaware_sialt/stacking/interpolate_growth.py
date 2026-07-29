@@ -9,7 +9,6 @@ from driftaware_sialt.stacking.point_density_correction import latitude_band_den
 
 
 def get_land_area_correction(config):
-    """Return resolved land-correction settings and fail early if misconfigured."""
     growth_options = config['stacking']['growth_estimation']
     settings = dict(growth_options.get('land_area_correction', {}))
     settings.setdefault('enabled', False)
