@@ -7,6 +7,22 @@ from loguru import logger
 import datetime
 from driftaware_sialt.filters.marginal_ice_zone import compute_apply_flag
 
+
+def grid_parcel_uncertainty(data, grid, source_unc_var, parcel_unc_var):
+    """Propagate source uncertainties to the mean value of each parcel."""
+    uncertainty_variance = data[[source_unc_var, 'geometry']].copy()
+    uncertainty_variance[source_unc_var] **= 2
+    uncertainty_grid = gridding_lib.grid_data(
+        uncertainty_variance,
+        grid,
+        [source_unc_var],
+        [parcel_unc_var],
+        agg_mode=['sum', 'cnt'])
+    return (
+        np.sqrt(uncertainty_grid[parcel_unc_var + '_sum'])
+        / uncertainty_grid[parcel_unc_var + '_cnt'])
+
+
 class DriftAwareProcessor:
     def __init__(self, parent, **kwargs):
 
@@ -26,7 +42,8 @@ class DriftAwareProcessor:
             thermo_model=None):
         # adds the original measurements at t=0 (without drift correction) to the master structure
         sit = self.parent.product
-        sit[self.target_var + '_l2_unc'] **= 2
+        source_unc_var = self.target_var + '_l2_unc'
+        parcel_unc_var = self.target_var + '_parcel_unc'
         target_sensors = ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']
         
         if sit_clim is not None:
@@ -35,7 +52,7 @@ class DriftAwareProcessor:
         if 'icesat2' in self.sensor:
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
             for beam in sit.beam.unique(): 
-                tmp = (sit[[self.target_var, self.target_var + '_l2_unc', 'geometry', 'time', 'beam'] + self.add_variable]
+                tmp = (sit[[self.target_var, source_unc_var, 'geometry', 'time', 'beam'] + self.add_variable]
                            .copy()
                            .loc[sit['beam'] == beam]
                            .drop(columns=['beam'])
@@ -44,14 +61,12 @@ class DriftAwareProcessor:
                 tmp_grid = gridding_lib.grid_data(tmp, self.grid, [self.target_var], [self.target_var],
                                                   hist_n_bins=hist_n_bins, hist_range=hist_range,
                                                   agg_mode=['mean', 'std', 'hist'])
-                unc_grid = gridding_lib.grid_data(tmp, self.grid, [self.target_var+'_l2_unc'],
-                                                  [self.target_var + '_l2_unc'], agg_mode=['sum', 'cnt'])
                 add_grid = gridding_lib.grid_data(tmp, self.grid, self.add_variable+['time'],
                                                   self.add_variable+['time'], agg_mode=['mean'])
                 
 
-                tmp_grid[self.target_var + '_l2_unc'] = np.sqrt(unc_grid[self.target_var + '_l2_unc_sum']) / unc_grid[
-                    self.target_var + '_l2_unc_cnt']
+                tmp_grid[parcel_unc_var] = grid_parcel_uncertainty(
+                    tmp, self.grid, source_unc_var, parcel_unc_var)
                 tmp_grid[self.add_variable] = add_grid[self.add_variable]
                 tmp_grid['t0'] = add_grid['time']
                 tmp_grid['xu'] = tmp_grid.index.get_level_values('x')
@@ -78,8 +93,6 @@ class DriftAwareProcessor:
             tmp_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var], [self.target_var],
                                               hist_n_bins=hist_n_bins, hist_range=hist_range,
                                               agg_mode=['mean', 'std', 'hist'])
-            unc_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var + '_l2_unc'],
-                                              [self.target_var + '_l2_unc'], agg_mode=['sum', 'cnt'])
             add_grid = gridding_lib.grid_data(sit, self.grid, self.add_variable+['time'],
                                               self.add_variable+['time'], agg_mode=['mean'])
             frac_mission_grid = gridding_lib.grid_data(sit, self.grid, self.sensor,
@@ -104,7 +117,7 @@ class DriftAwareProcessor:
                 
 
                 sit_weight['sit_weight'] = sit_weight['weight'] * sit_weight[self.target_var]
-                sit_weight['sit_unc_weight'] = sit_weight['weight']**2 * sit_weight[self.target_var+'_l2_unc']**2
+                sit_weight['sit_unc_weight'] = sit_weight['weight']**2 * sit_weight[source_unc_var]**2
 
                 sum_weight = gridding_lib.grid_data(sit_weight, self.grid, ['weight'],
                                                 ['weight'], agg_mode=['sum'])
@@ -114,12 +127,12 @@ class DriftAwareProcessor:
                 sit_unc_weighted = sum_sit_weight.sit_unc_weight_sum / (sum_weight.weight_sum**2)
 
 
-                tmp_grid[self.target_var+'_l2_unc'] = np.sqrt(sit_unc_weighted)
+                tmp_grid[parcel_unc_var] = np.sqrt(sit_unc_weighted)
                 tmp_grid[self.target_var] = sit_weighted
                 """
 
-            tmp_grid[self.target_var+'_l2_unc'] = np.sqrt(unc_grid[self.target_var+'_l2_unc_sum'])/unc_grid[
-                self.target_var+'_l2_unc_cnt']
+            tmp_grid[parcel_unc_var] = grid_parcel_uncertainty(
+                sit, self.grid, source_unc_var, parcel_unc_var)
             """
             if sit_clim is not None:
                 tmp_grid = compute_apply_flag(tmp_grid, sic_product, sit_clim, self.target_var, self.sensor, crs=self.out_epsg)

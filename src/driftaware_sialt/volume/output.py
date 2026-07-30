@@ -10,6 +10,20 @@ import yaml
 from loguru import logger
 
 
+def load_variable_attributes():
+    """Combine shared gridding metadata with volume-specific overrides."""
+    metadata_paths = [
+        Path(__file__).parents[1] / "gridding" / "netcdf_config.yaml",
+        Path(__file__).with_name("netcdf_config.yaml"),
+    ]
+    variable_attributes = {}
+    for metadata_path in metadata_paths:
+        with metadata_path.open() as stream:
+            variable_attributes.update(
+                yaml.safe_load(stream)["variable_attributes"])
+    return variable_attributes
+
+
 def organize_files_by_date(source_dir, target_dir):
     files = [name for name in os.listdir(source_dir) if name.endswith(".nc")]
     for filename in files:
@@ -39,11 +53,7 @@ def organize_files_by_date(source_dir, target_dir):
 
 
 def write_volume_dataset(dataset, outfile):
-    with Path(__file__).with_name("netcdf_config.yaml").open() as stream:
-        netcdf_config = yaml.safe_load(stream)
-
-    for variable_name, attributes in netcdf_config[
-            "variable_attributes"].items():
+    for variable_name, attributes in load_variable_attributes().items():
         if variable_name in dataset:
             dataset[variable_name].attrs.update(attributes)
 

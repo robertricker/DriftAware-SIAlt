@@ -92,6 +92,17 @@ class PrepareNetcdf:
         for var_name, attributes in variable_attributes.items():
             if var_name in dataset:
                 dataset[var_name].attrs.update(attributes)
+                ancillary_variables = dataset[var_name].attrs.get(
+                    'ancillary_variables')
+                if ancillary_variables:
+                    available = [
+                        name for name in ancillary_variables.split()
+                        if name in dataset]
+                    if available:
+                        dataset[var_name].attrs['ancillary_variables'] = (
+                            ' '.join(available))
+                    else:
+                        dataset[var_name].attrs.pop('ancillary_variables')
         return dataset
 
     def add_histogram(self, xarray):
@@ -157,7 +168,7 @@ class PrepareNetcdf:
         sources = [
             f"{labels[key]}: {', '.join(self.source_products[key])}"
             for key in labels if self.source_products.get(key)]
-        sources.append('ESA-CCI L2P-SIT v3.0')
+        sources.append('ESA-CCI L2P-SIT v4.0')
         xarray.attrs['source'] = '; '.join(sources)
         xarray.attrs['product_version'] = self.version
         xarray.attrs['project'] = 'ESA CCI'

@@ -153,17 +153,26 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
         return  
     data['dist_acquisition'] = start_location.distance(target_location) / 1000.0
     data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])
-    data['dynamic_change_rate_tmp'] = data['divergence'].apply(lambda x: [np.exp(-val) for val in x])
+    dynamic_tendency_col = f"{target_var}_dynamic_tendency"
     # Handle both old format (without _uncorrected) and new format (with _uncorrected)
     uncorrected_col = f"{target_var}_uncorrected" if f"{target_var}_uncorrected" in data.columns else target_var
     if uncorrected_col in data.columns:
-        data['dynamic_change_rate'] = data.apply(lambda row: [-row[uncorrected_col] * val for val in row["divergence"]], axis=1)
+        data[dynamic_tendency_col] = data.apply(
+            lambda row: [
+                -row[uncorrected_col] * value
+                for value in row["divergence"]],
+            axis=1)
     else:
-        logger.warning(f"Column '{uncorrected_col}' not found. Skipping dynamic_change_rate computation.")
+        logger.warning(
+            f"Column '{uncorrected_col}' not found. Skipping dynamic "
+            "tendency computation.")
     if 'growth_interpolated' in data.columns:
-        data['thermo_change_rate'] = data.apply(lambda row: [row["growth_interpolated"] - val for val in row["dynamic_change_rate"]], axis=1)
+        data['thermo_change_rate'] = data.apply(
+            lambda row: [
+                row["growth_interpolated"] - value
+                for value in row[dynamic_tendency_col]],
+            axis=1)
 
-    #data['thermo_change_rate'] = data.apply(lambda row: row["growth_interpolated"] - row["dynamic_change_rate"], axis=1)
     data['shear'] = data['shear'].apply(lambda x: [float(val) for val in x.split()])
 
     if gridding_mode == 'da':
@@ -218,15 +227,15 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
         if 'freeboard' not in target_var:
             data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_growth_unc']**2 +
                                                     data[target_var+'_drift_unc']**2 +
-                                                    data[target_var+'_l2_unc']**2)
+                                                    data[target_var+'_parcel_unc']**2)
         else:
             data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_drift_unc']**2 +
-                                                    data[target_var+'_l2_unc']**2)
+                                                    data[target_var+'_parcel_unc']**2)
 
     data['deformation'] = data.apply(get_deformation, axis=1)
     data['divergence'] = data["divergence"].apply(get_row_mean)
     data['shear'] = data["shear"].apply(get_row_mean)
-    data['dynamic_change_rate'] = data['dynamic_change_rate'].apply(get_row_mean)
+    data[dynamic_tendency_col] = data[dynamic_tendency_col].apply(get_row_mean)
     if 'thermo_change_rate' in data.columns:
         data['thermo_change_rate'] = data['thermo_change_rate'].apply(get_row_mean)
 
@@ -240,7 +249,7 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
         #master[target_var + '_total_unc'] = master_unc[target_var + '_total_unc'].copy()
         #master[target_var + '_growth_unc'] = master_unc[target_var + '_growth_unc'].copy()
         #master[target_var + '_drift_unc'] = master_unc[target_var + '_drift_unc'].copy()
-        #master[target_var + '_l2_unc'] = master_unc[target_var + '_l2_unc'].copy()
+        #master[target_var + '_parcel_unc'] = master_unc[target_var + '_parcel_unc'].copy()
     else:
         master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
 

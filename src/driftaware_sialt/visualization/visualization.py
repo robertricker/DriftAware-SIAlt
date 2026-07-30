@@ -50,9 +50,9 @@ PLOT_PRESETS = {
     'sea_ice_thickness_std': PlotPreset(
         0, 1, 13, plt.cm.cool, 1.0,
         'Sea ice thickness standard deviation (m)'),
-    'sea_ice_thickness_l2_unc': PlotPreset(
+    'sea_ice_thickness_parcel_unc': PlotPreset(
         0, 1, 13, plt.cm.cool, 1.0,
-        'Level-2 sea ice thickness uncertainty (m)'),
+        'Parcel sea ice thickness uncertainty (m)'),
     'sea_ice_thickness_drift_unc': PlotPreset(
         0, 1, 13, plt.cm.cool, 1.0,
         'Drift-related sea ice thickness uncertainty (m)'),
@@ -82,15 +82,15 @@ PLOT_PRESETS = {
     'sea_ice_thickness_change_interpolated': PlotPreset(
         -5, 5, 20, _DIVERGING_CMAP, 100.0,
         'Interpolated sea ice thickness change (cm day$^{-1}$)'),
-    'dynamic_change_rate': PlotPreset(
+    'sea_ice_thickness_dynamic_tendency': PlotPreset(
         -5, 5, 20, _DIVERGING_CMAP, 100.0,
-        'Dynamic sea ice thickness change (cm day$^{-1}$)'),
+        'Sea ice thickness dynamic tendency (cm day$^{-1}$)'),
     'sea_ice_thickness_thermodynamic_tendency': PlotPreset(
         -5, 5, 20, _DIVERGING_CMAP, 100.0,
         'Sea ice thickness thermodynamic tendency (cm day$^{-1}$)'),
-    'model_sea_ice_thickness_change_rate': PlotPreset(
+    'model_sea_ice_thickness_thermodynamic_correction_rate': PlotPreset(
         -5, 5, 20, _DIVERGING_CMAP, 100.0,
-        'Model sea ice thickness change (cm day$^{-1}$)'),
+        'Model thermodynamic correction (cm day$^{-1}$)'),
     'model_sea_ice_thickness_thermodynamic_tendency': PlotPreset(
         -5, 5, 20, _DIVERGING_CMAP, 100.0,
         'Model thermodynamic tendency (cm day$^{-1}$)'),
