@@ -3,7 +3,7 @@ variables:
     histogram: True
     include:
       - "{{ target_var }}"
-      - "{{ target_var }}_l2_unc"
+      - "{{ target_var }}_parcel_unc"
       - "{{ target_var }}_drift_unc"
       - "{{ target_var }}_growth_unc"
       - "{{ target_var }}_total_unc"
@@ -34,7 +34,7 @@ variables:
       #- "drift_unc"
     rename:
       - "{{ target_var }}"
-      - "{{ target_var }}_l2_unc"
+      - "{{ target_var }}_parcel_unc"
       - "{{ target_var }}_drift_unc"
       - "{{ target_var }}_change_unc"
       - "{{ target_var }}_total_unc"
@@ -50,10 +50,16 @@ variables:
       - "divergence"
       - "snow_depth"
       - "model_sea_ice_thickness"
-      - "model_sea_ice_thickness_change_rate"
+      - "model_sea_ice_thickness_thermodynamic_correction_rate"
       - "model_sea_ice_thickness_thermodynamic_tendency"
       - "sea_ice_volume"
       - "sea_ice_mass"
+      - "sea_ice_extent"
+      - "sea_ice_area"
+      - "sea_ice_extent_total"
+      - "sea_ice_area_total"
+      - "sea_ice_volume_total"
+      - "sea_ice_mass_total"
       - "snow_volume"
       - "snow_mass"
       #- "drift_unc"
@@ -62,7 +68,7 @@ variables:
     histogram: True
     include:
       - "{{ target_var }}"
-      - "{{ target_var }}_l2_unc"
+      - "{{ target_var }}_parcel_unc"
       - "{{ target_var }}_mode"
       - "dist_acquisition"
       - "dt_days"
@@ -83,7 +89,7 @@ variables:
       - "snow_mass"
     rename:
       - "{{ target_var }}"
-      - "{{ target_var }}_l2_unc"
+      - "{{ target_var }}_parcel_unc"
       - "{{ target_var }}_mode"
       - "dist_acquisition"
       - "time_offset_acquisition"
@@ -94,6 +100,12 @@ variables:
       - "snow_depth"
       - "sea_ice_volume"
       - "sea_ice_mass"
+      - "sea_ice_extent"
+      - "sea_ice_area"
+      - "sea_ice_extent_total"
+      - "sea_ice_area_total"
+      - "sea_ice_volume_total"
+      - "sea_ice_mass_total"
       - "snow_volume"
       - "snow_mass"
 
@@ -109,7 +121,6 @@ variable_attributes:
     units: "m"
 
   hist_bins:
-    standard_name: "bin_centers"
     long_name: "histogram bin centers"
     units: "m"
 
@@ -120,7 +131,7 @@ variable_attributes:
 
   longitude:
     standard_name: "longitude"
-    long_name: "time longitude of grid cell center"
+    long_name: "longitude of grid cell center"
     units: "degrees_east"
 
   sea_ice_concentration:
@@ -141,19 +152,19 @@ variable_attributes:
 
   sea_ice_volume:
     standard_name: 'sea_ice_volume'
-    long_name: "sea ice volume"
+    long_name: "sea ice volume per grid cell"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "m3"
     grid_mapping: 'crs'
     comment: ""
 
   sea_ice_mass:
-      standard_name: 'sea_ice_mass'
-      long_name: "sea ice mass"
-      coordinates: "time longitude latitude"
-      units: "m"
-      grid_mapping: 'crs'
-      comment: ""
+    standard_name: 'sea_ice_mass'
+    long_name: "sea ice mass per grid cell"
+    coordinates: "time longitude latitude"
+    units: "kg"
+    grid_mapping: 'crs'
+    comment: ""
 
 
   sea_ice_thickness_std:
@@ -173,7 +184,6 @@ variable_attributes:
     comment: ""
 
   sea_ice_thickness_hist:
-    standard_name: 'sea_ice_thickness'
     long_name: "thickness classes between 0 m and 10 m with 0.25m bin size"
     coordinates: "time longitude latitude"
     units: "1"
@@ -210,9 +220,9 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: ""
 
-  sea_ice_thickness_l2_unc:
+  sea_ice_thickness_parcel_unc:
     standard_name: 'sea_ice_thickness standard_error'
-    long_name: "sea ice thickness uncertainty associated with the level2 product"
+    long_name: "propagated uncertainty of the parcel-mean sea ice thickness"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
@@ -227,7 +237,7 @@ variable_attributes:
     comment: ""
 
   snow_depth:
-    standard_name: 'surface_snow_thickness_where_sea_ice'
+    standard_name: 'surface_snow_thickness'
     long_name: "thickness of the snow layer"
     coordinates: "time longitude latitude"
     units: "m"
@@ -235,12 +245,12 @@ variable_attributes:
     comment: ""
 
   snow_volume:
-    standard_name: 'surface_snow_volume_where_sea_ice'
-    long_name: "volume of the snow layer"
+    long_name: "snow volume per grid cell"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "m3"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "Calculated from snow depth, sea ice concentration, and grid-cell area."
+
   sea_ice_extent:
     standard_name: 'sea_ice_extent'
     long_name: "sea ice extent per cell"
@@ -248,6 +258,7 @@ variable_attributes:
     units: "m2"
     grid_mapping: 'crs'
     comment: "Cell area when concentration exceeds the threshold"
+
   sea_ice_area:
     standard_name: 'sea_ice_area'
     long_name: "sea ice area per cell"
@@ -255,33 +266,37 @@ variable_attributes:
     units: "m2"
     grid_mapping: 'crs'
     comment: "Sea ice area within the cell based on concentration fraction"
+
   sea_ice_extent_total:
     standard_name: 'sea_ice_extent'
     long_name: "total sea ice extent"
     units: "m2"
     comment: "Total sea ice extent over the domain"
+
   sea_ice_area_total:
     standard_name: 'sea_ice_area'
     long_name: "total sea ice area"
     units: "m2"
     comment: "Total sea ice area over the domain"
+
   sea_ice_volume_total:
     standard_name: 'sea_ice_volume'
     long_name: "total sea ice volume"
     units: "m3"
     comment: "Total sea ice volume over the domain"
+
   sea_ice_mass_total:
     standard_name: 'sea_ice_mass'
     long_name: "total sea ice mass"
     units: "kg"
     comment: "Total sea ice mass over the domain"
+    
   snow_mass:
-    standard_name: 'surface_snow_mass_where_sea_ice'
-    long_name: "mass of the snow layer"
+    long_name: "snow mass per grid cell"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "kg"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "No corresponding CF-1.6 standard name is available."
 
   sea_ice_displacement_uncertainty:
     long_name: "uncertainty of the accumulated sea ice parcel displacement along the trajectory"
@@ -291,36 +306,34 @@ variable_attributes:
     comment: ""
 
   deformation:
-    standard_name: 'deformation'
-    long_name: "mean deformation accumulated along the trajectory"
+    long_name: "mean total sea ice deformation rate sampled along the trajectory"
     coordinates: "time longitude latitude"
-    units: "1/day"
+    units: "day-1"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "Magnitude calculated from the divergence and shear strain-rate invariants."
 
   divergence:
-    standard_name: 'divergence'
-    long_name: "mean divergence accumulated along the trajectory"
+    standard_name: 'divergence_of_sea_ice_velocity'
+    long_name: "mean sea ice velocity divergence sampled along the trajectory"
     coordinates: "time longitude latitude"
-    units: "1/day"
+    units: "day-1"
     grid_mapping: 'crs'
     comment: ""
 
   shear:
-    standard_name: 'shear'
-    long_name: "mean shear accumulated along the trajectory"
+    long_name: "mean sea ice horizontal shear strain rate sampled along the trajectory"
     coordinates: "time longitude latitude"
-    units: "1/day"
+    units: "day-1"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "No corresponding CF-1.6 standard name is available."
 
   dist_acquisition:
-    standard_name: 'geospatial_distance'
+    standard_name: 'magnitude_of_sea_ice_displacement'
     long_name: "distance between target day and day of data acquisition location"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "km"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "Straight-line displacement from the acquisition location to the target location."
 
   time:
     standard_name: 'time'
@@ -335,9 +348,8 @@ variable_attributes:
     units: 'seconds since 1970-01-01 00:00:00'
 
   time_offset_acquisition:
-    standard_name: 'delta_time'
-    long_name: "time since data acquisition"
+    long_name: "time offset of acquisition relative to target time"
     coordinates: "time longitude latitude"
     units: "days"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "Negative values indicate acquisition before the target time; positive values indicate acquisition after it."
