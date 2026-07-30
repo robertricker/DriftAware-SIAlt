@@ -3,7 +3,7 @@ variables:
     histogram: True
     include:
       - "{{ target_var }}"
-      - "{{ target_var }}_l2_unc"
+      - "{{ target_var }}_parcel_unc"
       - "{{ target_var }}_drift_unc"
       - "{{ target_var }}_growth_unc"
       - "{{ target_var }}_total_unc"
@@ -17,7 +17,7 @@ variables:
       - "deformation"
       - "shear"
       - "divergence"
-      - "dynamic_change_rate"
+      - "{{ target_var }}_dynamic_tendency"
       - "thermo_change_rate"
       - "radar_freeboard"
       - "sea_ice_freeboard"
@@ -38,7 +38,7 @@ variables:
       #- "drift_unc"
     rename:
       - "{{ target_var }}"
-      - "{{ target_var }}_l2_unc"
+      - "{{ target_var }}_parcel_unc"
       - "{{ target_var }}_drift_unc"
       - "{{ target_var }}_change_unc"
       - "{{ target_var }}_total_unc"
@@ -52,13 +52,13 @@ variables:
       - "deformation"
       - "shear"
       - "divergence"
-      - "dynamic_change_rate"
+      - "{{ target_var }}_dynamic_tendency"
       - "sea_ice_thickness_thermodynamic_tendency"
       - "radar_freeboard"
       - "sea_ice_freeboard"
       - "snow_depth"
       - "model_sea_ice_thickness"
-      - "model_sea_ice_thickness_change_rate"
+      - "model_sea_ice_thickness_thermodynamic_correction_rate"
       - "model_sea_ice_thickness_thermodynamic_tendency"
       - "sea_ice_displacement_uncertainty"
       - "model_ocean_heat_flux"
@@ -76,7 +76,7 @@ variables:
     histogram: True
     include:
       - "{{ target_var }}"
-      - "{{ target_var }}_l2_unc"
+      - "{{ target_var }}_parcel_unc"
       - "{{ target_var }}_mode"
       - "dist_acquisition"
       - "radar_freeboard"
@@ -95,7 +95,7 @@ variables:
       - "cryosat2_cnt"
     rename:
       - "{{ target_var }}"
-      - "{{ target_var }}_l2_unc"
+      - "{{ target_var }}_parcel_unc"
       - "{{ target_var }}_mode"
       - "dist_acquisition"
       - "radar_freeboard"
@@ -136,7 +136,7 @@ variable_attributes:
 
   longitude:
     standard_name: "longitude"
-    long_name: "time longitude of grid cell center"
+    long_name: "longitude of grid cell center"
     units: "degrees_east"
 
   sea_ice_concentration:
@@ -153,7 +153,7 @@ variable_attributes:
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
-    ancillary_variables: "sea_ice_thickness_l2_unc sea_ice_thickness_drift_unc sea_ice_thickness_change_unc sea_ice_thickness_total_unc"
+    ancillary_variables: "sea_ice_thickness_parcel_unc sea_ice_thickness_drift_unc sea_ice_thickness_change_unc sea_ice_thickness_total_unc"
     comment: ""
 
   sea_ice_thickness_std:
@@ -182,12 +182,20 @@ variable_attributes:
   sea_ice_thickness_change:
     long_name: "rate of change in sea ice thickness per day"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "m day-1"
     grid_mapping: 'crs'
     comment: ""
 
   sea_ice_thickness_change_interpolated:
     long_name: "spatially interpolated rate of change in sea ice thickness per day"
+    coordinates: "time longitude latitude"
+    units: "m day-1"
+    grid_mapping: 'crs'
+    comment: ""
+
+  sea_ice_thickness_uncorrected:
+    standard_name: 'sea_ice_thickness'
+    long_name: "sea ice thickness before temporal change correction"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
@@ -209,9 +217,9 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: ""
 
-  sea_ice_thickness_l2_unc:
+  sea_ice_thickness_parcel_unc:
     standard_name: 'sea_ice_thickness standard_error'
-    long_name: "sea ice thickness uncertainty associated with the level2 product"
+    long_name: "propagated uncertainty of the parcel-mean sea ice thickness"
     coordinates: "time longitude latitude"
     units: "m"
     grid_mapping: 'crs'
@@ -226,7 +234,6 @@ variable_attributes:
     comment: ""
 
   radar_freeboard:
-    standard_name: 'radar_freeboard'
     long_name: "radar freeboard"
     coordinates: "time longitude latitude"
     units: "m"
@@ -242,7 +249,7 @@ variable_attributes:
     comment: ""
 
   snow_depth:
-    standard_name: 'surface_snow_thickness_where_sea_ice'
+    standard_name: 'surface_snow_thickness'
     long_name: "thickness of the snow layer"
     coordinates: "time longitude latitude"
     units: "m"
@@ -266,8 +273,16 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: ""
 
-  model_sea_ice_thickness_change_rate:
-    long_name: "modeled sea ice thickness correction rate along the trajectory direction"
+  sea_ice_thickness_dynamic_tendency:
+    standard_name: 'tendency_of_sea_ice_thickness_due_to_dynamics'
+    long_name: "sea ice thickness tendency due to ice dynamics"
+    coordinates: "time longitude latitude"
+    units: "m day-1"
+    grid_mapping: 'crs'
+    comment: "Calculated from sea ice thickness and drift divergence."
+
+  model_sea_ice_thickness_thermodynamic_correction_rate:
+    long_name: "modeled thermodynamic sea ice thickness correction rate along the trajectory direction"
     coordinates: "time longitude latitude"
     units: "m day-1"
     grid_mapping: 'crs'
@@ -293,6 +308,7 @@ variable_attributes:
     comment: ""
 
   model_ocean_heat_flux:
+    standard_name: 'upward_sea_ice_basal_heat_flux'
     long_name: "ocean heat flux used by the thermodynamic model"
     coordinates: "time longitude latitude"
     units: "W m-2"
@@ -301,6 +317,7 @@ variable_attributes:
     comment: "Positive values reduce modeled sea ice growth."
 
   sea_ice_displacement_uncertainty:
+    standard_name: 'magnitude_of_sea_ice_displacement standard_error'
     long_name: "uncertainty of the accumulated sea ice parcel displacement along the trajectory"
     coordinates: "time longitude latitude"
     units: "m"
@@ -308,32 +325,34 @@ variable_attributes:
     comment: ""
 
   deformation:
-    long_name: "mean deformation accumulated along the trajectory"
+    long_name: "mean total sea ice deformation rate sampled along the trajectory"
     coordinates: "time longitude latitude"
     units: "day-1"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "Magnitude calculated from the divergence and shear strain-rate invariants."
 
   divergence:
-    long_name: "mean divergence accumulated along the trajectory"
+    standard_name: 'divergence_of_sea_ice_velocity'
+    long_name: "mean sea ice velocity divergence sampled along the trajectory"
     coordinates: "time longitude latitude"
     units: "day-1"
     grid_mapping: 'crs'
     comment: ""
 
   shear:
-    long_name: "mean shear accumulated along the trajectory"
+    long_name: "mean sea ice horizontal shear strain rate sampled along the trajectory"
     coordinates: "time longitude latitude"
     units: "day-1"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "No corresponding CF-1.6 standard name is available."
 
   dist_acquisition:
+    standard_name: 'magnitude_of_sea_ice_displacement'
     long_name: "distance between target day and day of data acquisition location"
     coordinates: "time longitude latitude"
-    units: "m"
+    units: "km"
     grid_mapping: 'crs'
-    comment: ""
+    comment: "Straight-line displacement from the acquisition location to the target location."
 
   time:
     standard_name: 'time'
@@ -348,8 +367,59 @@ variable_attributes:
     units: 'seconds since 1970-01-01 00:00:00'
 
   time_offset_acquisition:
-    long_name: "time since data acquisition"
+    long_name: "time offset of acquisition relative to target time"
     coordinates: "time longitude latitude"
     units: "days"
     grid_mapping: 'crs'
+    comment: "Negative values indicate acquisition before the target time; positive values indicate acquisition after it."
+
+  sentinel3a_frac:
+    long_name: "fractional contribution of Sentinel-3A observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
+    valid_max: 1.0
+    comment: "Fraction of contributing observations associated with Sentinel-3A."
+
+  sentinel3b_frac:
+    long_name: "fractional contribution of Sentinel-3B observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
+    valid_max: 1.0
+    comment: "Fraction of contributing observations associated with Sentinel-3B."
+
+  cryosat2_frac:
+    long_name: "fractional contribution of CryoSat-2 observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
+    valid_max: 1.0
+    comment: "Fraction of contributing observations associated with CryoSat-2."
+
+  sentinel3a_cnt:
+    long_name: "number of contributing Sentinel-3A observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
+    comment: ""
+
+  sentinel3b_cnt:
+    long_name: "number of contributing Sentinel-3B observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
+    comment: ""
+
+  cryosat2_cnt:
+    long_name: "number of contributing CryoSat-2 observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
     comment: ""
