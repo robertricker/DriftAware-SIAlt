@@ -5,6 +5,7 @@ import numpy as np
 import sys
 from loguru import logger
 import datetime
+from numbers import Real
 from driftaware_sialt.filters.marginal_ice_zone import compute_apply_flag
 
 
@@ -23,6 +24,41 @@ def grid_parcel_uncertainty(data, grid, source_unc_var, parcel_unc_var):
         / uncertainty_grid[parcel_unc_var + '_cnt'])
 
 
+def grid_mission_fractions(data, grid, configured_sensors, available_sensors):
+    """Grid mission indicators for the sensors available on the current date.
+    Keep columns for every configured sensor in the result so downstream output
+    retains a stable schema.  Sensors without input data are represented by
+    zero fractions and counts.
+    """
+    available_sensors = [
+        sensor for sensor in configured_sensors
+        if sensor in available_sensors and sensor in data.columns
+    ]
+    if not available_sensors:
+        raise ValueError('No available sensor columns found in altimetry data')
+
+    mission_grid = gridding_lib.grid_data(
+        data, grid, available_sensors, available_sensors,
+        agg_mode=['mean', 'sum'])
+    for sensor in configured_sensors:
+        if sensor not in available_sensors:
+            mission_grid[sensor] = 0.0
+            mission_grid[sensor + '_sum'] = 0.0
+    return mission_grid
+
+
+def ocean_heat_flux_at_points(source, x, y):
+    """Return constant or spatially interpolated ocean heat flux."""
+    if isinstance(source, Real):
+        return np.full(len(x), float(source))
+
+    values = np.asarray(source.interp_ocean_heat_flux(x, y)).reshape(-1)
+    if len(values) != len(x):
+        raise ValueError(
+            'Interpolated ocean heat flux does not match parcel count')
+    return values
+
+
 class DriftAwareProcessor:
     def __init__(self, parent, **kwargs):
 
@@ -39,17 +75,21 @@ class DriftAwareProcessor:
 
     def baseline_proc(
             self, sic_product, hist_n_bins, hist_range, sit_clim=None,
-            thermo_model=None):
+            thermo_model=None, available_sensors=None):
         # adds the original measurements at t=0 (without drift correction) to the master structure
         sit = self.parent.product
+        if available_sensors is None:
+            available_sensors = [
+                sensor for sensor in self.sensor if sensor in sit.columns
+            ]
         source_unc_var = self.target_var + '_l2_unc'
         parcel_unc_var = self.target_var + '_parcel_unc'
         target_sensors = ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']
         
         if sit_clim is not None:
-            sit = compute_apply_flag(sit, sic_product, sit_clim, self.target_var, self.sensor, crs=self.out_epsg)
+            sit = compute_apply_flag(sit, sic_product, sit_clim, self.target_var, available_sensors, crs=self.out_epsg)
            
-        if 'icesat2' in self.sensor:
+        if 'icesat2' in available_sensors:
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
             for beam in sit.beam.unique(): 
                 tmp = (sit[[self.target_var, source_unc_var, 'geometry', 'time', 'beam'] + self.add_variable]
@@ -89,54 +129,18 @@ class DriftAwareProcessor:
                 self.master[beam][self.i][0] = tmp_grid
                 self.scheme[(beams == beam).argmax(), self.i, 0] = 1
 
-        elif any(s in self.sensor for s in target_sensors):
+        elif any(s in available_sensors for s in target_sensors):
             tmp_grid = gridding_lib.grid_data(sit, self.grid, [self.target_var], [self.target_var],
                                               hist_n_bins=hist_n_bins, hist_range=hist_range,
                                               agg_mode=['mean', 'std', 'hist'])
             add_grid = gridding_lib.grid_data(sit, self.grid, self.add_variable+['time'],
                                               self.add_variable+['time'], agg_mode=['mean'])
-            frac_mission_grid = gridding_lib.grid_data(sit, self.grid, self.sensor,
-                                              self.sensor, agg_mode=['mean', 'sum'])
-            """
-            # In order to give the same weight to sentinel3 and cs2 even in the case of there are several sensors 
-            # for the same grid cell, we give the same weight to CS2 and (s3a + s3b). So only the number of point influence 
-            # the final value and no systematic bias is introduced
-            if len(self.sensor) == 3:
-                sit_temp = sit.reset_index(drop=False).rename(columns={'index': 'orig_index'})
-                sit_weight = gpd.sjoin(sit_temp, frac_mission_grid[['cryosat2', 'sentinel3a', 'sentinel3b', 'geometry']], how='inner', predicate='within')
-                sit_weight = sit_weight.drop_duplicates(subset='orig_index')
-                sit_weight = sit_weight.set_index('orig_index').reindex(sit_temp.set_index('orig_index').index)
-            
-                # Weight initialization
-                cond = (0 < sit_weight['cryosat2_right']) & (sit_weight['cryosat2_right'] < 1) & \
-                        (0 < sit_weight['sentinel3a_right']) & (sit_weight['sentinel3a_right'] < 1) & \
-                        (0 < sit_weight['sentinel3b_right']) & (sit_weight['sentinel3b_right'] < 1)
-
-                sit_weight['weight'] = np.where(cond, 0.25, 0.5)
-                sit_weight['weight'] = np.where(sit_weight.sensor == 'cryosat2', 0.5, sit_weight['weight'])
-                
-
-                sit_weight['sit_weight'] = sit_weight['weight'] * sit_weight[self.target_var]
-                sit_weight['sit_unc_weight'] = sit_weight['weight']**2 * sit_weight[source_unc_var]**2
-
-                sum_weight = gridding_lib.grid_data(sit_weight, self.grid, ['weight'],
-                                                ['weight'], agg_mode=['sum'])
-                sum_sit_weight = gridding_lib.grid_data(sit_weight, self.grid, ['sit_weight', 'sit_unc_weight'],
-                                                ['sit_weight', 'sit_unc_weight'], agg_mode=['sum'])
-                sit_weighted = sum_sit_weight.sit_weight_sum / sum_weight.weight_sum
-                sit_unc_weighted = sum_sit_weight.sit_unc_weight_sum / (sum_weight.weight_sum**2)
-
-
-                tmp_grid[parcel_unc_var] = np.sqrt(sit_unc_weighted)
-                tmp_grid[self.target_var] = sit_weighted
-                """
+            frac_mission_grid = grid_mission_fractions(
+                sit, self.grid, self.sensor, available_sensors)
 
             tmp_grid[parcel_unc_var] = grid_parcel_uncertainty(
                 sit, self.grid, source_unc_var, parcel_unc_var)
-            """
-            if sit_clim is not None:
-                tmp_grid = compute_apply_flag(tmp_grid, sic_product, sit_clim, self.target_var, self.sensor, crs=self.out_epsg)
-            """
+  
             tmp_grid[self.add_variable] = add_grid[self.add_variable]
             tmp_grid[self.sensor] = frac_mission_grid[self.sensor]
             tmp_grid[[s + '_cnt' for s in self.sensor]] = frac_mission_grid[[s + '_sum' for s in self.sensor]]
@@ -175,6 +179,10 @@ class DriftAwareProcessor:
         div, she = sid_product.deformation(tmp_grid['xu'].values, tmp_grid['yu'].values)
         
         if thermo_model:
+            tmp_grid['ohf'] = ocean_heat_flux_at_points(
+                ohf_product,
+                tmp_grid['xu'].values,
+                tmp_grid['yu'].values)
             tmp_grid['t2m'], thermodyn_growth, thermodyn_corr_sit = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
                                                 tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf'])
             
@@ -182,7 +190,7 @@ class DriftAwareProcessor:
         dt_corr = 0
         if tmp_grid['dt_days'][0] == 0:
             dt_corr = (tmp_grid['t0'] - sid_product.ice_drift['time_bnds'][0])
-            dt_corr = dt_corr / datetime.timedelta(days=1).total_seconds()
+            dt_corr = dt_corr / datetime.timedelta(hours=1).total_seconds()
 
         if direct == 1:
             dt = dt - dt_corr
@@ -274,4 +282,3 @@ class DriftAwareProcessor:
                     gdf_list.append(self.master[gdf_array_index][j])
                     del self.master[gdf_array_index][j]
         return pd.concat(gdf_list).reset_index(drop=True)
-        # return pd.concat(gdf_list).pipe(gpd.GeoDataFrame, crs=self.out_epsg).reset_index(drop=True)
