@@ -89,6 +89,36 @@ configured product is used if it is no more than seven days away. Supported
 concentration readers are `osi450`, `osi430`, and `c3s`; supported drift readers
 are `osi455`, `osi435`, and `osi405`.
 
+The separate `driftaware syncdata` command inventories every remote file in the
+date span implied by `t_start`, `t_length`, and `mode`, then downloads files
+whose names are absent from the corresponding local repository. Synchronization
+does not run automatically as part of stacking. Concentration and drift
+synchronization is limited to the products selected in their priority lists.
+Altimetry synchronization is limited to `options.sensor`. Products without a
+remote URL remain local-only. For example:
+
+```yaml
+input_data:
+  timeout_seconds: 60
+
+remote_dir:
+  altimetry:
+    cryosat2: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/cryosat2"
+    sentinel3a: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/sentinel3a"
+    sentinel3b: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/sentinel3b"
+    envisat: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/envisat"
+  ice_conc:
+    osi450: "ftp://osisaf.met.no/reprocessed/ice/conc/v3p1"
+    osi430: "ftp://osisaf.met.no/reprocessed/ice/conc-cont-reproc/v3p0"
+  ice_drift:
+    osi455: "ftp://osisaf.met.no/reprocessed/ice/drift_lr/v1/merged"
+    osi405: "ftp://osisaf.met.no/archive/ice/drift_lr/merged"
+```
+
+This is a download-only sync: extra local files are retained. Downloads are
+placed in `YYYY/MM` subdirectories and become visible to the existing recursive
+readers. A partial transfer is never exposed as an input file.
+
 Stacking direction `f` means forward, `r` means reverse, and `fr` runs and merges
 both directions. `t_length` accepts an integer number of days, `season`, or
 `all`. A season ends on 1 May in the Northern Hemisphere and 1 November in the
@@ -105,8 +135,37 @@ Gridding mode `da` places values at their advected target location; `cv` places
 them at the original acquisition location. `gridding.csv_dir` accepts a
 run-directory name below `output_dir.trajectories`, an absolute directory, or
 `all` for recursive input. With weighting disabled, ordinary means are used.
-Weighting can use `counts` for the combined CryoSat-2/Sentinel-3A/Sentinel-3B
-case, or a list of numeric trajectory columns such as `[dt_days]`.
+Enable count weighting with:
+
+```yaml
+weighting:
+  enabled: true
+  var_to_weight_with: counts
+```
+
+Count weighting is evaluated separately in every output grid cell. When
+CryoSat-2 and Sentinel-3 observations are both available, half of the nominal
+weight is assigned to CryoSat-2 and half to the Sentinel-3 family. The
+Sentinel-3 share is divided equally between Sentinel-3A and Sentinel-3B when
+both are present. Missing missions are ignored and the available shares are
+renormalized. Individual trajectory parcels are weighted by the sum of these
+mission shares multiplied by the square root of their corresponding observation
+counts.
+
+Time-distance weighting is available as an alternative:
+
+```yaml
+weighting:
+  enabled: true
+  var_to_weight_with: dt_days
+```
+
+It applies the symmetric weight `1 / (1 + abs(dt_days))**2`, giving the greatest
+weight to observations acquired on the target date. Both `dt_days` and
+`[dt_days]` are accepted; the string form is recommended. An empty
+`var_to_weight_with` also defaults to `dt_days`, although setting it explicitly
+makes the processing choice clearer. `counts` and `dt_days` are alternative
+weighting modes.
 
 Visualization presets use the current gridded NetCDF variable names. They cover
 sea-ice thickness and its uncertainty/change fields, model thickness and
@@ -116,19 +175,42 @@ deformation, shear, divergence, model air temperature, and model ocean heat
 flux. The selected variable must exist in the input NetCDF files. GIF generation
 requires the ImageMagick `convert` command.
 
-Run the stages in order:
+Synchronize the date-dependent inputs separately, then run the stages:
 
 ```bash
-driftaware config/cci/stacking.yaml
-driftaware config/cci/gridding.yaml
-driftaware config/cci/visualization.yaml
+driftaware syncdata config/cci/stacking.yaml
+driftaware stacking config/cci/stacking.yaml
+driftaware gridding config/cci/gridding.yaml
+driftaware visualization config/cci/visualization.yaml
+driftaware volume config/cci/volume.yaml
 ```
 
-The equivalent module invocation is:
+The equivalent module synchronization invocation is:
 
 ```bash
-python -m driftaware_sialt config/cci/stacking.yaml
+python -m driftaware_sialt syncdata config/cci/stacking.yaml
 ```
+
+Volume calculation operates on an existing gridded run. Select its directory
+below `output_dir.gridded_data` in `volume.yaml`:
+
+```yaml
+volume:
+  gridded_data_dir: "sea_ice_thickness-nh-16fr-epsg6931_250_15-..."
+  ice_conc_product:
+  sea_ice_density: ice_fons_2022
+  snow_density: snow_fons_2022
+  interp_missing_sit: true
+  sic_interp_threshold: 15
+```
+
+An empty `ice_conc_product` uses the concentration already stored in the
+gridded files. Set it to a configured product ID such as `osi430` to read
+concentration externally. Each run creates a timestamped
+`sea_ice_volume-{hemisphere}-...` directory below `output_dir.volume`.
+Grid-cell area is calculated directly from the gridded product's `xc` and `yc`
+coordinate spacing in metres. The volume summary CSV keeps the NetCDF SI units:
+area and extent in m2, volume in m3, and mass in kg.
 
 Trajectory CSV files are self-describing. Their first line is a JSON metadata
 header containing `format_version`, CRS, target variable, stack mode and window,
@@ -141,6 +223,7 @@ Product filenames place the processing mode immediately after the product level:
 ```text
 ESACCI-SEAICE-L2P-DA-SITHICK-SIRAL_CRYOSAT2-NH-20211001-fv1.1.csv
 ESACCI-SEAICE-L3C-DA-SITHICK-SIRAL_CRYOSAT2-NH_25KM_EASE2-20211001-fv1.1.nc
+ESACCI-SEAICE-L4-DA-SIVOL-SIRAL_CRYOSAT2-NH_25KM_EASE2-20211001-fv1.1.nc
 ```
 
 Optional processing is controlled explicitly. For example:
