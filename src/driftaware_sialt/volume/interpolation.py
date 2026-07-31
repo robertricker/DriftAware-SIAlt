@@ -63,9 +63,18 @@ def interpolate_missing_values(
 def _interpolate_2d_rbf(
         variable_values, ice_conc_arr, xc, yc, sic_threshold):
     """Apply Gaussian RBF interpolation to a two-dimensional array."""
-    import matplotlib.pyplot as plt
-
     x_grid, y_grid = np.meshgrid(xc, yc)
+    dx = np.abs(np.diff(xc))
+    dy = np.abs(np.diff(yc))
+    if (
+        not dx.size or not dy.size
+        or dx[0] == 0 or dy[0] == 0
+        or not np.allclose(dx, dx[0])
+        or not np.allclose(dy, dy[0])
+    ):
+        raise ValueError('xc and yc must have regular, non-zero spacing')
+    grid_spacing = np.sqrt(dx[0] * dy[0])
+
     valid_mask = ~np.isnan(variable_values.squeeze())
     known_points = np.column_stack(
         (x_grid[valid_mask], y_grid[valid_mask]))
@@ -76,19 +85,17 @@ def _interpolate_2d_rbf(
             known_points,
             known_values,
             kernel="gaussian",
-            epsilon=1.8 / 25000,
+            epsilon=1.8 / grid_spacing,
             neighbors=20,
             smoothing=0.05,
         )
-        interpolation_mask = ice_conc_arr.squeeze() > 0.15
+        interpolation_mask = ice_conc_arr.squeeze() > sic_threshold
         target_points = np.column_stack(
             (x_grid[interpolation_mask], y_grid[interpolation_mask]))
         interpolated_values = interpolator(target_points)
 
         filled = np.full_like(variable_values.squeeze(), np.nan)
         filled[interpolation_mask] = interpolated_values
-        plt.imshow(filled)
-        plt.savefig("test.png")
         return np.expand_dims(filled, axis=0)
 
     except Exception as error:
