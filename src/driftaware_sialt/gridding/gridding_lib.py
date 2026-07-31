@@ -44,60 +44,69 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
     if agg_mode is None:
         agg_mode = ['mean', 'std']
     tmp_grid = grid.copy()
-    #tmp_grid_unc = grid.copy()
     merged = gpd.sjoin(gdf[var + ['geometry']].copy(), grid, how='left', predicate='within')
     if 'weighted_mean' in agg_mode:
         merged['weight'] = 1
         if not weight_var or weight_var=='':
-             weight_var = ['dt_days']
+             weight_var = 'dt_days'
         # The following condition is only configured for the case of Sentinel3a, Sentinel3b and Cryosat2 are used using as 'sentinel3a_sentinel3b_cryosat2'
         if (weight_var == 'counts') & ('sentinel3a_cnt' in merged.columns) & ('sentinel3b_cnt' in merged.columns) & ('cryosat2_cnt' in merged.columns):
-            if (merged.cryosat2_cnt.sum() != 0) & (merged.sentinel3b_cnt.sum() != 0) & (merged.sentinel3a_cnt.sum() !=0):
-                # only where there is sentinel3a and sentinel3b in the same parcel otherwise is should be 0.5 for everyone
-                # count for each grid cell the total number of observations per mission
-                counts = merged.dissolve(by='index_right',aggfunc={'sentinel3a_cnt': 'sum','sentinel3b_cnt': 'sum','cryosat2_cnt': 'sum'})
-                # Capture where there is the three missions in the same grid cell
-                three_missions = ((counts['sentinel3a_cnt'] > 0) &
-                                  (counts['sentinel3b_cnt'] > 0) &
-                                  (counts['cryosat2_cnt'] > 0))
-                counts['q_cs2'] = 0.5
-                counts['q_s3a'] = 0.5
-                counts['q_s3b'] = 0.5
-                counts.loc[three_missions, 'q_s3a'] = 0.25
-                counts.loc[three_missions, 'q_s3b'] = 0.25
-                merged = merged.merge(counts[['q_s3a', 'q_s3b', 'q_cs2']],
-                                      left_on='index_right',
-                                      right_index=True, how='left')
+            # Count observations per mission in each output cell and distribute
+            # half the weight to CryoSat-2 and half to the available Sentinel-3
+            # missions. If only one family is present, it receives full weight.
+            counts = merged.dissolve(
+                by='index_right',
+                aggfunc={'sentinel3a_cnt': 'sum',
+                         'sentinel3b_cnt': 'sum',
+                         'cryosat2_cnt': 'sum'})
+            has_cs2 = counts['cryosat2_cnt'] > 0
+            has_s3a = counts['sentinel3a_cnt'] > 0
+            has_s3b = counts['sentinel3b_cnt'] > 0
+            n_s3 = has_s3a.astype(int) + has_s3b.astype(int)
+            has_s3 = n_s3 > 0
 
-                merged['weight'] = merged['q_cs2']*np.sqrt(merged['cryosat2_cnt']) \
-                                + merged['q_s3a']*np.sqrt(merged['sentinel3b_cnt']) \
-                                + merged['q_s3b']*np.sqrt(merged['sentinel3a_cnt'])
-                
+            counts['q_cs2'] = 0.0
+            counts.loc[has_cs2 & ~has_s3, 'q_cs2'] = 1.0
+            counts.loc[has_cs2 & has_s3, 'q_cs2'] = 0.5
 
-            else:
-                merged['weight'] = 1
+            sentinel_share = pd.Series(0.0, index=counts.index)
+            sentinel_share.loc[has_s3 & ~has_cs2] = 1.0
+            sentinel_share.loc[has_s3 & has_cs2] = 0.5
+            counts['q_s3a'] = 0.0
+            counts['q_s3b'] = 0.0
+            counts.loc[has_s3a, 'q_s3a'] = (
+                sentinel_share.loc[has_s3a] / n_s3.loc[has_s3a])
+            counts.loc[has_s3b, 'q_s3b'] = (
+                sentinel_share.loc[has_s3b] / n_s3.loc[has_s3b])
+
+            merged = merged.merge(
+                counts[['q_s3a', 'q_s3b', 'q_cs2']],
+                left_on='index_right', right_index=True, how='left')
+            merged['weight'] = (
+                merged['q_cs2'] * np.sqrt(merged['cryosat2_cnt'])
+                + merged['q_s3a'] * np.sqrt(merged['sentinel3a_cnt'])
+                + merged['q_s3b'] * np.sqrt(merged['sentinel3b_cnt']))
             
         else :
-            for wv in weight_var:
-                stdz_var = (merged[f'{wv}'] - merged[f'{wv}'].mean())/(merged[f'{wv}'].std())
-                # add one to the stdzed array to avoid inf values
-                merged['weight']*=  1/(stdz_var+1)**2 
+            weight_vars = (
+                [weight_var] if isinstance(weight_var, str) else weight_var)
+            for wv in weight_vars:
+                if wv == 'dt_days':
+                    merged['weight'] *= 1 / (1 + merged[wv].abs())**2
+                else:
+                    stdz_var = (
+                        (merged[wv] - merged[wv].mean())
+                        / merged[wv].std())
+                    merged['weight'] *= 1 / (stdz_var + 1)**2
         
-        # var * weight
         merged_drop = merged.drop(merged[['geometry', 'index_right']], axis=1)
         weighted = gpd.GeoDataFrame(pd.concat([merged_drop*merged['weight'].values[:, None], merged[['geometry', 'index_right']]], axis=1), crs=merged.crs, geometry=merged.geometry)
-        # var**2 * weight**2
-        #weighted_square = gpd.GeoDataFrame(pd.concat([(merged_drop**2)*(merged['weight'].values[:, None]**2), merged[['geometry', 'index_right']]], axis=1), crs=merged.crs, geometry=merged.geometry)
         # sum weighted values
         dissolve_sum = weighted.dissolve(by='index_right', aggfunc=np.sum)
-        # sum squared weighted squared values
-        #dissolve_square_sum = weighted_square.dissolve(by='index_right', aggfunc=np.sum)
         # sum the weights
         weight_sum = merged.dissolve(by='index_right', aggfunc=np.sum)['weight'].values[:, None]
         # sum weighted values / sum of weights
         dissolve_weighted_mean = pd.concat([dissolve_sum.drop(dissolve_sum[['geometry']], axis=1)/weight_sum, dissolve_sum[['geometry']]], axis=1)
-        # sum squared weighted squared values / sum of weights**2 -> made for uncertainties
-        #dissolve_weighted_unc_mean = pd.concat([np.sqrt(dissolve_square_sum.drop(dissolve_square_sum[['geometry']], axis=1)/(weight_sum**2)), dissolve_sum[['geometry']]], axis=1)
            
 
         for i in range(0, len(var)):
@@ -106,16 +115,11 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
             else: 
                 diss = dissolve_weighted_mean[var[i]].values
             tmp_grid.loc[dissolve_weighted_mean.index, var_str[i]] = diss
-            #tmp_grid_unc.loc[dissolve_weighted_unc_mean.index, var_str[i]] = dissolve_weighted_unc_mean[var[i]].values
         if not fill_nan:
             tmp_grid = tmp_grid.dropna()
-            #tmp_grid_unc = tmp_grid_unc.dropna()
         centroidseries = tmp_grid['geometry'].centroid
         tmp_grid['x'], tmp_grid['y'] = centroidseries.x, centroidseries.y
         tmp_grid = tmp_grid.set_index(['x', 'y'])
-        #tmp_grid_unc['x'], tmp_grid_unc['y'] = centroidseries.x, centroidseries.y
-        #tmp_grid_unc = tmp_grid_unc.set_index(['x', 'y'])
-        #return tmp_grid, tmp_grid_unc
     
     if 'mean' in agg_mode:
         dissolve_mean = merged.dissolve(by='index_right', aggfunc=np.mean)
