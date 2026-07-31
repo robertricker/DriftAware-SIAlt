@@ -1,7 +1,6 @@
 import netCDF4
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
-from driftaware_sialt.io_tools import transform_coords
 import datetime
 import glob
 import os
@@ -17,7 +16,7 @@ class OceanHeatFluxProducts:
         self.file_dates = None
 
         self.function_map = {
-            'sose_155': self.get_ocean_heat_flux}
+            'sose': self.get_ocean_heat_flux}
 
         self.config = {
             'sose': {
@@ -30,54 +29,34 @@ class OceanHeatFluxProducts:
         }
 
     def get_ocean_heat_flux(self, target_files):
-        data = netCDF4.Dataset(target_files)
-        xc = data['xc']
-        yc = data['yc']
-        ohf = data['OHF']
+        with netCDF4.Dataset(target_files) as data:
+            xc = np.asanyarray(data['xc'][:])
+            yc = np.asanyarray(data['yc'][:])
+            ohf = np.ma.filled(data['OHF'][:], np.nan)
         xc, yc = np.meshgrid(xc,
                              yc)
-        lon, lat = transform_coords(xc, yc, self.out_epsg, 'epsg:4326')
-        
-        self.ohf = {"xc": xc, "yc": yc, "ohf": ohf, "ohf2": ohf2, 
-                    "ohf3": ohf3, "ohf4": ohf4, 
-                    "ohf5": ohf5, "ohf6": ohf6}
+
+        self.ohf = {"xc": xc, "yc": yc, "ohf": ohf}
 
     def interp_ocean_heat_flux(self, x, y):
         xc, yc = self.ohf["xc"][0, :], self.ohf["yc"][:, 0]
-        arr = self.ohf["ohf"][0]
+        arr = self.ohf["ohf"]
+        if arr.ndim == 3:
+            arr = arr[0]
         # Check if xc and yc are in descending order
         if xc[0] > xc[-1]:
             xc = xc[::-1]
             arr = arr[:, ::-1]
-            arr2 = arr2[:, ::-1]
-            arr3 = arr3[:, ::-1]
-            arr4 = arr4[:, ::-1]
-            arr5 = arr5[:, ::-1]
-            arr6 = arr6[:, ::-1]
+
         if yc[0] > yc[-1]:
             yc = yc[::-1]
             arr = arr[::-1, :]
-            arr2 = arr2[::-1, :]
-            arr3 = arr3[::-1, :]
-            arr4 = arr4[::-1, :]
-            arr5 = arr5[::-1, :]
-            arr6 = arr6[::-1, :]
 
         interp_func = RegularGridInterpolator((xc, yc), arr.T, method='linear')
-        interp_func2 = RegularGridInterpolator((xc, yc), arr2.T, method='linear')
-        interp_func3 = RegularGridInterpolator((xc, yc), arr3.T, method='linear')
-        interp_func4 = RegularGridInterpolator((xc, yc), arr4.T, method='linear')
-        interp_func5 = RegularGridInterpolator((xc, yc), arr5.T, method='linear')
-        interp_func6 = RegularGridInterpolator((xc, yc), arr6.T, method='linear')
 
         ohf_interp = interp_func((x, y))
-        ohf_interp2 = interp_func2((x, y))
-        ohf_interp3 = interp_func3((x, y))
-        ohf_interp4 = interp_func4((x, y))
-        ohf_interp5 = interp_func5((x, y))
-        ohf_interp6 = interp_func6((x, y))
 
-        return ohf_interp.flatten(), ohf_interp2.flatten(), ohf_interp3.flatten(), ohf_interp4.flatten(), ohf_interp5.flatten(), ohf_interp6.flatten()
+        return ohf_interp.flatten()
 
     def get_file_list(self, directory):
         config = self.config[self.product_id]
@@ -106,6 +85,6 @@ class OceanHeatFluxProducts:
             while not file and (abs(t0i - t0) < datetime.timedelta(days=5)):
                 file = [file_list[dates.index(d)] for d in dates if t0i <= d < t1i]
                 t0i, t1i = t0i - dt1d, t1i - dt1d
-        return file[0]
+        return file[0] if file else None
 
     
