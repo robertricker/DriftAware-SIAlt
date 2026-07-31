@@ -85,7 +85,9 @@ class SeaIceConcentrationProducts:
             yc = yc[::-1]
             arr = arr[::-1, :]
 
-        interp_func = RegularGridInterpolator((xc, yc), arr.T, method='linear')
+        interp_func = RegularGridInterpolator(
+            (xc, yc), arr.T, method='linear',
+            bounds_error=False, fill_value=np.nan)
         ice_conc_interp = interp_func((x, y))
         return ice_conc_interp.flatten() / 100.0
 
