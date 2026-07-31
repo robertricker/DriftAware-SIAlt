@@ -413,6 +413,9 @@ class SeaIceThicknessMultiProducts:
             self.target_files[sens] = [file for date, file in zip(dates, file_list) if t0 <= date < t1]
 
     def get_product(self, sensor):
+        # Products are date-scoped.  Do not retain a mission loaded for an
+        # earlier date when that mission has no file in the current interval.
+        self.product_dict = {key: None for key in self.config}
         for sens in sensor:
             key = (sens, self.target_var)
             product_temp = self.function_map[key](sens)
@@ -422,8 +425,9 @@ class SeaIceThicknessMultiProducts:
 
         product = pd.concat(
             [gdf.assign(sensor=k) 
-             for k, gdf in self.product_dict.items() if gdf is not None], 
-             ignore_index=True)
+             for k, gdf in self.product_dict.items()
+             if k in sensor and gdf is not None],
+            ignore_index=True)
         for sens in sensor:
             product[sens] = product[sens].fillna(0)
         self.product = product
