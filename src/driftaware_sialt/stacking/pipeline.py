@@ -127,12 +127,6 @@ def merge_direction_stacks(config, grid, growth_cell_width, cell_width, list_f, 
     source_products = extract_source_products(data, config)
     write_dasit_csv(
         data, os.path.join(csv_dir, outfile), config, source_products)
-    
-    # Only if you want to save the density of point per lat band
-    # if type(counts)!=float:
-    #     with open(os.path.join(csv_dir, outfile_density), 'w') as f:
-    #         f.write(f"# {out_epsg}\n")
-    #         counts.to_csv(f, index=False)
 
 
 def process_direction(config, direct, grid):
@@ -233,7 +227,6 @@ def process_direction(config, direct, grid):
 
     heat_flux = thermo_options.get('oce_heat_flux', 0.0)
     if thermo_enabled and not isinstance(heat_flux, Real):
-        print('Need to be implemented with a reanalysis')
         ohf_product = OceanHeatFluxProducts(hem=hem, product_id=config['options']['ohf_product'], out_epsg=out_epsg)
         ohf_product.get_file_list(config['auxiliary']['ohf'][config['options']['ohf_product']])
         ohf_product.get_file_dates()
@@ -266,17 +259,20 @@ def process_direction(config, direct, grid):
         sic_product = select_aux_product(
             sic_products, t0, t1, 'sea ice concentration')
 
-        # Number of empty list for missions
-        empty_lists = [k for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) == 0]
-        sit_product.target_files = {k: (None if isinstance(v, list) and len(v) == 0 else v) for k, v in (sit_product.target_files or {}).items()}
-        sensor_k = [s for s in sensor if sit_product.target_files.get(s) is not None]
-        file_counts = {k: len(v) for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) > 0}
+        empty_lists = [
+            sensor_name for sensor_name in sensor
+            if not sit_product.target_files.get(sensor_name)
+        ]
+        sensor_k = [s for s in sensor if sit_product.target_files.get(s)]
+        file_counts = {
+            sensor_name: len(sit_product.target_files[sensor_name])
+            for sensor_name in sensor_k
+        }
         # Build the baseline so the line that corresponds to the actual time, without any advection needed
         
-        if len(empty_lists) >= len(sensor_k):
+        if not sensor_k:
             logger.warning(t0.strftime("%Y%m%d") + ': Missing sea ice thickness files for: ' + str(empty_lists) + '. Skipping this date.')
-            #continue
-        if (len(empty_lists) < len(sensor_k)) and sic_product:
+        if sensor_k and sic_product:
             logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(file_counts))
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
             sit_product.get_product(sensor_k)
@@ -312,7 +308,8 @@ def process_direction(config, direct, grid):
                 
             processor.baseline_proc(
                 sic_product, hist_n_bins, hist_range,
-                sit_clim=sit_clim_product, thermo_model=thermo_model)
+                sit_clim=sit_clim_product, thermo_model=thermo_model,
+                available_sensors=sensor_k)
         
         # The sea ice concentration is taken at t1 check data after beeing advected
         sic_request_t0 = t0 + d_sgn * dt1d
@@ -320,7 +317,6 @@ def process_direction(config, direct, grid):
             sic_products, sic_request_t0, sic_request_t0 + dt1d,
             'sea ice concentration')
         # The sea ice drift to advect parcel at t0 is the one referenced as t1
-        # Indeed the reference correspond to the end of the 24h data range that cover each file
         sid_request_t0 = t0 + d_sgn_drift * dt1d
         sid_product = select_aux_product(
             sid_products, sid_request_t0, sid_request_t0 + dt1d,
@@ -329,9 +325,19 @@ def process_direction(config, direct, grid):
             t2m_product.target_files = t2m_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
         if thermo_enabled and not isinstance(ohf_product, Real):
             ohf_product.target_files = ohf_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
+            if not ohf_product.target_files:
+                logger.warning(
+                    t0.strftime('%Y%m%d')
+                    + ': No ocean heat flux file found within 5 days; '
+                    'thermodynamic advection is unavailable for this date.')
 
         if sic_product and sid_product and (
-                not thermo_enabled or t2m_product.target_files):
+                not thermo_enabled
+                or (
+                    t2m_product.target_files
+                    and (
+                        isinstance(ohf_product, Real)
+                        or ohf_product.target_files))):
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day'+str(d_sgn)+': ' +
                         os.path.basename(sic_product.target_files))
             logger.info(t0.strftime("%Y%m%d") + ': ice_drift file: ' +
