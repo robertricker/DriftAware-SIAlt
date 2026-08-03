@@ -19,6 +19,7 @@ input_dir:
 output_dir:
   trajectories: "output/v{version}/trajectories/{sensor}"
   gridded_data: "output/v{version}/l3c/{sensor}"
+  volume: "output/v{version}/volume/{sensor}"
   visu: "visualization/v{version}/{sensor}"
 
 # Product keys selected under options must have a directory here.
@@ -51,6 +52,20 @@ auxiliary:
   # Keep the shapefile's .shx, .dbf, and .prj files beside the .shp file.
   land_mask: "input/auxiliary/land_mask/ne_50m_land.shp"
 
+# Remote URLs are not resolved relative to base_dir.
+remote_dir:
+  altimetry:
+    envisat: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/envisat"
+    cryosat2: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/cryosat2"
+    sentinel3a: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/sentinel3a"
+    sentinel3b: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/sentinel3b"
+  ice_conc:
+    osi450: "ftp://osisaf.met.no/reprocessed/ice/conc/v3p1"
+    osi430: "ftp://osisaf.met.no/reprocessed/ice/conc-cont-reproc/v3p0"
+  ice_drift:
+    osi455: "ftp://osisaf.met.no/reprocessed/ice/drift_lr/v1/merged"
+    osi405: "ftp://osisaf.met.no/archive/ice/drift_lr/merged"
+
 logging: "logging"
 
 options:
@@ -64,8 +79,8 @@ options:
   add_variable: [snow_depth]
 
   # nh uses EPSG:6931; sh uses EPSG:6932.
-  hemisphere: sh
-  out_epsg: "EPSG:6932"
+  hemisphere: nh
+  out_epsg: "EPSG:6931"
 
   # Priority ordered; the temporal fallback is limited to seven days.
   ice_conc_products: [osi450, osi430]

@@ -9,22 +9,27 @@ stacking:
   mode: fr
 
   # First target date, formatted YYYY-MM-DD HH:MM:SS.
-  t_start: 2021-08-01 00:00:00
+  t_start: 2018-10-01 00:00:00
 
   # Integer days, "season", or "all" for every available season.
-  t_length: 32
+  t_length: 12
 
   # Maximum stacking/advection window in days. Default is 16.
-  t_window: 16
+  t_window: 5
 
   parallel:
-    enabled: false
-    workers: 6
+    enabled: true
+    workers: 2
 
   # [xmin, ymin, xmax, ymax] in metres; dim is cells per axis.
   parcel_grid:
     bounds: [-5400000, -5400000, 5400000, 5400000]
     dim: 1080
+
+  # Linearly reduce filled drift between valid product cells and nearby land.
+  # Set false to restore the previous unrestricted spatial filling behavior.
+  coastal_drift_taper:
+    enabled: true
 
   # Parcel histogram ranges in metres.
   hist:

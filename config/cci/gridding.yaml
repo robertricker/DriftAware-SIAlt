@@ -4,7 +4,7 @@ stage: gridding
 
 gridding:
   # Run-directory name, absolute path, or "all" for recursive input.
-  csv_dir: "sea_ice_thickness-sh-16fr-epsg6932_141-2026-07-28_13-07-35"
+  csv_dir: "sea_ice_thickness-nh-5fr-epsg6931_141-2026-08-03_09-06-56_taper"
 
   # da = advected target location; cv = acquisition location, conventional.
   mode: da

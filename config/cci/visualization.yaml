@@ -4,11 +4,11 @@ stage: visualization
 
 visualization:
   # Empty searches recursively; otherwise use a subdirectory or absolute path.
-  sub_dir: "test"
+  sub_dir: "sea_ice_thickness-nh-16fr-epsg6931_177_15-2026-07-31_09-46-57"
 
   # Must exist in the NetCDF file; supported presets are listed in README.md.
   variable: sea_ice_thickness
 
   gif:
     # Requires the ImageMagick "convert" command when enabled.
-    enabled: false
+    enabled: true
