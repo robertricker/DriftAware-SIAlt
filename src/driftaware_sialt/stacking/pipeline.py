@@ -163,7 +163,9 @@ def process_direction(config, direct, grid):
         config['options']['ice_drift_products'],
         config['auxiliary']['ice_drift'],
         hem=hem,
-        out_epsg=out_epsg)
+        out_epsg=out_epsg,
+        coastal_taper=stk_opt.get(
+            'coastal_drift_taper', {}).get('enabled', False))
 
     thermo_options = stk_opt['thermo_change']
     thermo_enabled = thermo_options.get('enabled', thermo_options.get('model') is not None)
