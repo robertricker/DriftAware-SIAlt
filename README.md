@@ -98,9 +98,6 @@ Altimetry synchronization is limited to `options.sensor`. Products without a
 remote URL remain local-only. For example:
 
 ```yaml
-input_data:
-  timeout_seconds: 60
-
 remote_dir:
   altimetry:
     cryosat2: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/cryosat2"
@@ -126,6 +123,18 @@ Southern Hemisphere; `all` processes that season for every year available from
 any configured sensor, starting with the year in `t_start`. Grid bounds use
 `[xmin, ymin, xmax, ymax]` in metres in `options.out_epsg`; `dim` is the number
 of cells along each axis.
+
+Filled coastal drift can be reduced linearly between the last valid drift cell
+and adjacent product land cells. Enable or disable this independently of the
+selected drift product:
+
+```yaml
+coastal_drift_taper:
+  enabled: true
+```
+
+Setting `enabled: false` restores the previous untapered spatial filling. The
+taper changes displacement only; it does not reduce drift uncertainty.
 
 The thermodynamic correction currently supports `winter_2layers` with ERA5 air
 temperature and a constant ocean heat flux in W m-2. It requires `snow_depth`.
@@ -217,6 +226,9 @@ header containing `format_version`, CRS, target variable, stack mode and window,
 and histogram settings. Gridding reads these values from the selected CSV files,
 so they are not repeated in `gridding.yaml`. Files combined in one gridding run
 must have compatible metadata.
+Trajectory geometry is stored as WKT with projected coordinates rounded to the
+nearest metre. Floating-point columns are rounded to four decimal places, and
+sensor observation-count columns ending in `_cnt` are stored as integers.
 
 Product filenames place the processing mode immediately after the product level:
 
