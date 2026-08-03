@@ -44,18 +44,21 @@ class SeaIceThicknessClimProducts:
         }
 
     def get_tfb_clim(self, target_files):
-        data = netCDF4.Dataset(target_files)
-        x, y = transform_coords(np.ma.getdata(data.variables['lon'][:, :]).flatten(),
-                                np.ma.getdata(data.variables['lat'][:, :]).flatten(),
-                                'epsg:4326', self.out_epsg)
+        with netCDF4.Dataset(target_files) as data:
+            tFB_interp = np.ma.getdata(
+                data.variables['tFB_interp'][:, :]).flatten()
+            sigma_tFB_interp = np.ma.getdata(
+                data.variables['sigma_tFB_interp'][:, :]).flatten()
+            longitude_value = np.ma.getdata(
+                data.variables['lon'][:, :]).flatten()
+            latitude_value = np.ma.getdata(
+                data.variables['lat'][:, :]).flatten()
+            xc_values = np.ma.getdata(data.variables['xc'][:])
+            yc_values = np.ma.getdata(data.variables['yc'][:])
 
-        tFB_interp = np.ma.getdata(data.variables['tFB_interp'][:, :]).flatten()
-        sigma_tFB_interp = np.ma.getdata(data.variables['sigma_tFB_interp'][:, :]).flatten()
-        longitude_value = np.ma.getdata(data.variables['lon'][:, :]).flatten()
-        latitude_value = np.ma.getdata(data.variables['lat'][:, :]).flatten()
-
-        xc, yc = np.meshgrid(np.ma.getdata(data.variables['xc'][:]),
-                             np.ma.getdata(data.variables['yc'][:]))
+        x, y = transform_coords(
+            longitude_value, latitude_value, 'epsg:4326', self.out_epsg)
+        xc, yc = np.meshgrid(xc_values, yc_values)
         coords = np.transpose(np.vstack((x, y)))
 
         tFB_interp = griddata(coords, tFB_interp, (xc, yc), method='nearest')
@@ -67,18 +70,21 @@ class SeaIceThicknessClimProducts:
                 "latitude": latitude_value}
 
     def get_SIT_clim(self, target_files):
-        data = netCDF4.Dataset(target_files)
-        x, y = transform_coords(np.ma.getdata(data.variables['lon'][:, :]).flatten(),
-                                np.ma.getdata(data.variables['lat'][:, :]).flatten(),
-                                'epsg:4326', self.out_epsg)
+        with netCDF4.Dataset(target_files) as data:
+            tFB_interp = np.ma.getdata(
+                data.variables['SIT_interp'][:, :]).flatten()
+            sigma_tFB_interp = np.ma.getdata(
+                data.variables['sigma_SIT_interp'][:, :]).flatten()
+            longitude_value = np.ma.getdata(
+                data.variables['lon'][:, :]).flatten()
+            latitude_value = np.ma.getdata(
+                data.variables['lat'][:, :]).flatten()
+            xc_values = np.ma.getdata(data.variables['xc'][:])
+            yc_values = np.ma.getdata(data.variables['yc'][:])
 
-        tFB_interp = np.ma.getdata(data.variables['SIT_interp'][:, :]).flatten()
-        sigma_tFB_interp = np.ma.getdata(data.variables['sigma_SIT_interp'][:, :]).flatten()
-        longitude_value = np.ma.getdata(data.variables['lon'][:, :]).flatten()
-        latitude_value = np.ma.getdata(data.variables['lat'][:, :]).flatten()
-
-        xc, yc = np.meshgrid(np.ma.getdata(data.variables['xc'][:]),
-                             np.ma.getdata(data.variables['yc'][:]))
+        x, y = transform_coords(
+            longitude_value, latitude_value, 'epsg:4326', self.out_epsg)
+        xc, yc = np.meshgrid(xc_values, yc_values)
         coords = np.transpose(np.vstack((x, y)))
 
         tFB_interp = griddata(coords, tFB_interp, (xc, yc), method='nearest')

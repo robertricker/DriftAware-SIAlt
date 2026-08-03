@@ -50,17 +50,19 @@ class SeaIceConcentrationProducts:
         }
 
     def get_ice_concentration(self, target_files):
-        data = netCDF4.Dataset(target_files)
-        x, y = transform_coords(np.ma.getdata(data.variables['lon'][:, :]).flatten(),
-                                np.ma.getdata(data.variables['lat'][:, :]).flatten(),
-                                'epsg:4326', self.out_epsg)
+        with netCDF4.Dataset(target_files) as data:
+            value_lat = np.ma.getdata(
+                data.variables['lat'][:, :]).flatten()
+            value_lon = np.ma.getdata(
+                data.variables['lon'][:, :]).flatten()
+            value = np.ma.getdata(
+                data.variables['ice_conc'][0, :, :]).flatten()
+            xc_values = np.ma.getdata(data.variables['xc'][:] * 1000.0)
+            yc_values = np.ma.getdata(data.variables['yc'][:] * 1000.0)
 
-        value = np.ma.getdata(data.variables['ice_conc'][0, :, :]).flatten()
-        value_lat = np.ma.getdata(data.variables['lat'][:, :]).flatten()
-        value_lon = np.ma.getdata(data.variables['lon'][:, :]).flatten()
-
-        xc, yc = np.meshgrid(np.ma.getdata(data.variables['xc'][:] * 1000.0),
-                             np.ma.getdata(data.variables['yc'][:] * 1000.0))
+        x, y = transform_coords(
+            value_lon, value_lat, 'epsg:4326', self.out_epsg)
+        xc, yc = np.meshgrid(xc_values, yc_values)
         coords = np.transpose(np.vstack((x, y)))
 
         ice_conc = griddata(coords, value, (xc, yc), method='nearest')

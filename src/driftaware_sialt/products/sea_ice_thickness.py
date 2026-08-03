@@ -322,24 +322,25 @@ class SeaIceThicknessMultiProducts:
     def is2sitdat4_to_gdf(self, sens):
         gdf_list = list()
         for file in self.target_files[sens]:
-            data = netCDF4.Dataset(file)
-
             start_idx = os.path.basename(file).find("bnum") + 5
             end_idx = start_idx + 4
             beam = os.path.basename(file)[start_idx:end_idx]
 
-            d = {
-                'latitude': np.array(data["latitude"]),
-                'longitude': np.array(data["longitude"]),
-                'sea_ice_freeboard': np.array(data["freeboard"]),
-                'sea_ice_thickness': np.array(data["ice_thickness"]),
-                'sea_ice_thickness_l2_unc': np.array(data["ice_thickness_unc"]),
-                'snow_depth': np.array(data["snow_depth"]),
-                'ssh_flag': np.array(data["ssh_flag"]),
-                'time': Time(np.array(data["gps_seconds"]), format='gps').to_datetime(),
-                'beam': beam,
-                'beam_type': "strong"
-            }
+            with netCDF4.Dataset(file) as data:
+                d = {
+                    'latitude': np.array(data["latitude"]),
+                    'longitude': np.array(data["longitude"]),
+                    'sea_ice_freeboard': np.array(data["freeboard"]),
+                    'sea_ice_thickness': np.array(data["ice_thickness"]),
+                    'sea_ice_thickness_l2_unc': np.array(
+                        data["ice_thickness_unc"]),
+                    'snow_depth': np.array(data["snow_depth"]),
+                    'ssh_flag': np.array(data["ssh_flag"]),
+                    'gps_seconds': np.array(data["gps_seconds"]),
+                    'beam': beam,
+                    'beam_type': "strong"
+                }
+            d['time'] = Time(d.pop('gps_seconds'), format='gps').to_datetime()
             df = pd.DataFrame(data=d)
             df = df.dropna(subset=[self.target_var])
             gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)

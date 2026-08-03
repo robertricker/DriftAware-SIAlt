@@ -2,10 +2,30 @@ import netCDF4
 import numpy as np
 from scipy.interpolate import griddata
 from scipy.interpolate import RegularGridInterpolator
-from scipy.ndimage import sobel
+from scipy.ndimage import distance_transform_edt, sobel
 from driftaware_sialt.products.sea_ice_concentration import SeaIceConcentrationProducts
 from driftaware_sialt.io_tools import transform_coords
 import datetime
+
+
+def _coastal_drift_taper(valid_mask, land_mask):
+    """Return a linear taper from valid drift cells to adjacent land."""
+    valid_mask = np.asarray(valid_mask, dtype=bool)
+    land_mask = np.asarray(land_mask, dtype=bool)
+    taper = np.ones(valid_mask.shape, dtype=float)
+    taper[land_mask] = 0.0
+
+    if not valid_mask.any() or not land_mask.any():
+        return taper
+
+    distance_to_valid = distance_transform_edt(~valid_mask)
+    distance_to_land = distance_transform_edt(~land_mask)
+    invalid_ocean = ~valid_mask & ~land_mask
+    distance_sum = distance_to_valid + distance_to_land
+    taper[invalid_ocean] = (
+        distance_to_land[invalid_ocean]
+        / distance_sum[invalid_ocean])
+    return taper
 
 
 class SeaIceDriftProducts(SeaIceConcentrationProducts):
@@ -57,18 +77,31 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
     def get_ice_drift(self, target_files, ice_conc):
         epoch = datetime.datetime(1970, 1, 1, 0, 0, 0)
         ref_time = self.config[self.product_id]['ref_time']
-        data = netCDF4.Dataset(target_files)
-        dx_dy_unc = np.ma.getdata(data.variables['uncert_dX_and_dY'][0, :, :]).flatten()
+        with netCDF4.Dataset(target_files) as data:
+            dx_dy_unc = np.ma.getdata(
+                data.variables['uncert_dX_and_dY'][0, :, :]).flatten()
+            lon0 = np.ma.getdata(data.variables['lon'][:, :]).flatten()
+            lat0 = np.ma.getdata(data.variables['lat'][:, :]).flatten()
+            lon1 = np.ma.getdata(data.variables['lon1'][:, :]).flatten()
+            lat1 = np.ma.getdata(data.variables['lat1'][:, :]).flatten()
+            time_bnds = np.ma.getdata(
+                data.variables['time_bnds'][:]).flatten()
+            status_flag = None
+            if getattr(self, 'coastal_taper', False):
+                status_flag = np.ma.getdata(
+                    data.variables['status_flag'][0, :, :])
 
-        x0, y0 = transform_coords(np.ma.getdata(data.variables['lon'][:, :]).flatten()[dx_dy_unc != -1e10],
-                                  np.ma.getdata(data.variables['lat'][:, :]).flatten()[dx_dy_unc != -1e10],
-                                  'epsg:4326', self.out_epsg)
+        valid_drift = dx_dy_unc != -1e10
+        x_all, y_all = transform_coords(
+            lon0, lat0, 'epsg:4326', self.out_epsg)
 
-        x1, y1 = transform_coords(np.ma.getdata(data.variables['lon1'][:, :]).flatten()[dx_dy_unc != -1e10],
-                                  np.ma.getdata(data.variables['lat1'][:, :]).flatten()[dx_dy_unc != -1e10],
-                                  'epsg:4326', self.out_epsg)
+        x0, y0 = x_all[valid_drift], y_all[valid_drift]
 
-        time_bnds = np.ma.getdata(data.variables['time_bnds']).data.flatten() + (ref_time - epoch).total_seconds()
+        x1, y1 = transform_coords(
+            lon1[valid_drift], lat1[valid_drift],
+            'epsg:4326', self.out_epsg)
+
+        time_bnds = time_bnds + (ref_time - epoch).total_seconds()
         time_bnds[0] = time_bnds[0] + self.config[self.product_id]['ref_daytime_corr']
 
         dx = x1 - x0
@@ -96,16 +129,40 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
 
             dx_i = griddata(coords, dx, (xc, yc), method=interp_method)
             dy_i = griddata(coords, dy, (xc, yc), method=interp_method)
-            dx_dy_unc_i = griddata(coords, dx_dy_unc[dx_dy_unc != -1e10], (xc, yc), method=interp_method)
+            dx_dy_unc_i = griddata(
+                coords, dx_dy_unc[valid_drift],
+                (xc, yc), method=interp_method)
 
             dx_fill = griddata(coords, dx, (xc, yc), method='nearest')
             dy_fill = griddata(coords, dy, (xc, yc), method='nearest')
-            dx_dy_unc_fill = griddata(coords, dx_dy_unc[dx_dy_unc != -1e10], (xc, yc), method='nearest')
+            dx_dy_unc_fill = griddata(
+                coords, dx_dy_unc[valid_drift],
+                (xc, yc), method='nearest')
 
         invalid = np.isnan(dx_i) | np.isnan(dy_i)
         dx_i[invalid] = dx_fill[invalid]
         dy_i[invalid] = dy_fill[invalid]
         dx_dy_unc_i[invalid] = dx_dy_unc_fill[invalid]
+
+        if getattr(self, 'coastal_taper', False) and coords.shape[0] > 0:
+            source_taper = _coastal_drift_taper(
+                valid_drift.reshape(status_flag.shape),
+                status_flag == 1)
+            source_coords = np.column_stack((x_all, y_all))
+            finite_source = np.isfinite(source_coords).all(axis=1)
+            taper_i = griddata(
+                source_coords[finite_source],
+                source_taper.ravel()[finite_source],
+                (xc, yc), method='linear')
+            taper_fill = griddata(
+                source_coords[finite_source],
+                source_taper.ravel()[finite_source],
+                (xc, yc), method='nearest')
+            taper_invalid = np.isnan(taper_i)
+            taper_i[taper_invalid] = taper_fill[taper_invalid]
+            taper_i = np.clip(taper_i, 0.0, 1.0)
+            dx_i *= taper_i
+            dy_i *= taper_i
 
         dx_i[ice_conc == 0] = 0
         dy_i[ice_conc == 0] = 0
