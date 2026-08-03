@@ -155,9 +155,21 @@ def build_trajectory_metadata(config, source_products=None):
 def write_dasit_csv(data, file, config, source_products=None):
     """Write a trajectory CSV with a versioned JSON metadata header."""
     metadata = build_trajectory_metadata(config, source_products)
+    output = pd.DataFrame(data.copy())
+    output['geometry'] = gpd.GeoSeries(
+        data['geometry']).to_wkt(rounding_precision=0, trim=True)
+
+    count_columns = [
+        column for column in output.columns if column.endswith('_cnt')]
+    for column in count_columns:
+        output[column] = output[column].round().astype('Int64')
+
+    float_columns = output.select_dtypes(include='floating').columns
+    output[float_columns] = output[float_columns].round(4)
+
     with open(file, 'w') as stream:
         stream.write('# ' + json.dumps(metadata, separators=(',', ':')) + '\n')
-        data.to_csv(stream, index=False)
+        output.to_csv(stream, index=False)
 
 
 def read_dasit_metadata(file):
