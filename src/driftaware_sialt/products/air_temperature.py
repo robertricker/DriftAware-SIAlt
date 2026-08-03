@@ -29,12 +29,14 @@ class AirTemperatureProducts:
         }
 
     def get_air_temperature(self, target_files):
-        data = netCDF4.Dataset(target_files)
-        lon, lat = np.meshgrid(np.ma.getdata(data.variables['longitude'][:]), 
-                               np.ma.getdata(data.variables['latitude'][:]))
-        x, y = transform_coords(lon.ravel(), lat.ravel(), 'epsg:4326', self.out_epsg)
+        with netCDF4.Dataset(target_files) as data:
+            longitude = np.ma.getdata(data.variables['longitude'][:])
+            latitude = np.ma.getdata(data.variables['latitude'][:])
+            value = np.ma.getdata(
+                data.variables['t2m'][0, :, :]).flatten() - 273.15
 
-        value = np.ma.getdata(data.variables['t2m'][0, :, :]).flatten() - 273.15 #deg C
+        lon, lat = np.meshgrid(longitude, latitude)
+        x, y = transform_coords(lon.ravel(), lat.ravel(), 'epsg:4326', self.out_epsg)
         xy_ravel = np.linspace(-5387500, 5387500, 432)
 
         xc, yc = np.meshgrid(xy_ravel,
