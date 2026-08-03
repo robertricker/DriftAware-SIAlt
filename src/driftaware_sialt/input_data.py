@@ -24,6 +24,7 @@ from driftaware_sialt.products.sea_ice_thickness import (
 
 
 ONE_DAY = dt.timedelta(days=1)
+TIMEOUT_SECONDS = 60
 
 
 @dataclass(frozen=True)
@@ -458,8 +459,7 @@ def sync_required_input_data(config: Mapping) -> InputDataReport:
     options = config["options"]
     auxiliary = config["auxiliary"]
     remote = config.get("remote_dir", {})
-    timeout = float(
-        config.get("input_data", {}).get("timeout_seconds", 60))
+    timeout = TIMEOUT_SECONDS
     hemisphere = options["hemisphere"]
     report = InputDataReport()
 
