@@ -28,7 +28,6 @@ def _config(tmp_path, *, mode="f", length=1):
                 "osi405": "ftp://example.test/drift/osi405",
             },
         },
-        "input_data": {"timeout_seconds": 1},
         "options": {
             "sensor": ["cryosat2"],
             "target_variable": "sea_ice_thickness",
