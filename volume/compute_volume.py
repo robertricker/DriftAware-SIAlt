@@ -163,7 +163,7 @@ def compute_volume_and_mass(data, ice_conc, target_var, si_density_param, snow_d
 
     sea_ice_volume_name = "_".join(target_var.rsplit("_", 1)[:-1] + ["volume"])
     sea_ice_mass_name = "_".join(target_var.rsplit("_", 1)[:-1] + ["mass"])
-    cell_area = (int(resolution) * 1000) ** 2
+    cell_area = (int(resolution)) ** 2
 
     ice_conc_da = xr.DataArray(
         ice_conc_arr,
