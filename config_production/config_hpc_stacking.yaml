@@ -58,6 +58,11 @@ options:
       t_length: 150 #2141 #255 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
       t_start: 2024-11-01 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
       t_window: 16                                     # length of the drift-aware window in days
+      continue_tracking_without_sit: False             # if t_window > t_length, extend tracking to t_window using only concentration and drift
+      save_only_terminal_file: False                   # save only the final tracking day (requires t_window >= t_length and mode f or r)
+      lon_lat_bounds: null                              # optional SIT filter: [lon_min, lat_min, lon_max, lat_max] in degrees
+      lon_lat_polygon: null                             # optional SIT filter: GeoJSON polygon or [[lon, lat], ...] ring, in degrees
+      spatial_filter_file: null                         # optional SIT filter: Shapefile/GeoJSON path; CRS must be declared
       multiproc: True                                 # Parallel processing
       num_cpus: 16                                            # Number of CPUs for parallel processing
       parcel_grid:

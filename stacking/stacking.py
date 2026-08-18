@@ -9,7 +9,7 @@ import sys
 import multiprocessing as mp
 import json
 from loguru import logger
-from shapely.geometry import MultiPoint
+from shapely.geometry import MultiPoint, Polygon, shape
 from scipy.spatial import cKDTree
 from gridding import gridding_lib
 from data_handler.sea_ice_concentration_products import SeaIceConcentrationProducts
@@ -29,6 +29,50 @@ from io_tools import init_logger
 from io_tools import read_dasit_csv
 from io_tools import make_csv_filename
 from data_handler.filter_miz import compute_apply_flag
+
+
+def filter_sit_by_spatial_filter(data, bounds=None, polygon=None, vector_file=None):
+    """Keep SIT observations inside one lon/lat bounding box, polygon, or vector file."""
+    filters = [bounds is not None, polygon is not None, vector_file is not None]
+    if sum(filters) == 0:
+        return data
+    if sum(filters) > 1:
+        raise ValueError("Use only one of lon_lat_bounds, lon_lat_polygon, or spatial_filter_file.")
+    if not {'longitude', 'latitude'}.issubset(data.columns):
+        raise ValueError("The SIT product does not provide longitude and latitude columns.")
+
+    if polygon is not None or vector_file is not None:
+        if vector_file is not None:
+            region = gpd.read_file(vector_file)
+            if region.empty:
+                raise ValueError(f"spatial_filter_file contains no geometries: {vector_file}")
+            if region.crs is None:
+                raise ValueError("spatial_filter_file must define its coordinate reference system.")
+            region_geometry = region.to_crs("EPSG:4326").geometry.unary_union
+        else:
+            region_geometry = shape(polygon) if isinstance(polygon, dict) else Polygon(polygon)
+        if region_geometry.is_empty or not region_geometry.is_valid:
+            raise ValueError("lon_lat_polygon must define a valid polygon.")
+
+        points = gpd.GeoSeries(
+            gpd.points_from_xy(data['longitude'], data['latitude']), crs="EPSG:4326"
+        )
+        # covers includes points on the boundary of the region.
+        mask = points.apply(region_geometry.covers)
+        return data.loc[mask.to_numpy()].copy()
+
+    # Bounding-box filter; lon_min > lon_max represents a box crossing the antimeridian.
+    if len(bounds) != 4:
+        raise ValueError("lon_lat_bounds must be [lon_min, lat_min, lon_max, lat_max].")
+
+    lon_min, lat_min, lon_max, lat_max = bounds
+    if not (-180 <= lon_min <= 180 and -180 <= lon_max <= 180 and
+            -90 <= lat_min <= 90 and -90 <= lat_max <= 90 and lat_min <= lat_max):
+        raise ValueError("lon_lat_bounds contains invalid longitude or latitude limits.")
+    lat_mask = data['latitude'].between(lat_min, lat_max)
+    lon_mask = (data['longitude'].between(lon_min, lon_max) if lon_min <= lon_max else
+                ((data['longitude'] >= lon_min) | (data['longitude'] <= lon_max)))
+    return data.loc[lon_mask & lat_mask].copy()
 
 
 def merge_forward_reverse_stacks(config, grid, growth_cell_width, cell_width, list_f, list_r, j):
@@ -116,10 +160,18 @@ def stack_proc(config, direct, grid):
     out_epsg = config["options"]["out_epsg"]
     # declare stacking processing options
     stk_opt = config['options']['proc_step_options']['stacking']
+    source_length = stk_opt['t_length']
+    continue_without_sit = stk_opt.get('continue_tracking_without_sit', False)
+    save_only_terminal_file = stk_opt.get('save_only_terminal_file', False)
+    lon_lat_bounds = stk_opt.get('lon_lat_bounds')
+    lon_lat_polygon = stk_opt.get('lon_lat_polygon')
+    spatial_filter_file = stk_opt.get('spatial_filter_file')
+    tracking_length = max(source_length, stk_opt['t_window']) if continue_without_sit else source_length
+    extension_length = tracking_length - source_length
     hist_n_bins = stk_opt['hist']['n_bins']
     hist_range = stk_opt['hist']['range']["freeboard" if "freeboard" in target_var else "thickness"]
     # define data structure
-    stack = StackStructure(sensor, stk_opt['t_window'], stk_opt['t_length'])
+    stack = StackStructure(sensor, stk_opt['t_window'], tracking_length)
     master, scheme = stack.get_master(), stack.get_scheme()
 
     # initialize data objects
@@ -158,12 +210,16 @@ def stack_proc(config, direct, grid):
         d_sgn = 1
         d_sgn_drift = 1
         d_sgn_t2m = 0
-        day_range = range(0, stk_opt['t_length'], d_sgn)
+        # After the source period, parcels are still advected but no new SIT is read.
+        day_range = range(0, tracking_length, d_sgn)
+        source_index_offset = 0
     else:
         d_sgn = -1
         d_sgn_drift = 0
         d_sgn_t2m = -1
-        day_range = range(stk_opt['t_length'] - 1, -1, d_sgn)
+        # Give days before t_start non-negative indices in the stack structure.
+        day_range = range(source_length - 1, -extension_length - 1, d_sgn)
+        source_index_offset = extension_length
 
     # initialize drift aware processor
     processor = DriftAwareProcessor(sit_product, master=master, scheme=scheme, grid=grid)
@@ -171,29 +227,40 @@ def stack_proc(config, direct, grid):
     # for each day we want to stack
     for i in day_range:
 
-        processor.i = i 
+        processor.i = i + source_index_offset
         t0 = stk_opt['t_start'] + datetime.timedelta(days=i) 
         t1 = stk_opt['t_start'] + datetime.timedelta(days=i + 1) 
-        sit_product.get_target_files(t0, t1) 
+        has_source_sit = 0 <= i < source_length
+        active_thermo_model = thermo_model if has_source_sit else None
+        if has_source_sit:
+            sit_product.get_target_files(t0, t1)
+            sic_product.target_files = sic_product.get_target_files(t0, t1)
 
-        sic_product.target_files = sic_product.get_target_files(t0, t1)
-
-        # Number of empty list for missions
-        empty_lists = [k for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) == 0]
-        sit_product.target_files = {k: (None if isinstance(v, list) and len(v) == 0 else v) for k, v in (sit_product.target_files or {}).items()}
-        sensor_k = [s for s in sensor if sit_product.target_files.get(s) is not None]
-        print(sensor_k)
-        file_counts = {k: len(v) for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) > 0}
-        # Build the baseline so the line that corresponds to the actual time, without any advection needed
-        
-        if len(empty_lists) >= len(sensor_k):
-            logger.warning(t0.strftime("%Y%m%d") + ': Missing sea ice thickness files for: ' + str(empty_lists) + '. Skipping this date.')
-            #continue
-        if (len(empty_lists) < len(sensor_k)) and sic_product.target_files:
-            logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(file_counts))
-            logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
-            sit_product.get_product(sensor_k)
-            sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
+            # Number of empty list for missions
+            empty_lists = [k for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) == 0]
+            sit_product.target_files = {k: (None if isinstance(v, list) and len(v) == 0 else v) for k, v in (sit_product.target_files or {}).items()}
+            sensor_k = [s for s in sensor if sit_product.target_files.get(s) is not None]
+            file_counts = {k: len(v) for k, v in sit_product.target_files.items() if isinstance(v, list) and len(v) > 0}
+            # Build the baseline so the line that corresponds to the actual time, without any advection needed.
+            if len(empty_lists) >= len(sensor_k):
+                logger.warning(t0.strftime("%Y%m%d") + ': Missing sea ice thickness files for: ' + str(empty_lists) + '. Skipping this date.')
+            if (len(empty_lists) < len(sensor_k)) and sic_product.target_files:
+                logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(file_counts))
+                logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
+                sit_product.get_product(sensor_k)
+                n_observations = len(sit_product.product)
+                sit_product.product = filter_sit_by_spatial_filter(
+                    sit_product.product,
+                    bounds=lon_lat_bounds,
+                    polygon=lon_lat_polygon,
+                    vector_file=spatial_filter_file,
+                )
+                if any(value is not None for value in (lon_lat_bounds, lon_lat_polygon, spatial_filter_file)):
+                    logger.info(
+                        f"{t0:%Y%m%d}: kept {len(sit_product.product)}/{n_observations} SIT observations "
+                        "inside the configured spatial filter."
+                    )
+                sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
 
             #if ICESAT-2, then we need to filter out the total freeboard (snow depth purposes)
             if (len(sensor_k) == 1) and (sensor_k[0] == 'icesat2'):
@@ -224,21 +291,26 @@ def stack_proc(config, direct, grid):
 
                     sit_clim_product.sit_clim = sit_clim_product.get_SIT_clim(sit_clim_product.target_files)
                 
-            processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim = sit_clim_product if 'sit_clim_product' in locals() else None)
+            if not sit_product.product.empty:
+                processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim = sit_clim_product if 'sit_clim_product' in locals() else None)
+            else:
+                logger.warning(t0.strftime("%Y%m%d") + ': No SIT observations remain after lon/lat filtering.')
+        else:
+            logger.info(t0.strftime("%Y%m%d") + ': continuing tracking without loading sea ice thickness.')
         
         # The sea ice concentration is taken at t1 check data after beeing advected
         sic_product.target_files = sic_product.get_target_files(t0 + d_sgn * dt1d, t1 + d_sgn * dt1d)
         # The sea ice drift to advect parcel at t0 is the one referenced as t1
         # Indeed the reference correspond to the end of the 24h data range that cover each file
         sid_product.target_files = sid_product.get_target_files(t0 + d_sgn_drift * dt1d, t1 + d_sgn_drift * dt1d)
-        if thermo_model!=None:
+        if active_thermo_model is not None:
             t2m_product.target_files = t2m_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
         else:
             t2m_product.target_files = None
-        if type(ohf_product) is not int:
+        if type(ohf_product) is not int and active_thermo_model is not None:
             ohf_product.target_files = ohf_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
 
-        if sic_product.target_files and sid_product.target_files and (t2m_product.target_files or not thermo_model) :
+        if sic_product.target_files and sid_product.target_files and (t2m_product.target_files or not active_thermo_model) :
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day'+str(d_sgn)+': ' +
                         os.path.basename(sic_product.target_files))
             logger.info(t0.strftime("%Y%m%d") + ': ice_drift file: ' +
@@ -247,21 +319,26 @@ def stack_proc(config, direct, grid):
             sic_product.ice_conc_ahead = sic_product.get_ice_concentration(sic_product.target_files)
             sid_product.get_ice_drift(sid_product.target_files, sic_product.ice_conc_ahead)
             
-            if thermo_model:
+            if active_thermo_model:
                 logger.info(t0.strftime("%Y%m%d") + ': t2m file: ' +
                         os.path.basename(t2m_product.target_files))
                 t2m_product.get_air_temperature(t2m_product.target_files)
             
-            if type(ohf_product) is not int:
+            if type(ohf_product) is not int and active_thermo_model is not None:
                 ohf_product.get_ocean_heat_flux(ohf_product.target_files)
                 logger.info(t0.strftime("%Y%m%d") + ': ohf file: ' +
                         os.path.basename(ohf_product.target_files))
                 
             # check if the date is still in the range
-            if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
-                m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, ohf_product, stk_opt['t_window'], d_sgn, day_range[0], thermo_model)
+            if (d_sgn == -1 and processor.i > 0) or (d_sgn == 1 and processor.i < tracking_length - 1):
+                m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, ohf_product, stk_opt['t_window'], d_sgn, tracking_length - 1, active_thermo_model)
 
-        gdf_final = processor.concat_gdfs(i, m)
+        is_terminal_day = (
+            processor.i == tracking_length - 1 if direct == 'f' else processor.i == 0
+        )
+        gdf_final = processor.concat_gdfs(processor.i, m)
+        if save_only_terminal_file and not is_terminal_day:
+            continue
         gdf_final[target_var+'_drift_unc'] = np.sqrt(gdf_final[target_var+'_drift_unc'])
         gdf_final = gdf_final.drop(columns=['xu', 'yu'])
         gdf_final["geometry"] = gdf_final["geometry"].apply(lambda gdf: MultiPoint(gdf))
@@ -306,6 +383,17 @@ def stack_proc(config, direct, grid):
 def stacking(config):
     sensor = config["options"]["sensor"]
     stk_opt = config['options']['proc_step_options']['stacking']
+    if stk_opt.get('continue_tracking_without_sit', False) and stk_opt['mode'] not in ('f', 'r'):
+        raise ValueError(
+            "continue_tracking_without_sit requires a single direction: set stacking.mode to 'f' or 'r'."
+        )
+    if stk_opt.get('save_only_terminal_file', False):
+        if stk_opt['mode'] not in ('f', 'r'):
+            raise ValueError("save_only_terminal_file requires stacking.mode to be 'f' or 'r'.")
+        if stk_opt['t_window'] < stk_opt['t_length']:
+            raise ValueError(
+                "save_only_terminal_file requires t_window >= t_length so the terminal file contains all source SIT."
+            )
     multiproc = stk_opt['multiproc']
     parcel_grid_opt = stk_opt['parcel_grid']
     growth_grid_opt = stk_opt['growth_estimation']['growth_grid']
@@ -357,14 +445,25 @@ def stacking(config):
 
         list_f = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_F-*.csv')))
         list_r = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_R-*.csv')))
+        extension_length = (
+            max(0, stk_opt['t_window'] - stk_opt['t_length'])
+            if stk_opt.get('continue_tracking_without_sit', False) else 0
+        )
+        if stk_opt.get('save_only_terminal_file', False):
+            terminal_day = stk_opt['t_length'] + extension_length - 1 if stk_opt['mode'] == 'f' else -extension_length
+            merge_day_range = range(terminal_day, terminal_day + 1)
+        elif stk_opt['mode'] == 'f':
+            merge_day_range = range(0, stk_opt['t_length'] + extension_length)
+        else:
+            merge_day_range = range(-extension_length, stk_opt['t_length'])
         if multiproc:
             pool = mp.Pool(stk_opt['num_cpus'])
-            for j in range(stk_opt['t_length']):
+            for j in merge_day_range:
                 pool.apply_async(
                     merge_forward_reverse_stacks, args=(
                         config, growth_grid, growth_cell_width, cell_width, list_f, list_r, j))
             pool.close()
             pool.join()
         else:
-            for j in range(stk_opt['t_length']):
+            for j in merge_day_range:
                 merge_forward_reverse_stacks(config, growth_grid, growth_cell_width, cell_width, list_f, list_r, j)
