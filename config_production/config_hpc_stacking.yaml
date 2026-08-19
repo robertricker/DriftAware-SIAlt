@@ -44,9 +44,9 @@ options:
   t2m_product : era5
   ohf_product : sose
 
-  target_variable: 'radar_freeboard'                        # Available options: sea_ice_freeboard (radar altimeters),
+  target_variable: 'sea_ice_thickness'                        # Available options: sea_ice_freeboard (radar altimeters),
                                                               # total_freeboard (icesat2), and sea_ice_thickness (all)
-  add_variable: ['sea_ice_thickness', 'sea_ice_freeboard', 'snow_depth']                             # add variables to the trajectory data frame,
+  add_variable: ['radar_freeboard', 'sea_ice_freeboard', 'snow_depth']                             # add variables to the trajectory data frame,
                                                               # no growth correction, no histogram (list)
   hemisphere: sh                                              # Available options: nh, sh
   out_epsg: 'EPSG:6932'                                       # EASE2 NORTH: 'EPSG:6931', EASE2 SOUTH: 'EPSG:6932'
@@ -54,13 +54,13 @@ options:
   proc_step_options:                                          # Processing options for each processing step
     stacking:                                                 # Processing step: stacking (Drift-Aware processing)
       filename_prefix: 'SOSIMBA'                        # project name (e.g., SOSIMBA)
-      mode: fr # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
-      t_length: 150 #2141 #255 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
-      t_start: 2024-11-01 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
-      t_window: 16                                     # length of the drift-aware window in days
-      continue_tracking_without_sit: False             # if t_window > t_length, extend tracking to t_window using only concentration and drift
-      save_only_terminal_file: False                   # save only the final tracking day (requires t_window >= t_length and mode f or r)
-      lon_lat_bounds: null                              # optional SIT filter: [lon_min, lat_min, lon_max, lat_max] in degrees
+      mode: r # f: only forward, r: only reverse, fr: forward and reverse merged (symmetric stack)
+      t_length: 1 #2141 #255 #1826 #210 #'season' #426                                 # length of processing period in days or 'season'
+      t_start: 2020-05-31 00:00:00 #2020-01-01 00:00:00 #2024-06-22 00:00:00 #2011-04-01 00:00:00 #                            # Start of processing period
+      t_window: 150                                     # length of the drift-aware window in days
+      continue_tracking_without_sit: True             # if t_window > t_length, extend tracking to t_window using only concentration and drift
+      save_only_terminal_file: True                   # save only the final tracking day (requires t_window >= t_length and mode f or r)
+      lon_lat_bounds: [160, -85, -150, -70]                           # optional SIT filter: [lon_min, lat_min, lon_max, lat_max] in degrees
       lon_lat_polygon: null                             # optional SIT filter: GeoJSON polygon or [[lon, lat], ...] ring, in degrees
       spatial_filter_file: null                         # optional SIT filter: Shapefile/GeoJSON path; CRS must be declared
       multiproc: True                                 # Parallel processing
