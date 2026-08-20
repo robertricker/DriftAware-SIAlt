@@ -69,9 +69,17 @@ def filter_sit_by_spatial_filter(data, bounds=None, polygon=None, vector_file=No
     if not (-180 <= lon_min <= 180 and -180 <= lon_max <= 180 and
             -90 <= lat_min <= 90 and -90 <= lat_max <= 90 and lat_min <= lat_max):
         raise ValueError("lon_lat_bounds contains invalid longitude or latitude limits.")
-    lat_mask = data['latitude'].between(lat_min, lat_max)
-    lon_mask = (data['longitude'].between(lon_min, lon_max) if lon_min <= lon_max else
-                ((data['longitude'] >= lon_min) | (data['longitude'] <= lon_max)))
+    # Uniformise les longitudes dans [-180, 180]
+    longitude = ((data["longitude"] + 180) % 360) - 180
+
+    lat_mask = data["latitude"].between(lat_min, lat_max)
+
+    lon_mask = (
+        longitude.between(lon_min, lon_max)
+        if lon_min <= lon_max
+        else ((longitude >= lon_min) | (longitude <= lon_max))
+    )
+
     return data.loc[lon_mask & lat_mask].copy()
 
 
