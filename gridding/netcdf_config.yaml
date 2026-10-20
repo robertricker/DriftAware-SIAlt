@@ -203,6 +203,14 @@ variable_attributes:
     units: "m"
     grid_mapping: 'crs'
     comment: ""
+    
+  sea_ice_thickness_mad:
+    standard_name: 'sea_ice_thickness'
+    long_name: "median absolute deviation of sea ice thickness estimates within parcel"
+    coordinates: "time longitude latitude"
+    units: "m"
+    grid_mapping: 'crs'
+    comment: ""
 
   sea_ice_thickness_mode:
     standard_name: 'sea_ice_thickness'

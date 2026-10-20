@@ -10,8 +10,8 @@ input_dir: # relative to base_dir
     sea_ice_thickness: "input_data/icesat2/is2sitdata"
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
-  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/v7/" # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/v7/"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
+  trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/v7/ok_miz_filter" # DA trajectories as daily CSVs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/v7/miz_ok"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -54,10 +54,24 @@ options:
         bounds: [-5400000, -5400000, 5400000, 5400000]
         dim: 1080
       hist:
+        adaptive: True
         n_bins: 40                                            # number of histogram bins
         range:
           freeboard: [0, 1]                                   # freeboard hist range min/max (m)
           thickness: [0, 10]                                  # thickness hist range min/max (m)
+        adaptive_bins:
+          freeboard:
+            fine_start: 0.0
+            fine_step: 0.01
+            fine_max: 0.5
+            coarse_min: 0.5
+            coarse_step: 0.05
+          thickness:
+            fine_start: 0.0
+            fine_step: 0.1
+            fine_max: 2.0
+            coarse_min: 2.0
+            coarse_step: 0.5
       growth_estimation:
         growth_grid:
           bounds: [ -5400000, -5400000, 5400000, 5400000 ]
@@ -68,7 +82,7 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: total_freeboard-sh-16fr-epsg6932_141-2026-07-01_00-19-48  #radar_freeboard_202411_202503_extension_SOSIMBA #MIZ_filter_2/csv/v5/sit_2019_2024/* #'MIZ_filter_2/csv/filter_04/*' #'MIZ_filter_2/csv/v5/sit_2019_2024/*' #sea_ice_thickness-sh-16fr-epsg6932_141-2025-08-11_19-54-08' #'iter156_meeting_hamburg'
+      csv_dir: total_freeboard-sh-16fr-epsg6932_141-2026-08-31_09-54-04  #radar_freeboard_202411_202503_extension_SOSIMBA #MIZ_filter_2/csv/v5/sit_2019_2024/* #'MIZ_filter_2/csv/filter_04/*' #'MIZ_filter_2/csv/v5/sit_2019_2024/*' #sea_ice_thickness-sh-16fr-epsg6932_141-2025-08-11_19-54-08' #'iter156_meeting_hamburg'
       add_variable: #'' #'radar_freeboard'
       mode: 'da'                      # if true then it will look here to get the variable to weigth with
       weighting : 

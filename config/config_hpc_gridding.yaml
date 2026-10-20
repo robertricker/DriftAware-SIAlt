@@ -52,10 +52,24 @@ options:
         bounds: [-5400000, -5400000, 5400000, 5400000]
         dim: 1080
       hist:
+        adaptive: True
         n_bins: 40                                            # number of histogram bins
         range:
           freeboard: [0, 1]                                   # freeboard hist range min/max (m)
           thickness: [0, 10]                                  # thickness hist range min/max (m)
+        adaptive_bins:
+          freeboard:
+            fine_start: 0.0
+            fine_step: 0.05
+            fine_max: 0.5
+            coarse_min: 0.5
+            coarse_step: 0.1
+          thickness:
+            fine_start: 0.0
+            fine_step: 0.1
+            fine_max: 2.0
+            coarse_min: 2.0
+            coarse_step: 0.5
       growth_estimation:
         growth_grid:
           bounds: [ -5400000, -5400000, 5400000, 5400000 ]

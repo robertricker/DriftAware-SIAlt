@@ -52,10 +52,24 @@ options:
         bounds: [-5400000, -5400000, 5400000, 5400000]
         dim: 1080
       hist:
+        adaptive: True
         n_bins: 40                                            # number of histogram bins
         range:
           freeboard: [0, 1]                                   # freeboard hist range min/max (m)
           thickness: [0, 10]                                  # thickness hist range min/max (m)
+        adaptive_bins:
+          freeboard:
+            fine_start: 0.0
+            fine_step: 0.05
+            fine_max: 0.5
+            coarse_min: 0.5
+            coarse_step: 0.1
+          thickness:
+            fine_start: 0.0
+            fine_step: 0.1
+            fine_max: 2.0
+            coarse_min: 2.0
+            coarse_step: 0.5
       growth_estimation:
         growth_grid:
           bounds: [ -5400000, -5400000, 5400000, 5400000 ]
@@ -64,6 +78,17 @@ options:
         growth_range:
           freeboard: [ -0.25, 0.25 ] # min/max limits for freeboard growth, neglected if outside
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
+      # optional directory with radar freeboard auxiliary files (netCDF) used for MIZ filtering
+      # if set and miz_filter.use_rfb == True, the first matching file will be used to interpolate
+      # radar freeboard values and convert them to total freeboard via rfb_scale.
+      auxiliary_rfb_dir: 'auxiliary/rfb'
+      miz_filter:
+        enabled: true                 # set to false to completely disable MIZ filtering
+        mode: reference              # reference or climatology
+        reference_var: 'radar_freeboard'   # generic field used when mode=reference
+        reference_dir: 'auxiliary/rfb'     # directory with the reference field netcdf(s)
+        reference_sigma_var: null          # optional sigma field for the reference
+        reference_scale: 2.380952381       # conversion factor for radar freeboard -> total freeboard (1/0.42)
 
     gridding:                                                 # Processing step: gridding
       csv_dir: 'sea_ice_thickness-sh-10fr-epsg6932_141-2024-12-16_10-24-43'

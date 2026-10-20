@@ -13,7 +13,7 @@ output_dir: # relative to base_dir
   trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/osi_435_455/vf/" # DA trajectories as daily CSVs
   gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/osi_435_455/vf/rFB"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
-auxiliary:
+auxiliary:  
   ice_conc:
     osi450: "input_data/auxdata/sic/c3s/cdr" #v3.0: 1978-2020
     osi430b: "input_data/auxdata/sic/c3s/icdr" #v3.0: 2021-
@@ -79,7 +79,7 @@ options:
       organize_files: True                                   # Organize files in year/month
       netcdf_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
-        dim: 432 #216 #864 #864 #864 #216 #432 #864
+        dim: 864 #216 #864 #864 #864 #216 #432 #864
       target_variable_range:
         freeboard: [ 0, 2 ]
         thickness: [ 0, 10 ]

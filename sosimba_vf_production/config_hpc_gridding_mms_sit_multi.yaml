@@ -11,7 +11,7 @@ input_dir: # relative to base_dir
 #-----------------------------------PRODUCT REPOSITORY------------------------------------------------------------------
 output_dir: # relative to base_dir
   trajectories: "output_data/DA/product/{sensor}/MIZ_filter_2/csv/osi_435_455/vf/" # DA trajectories as daily CSVs
-  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/osi_435_455/vf/SIT"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
+  gridded_data: "output_data/DA/product/{sensor}/MIZ_filter_2/netcdf/osi_435_455/vf/mms/"  #weight_dt_days_x_unc # Gridded DA data as daily NetCDFs
 #-----------------------------------AUXILIARY DATA REPOSITORY-----------------------------------------------------------
 auxiliary:
   ice_conc:
@@ -68,18 +68,18 @@ options:
           thickness: [ -2.5, 2.5 ]   # min/max limits for thickness growth, neglected if outside
 
     gridding:                                                 # Processing step: gridding
-      csv_dir: sea_ice_thickness-sh-16fr-epsg6932_141-2026-07-02_10-52-44  #radar_freeboard_202411_202503_extension_SOSIMBA #MIZ_filter_2/csv/v5/sit_2019_2024/* #'MIZ_filter_2/csv/filter_04/*' #'MIZ_filter_2/csv/v5/sit_2019_2024/*' #sea_ice_thickness-sh-16fr-epsg6932_141-2025-08-11_19-54-08' #'iter156_meeting_hamburg'
+      csv_dir: mms/sea_ice_thickness*  #radar_freeboard_202411_202503_extension_SOSIMBA #MIZ_filter_2/csv/v5/sit_2019_2024/* #'MIZ_filter_2/csv/filter_04/*' #'MIZ_filter_2/csv/v5/sit_2019_2024/*' #sea_ice_thickness-sh-16fr-epsg6932_141-2025-08-11_19-54-08' #'iter156_meeting_hamburg'
       add_variable: ''
       mode: 'da'                      # if true then it will look here to get the variable to weigth with
       weighting : 
         is_weight : True #True                                 # if true then it will look here to get the variable to weigth with
         var_to_weight_with : 'counts'  #['dt_days', 'sea_ice_thickness_total_unc']               # if not specified : '' -> dt_days
-      multiproc: False                                    # Parallel processing
+      multiproc: True                                    # Parallel processing
       num_cpus: 16                                          # Number of CPUs for parallel processing
       organize_files: True                                   # Organize files in year/month
       netcdf_grid:
         bounds: [-5400000, -5400000, 5400000, 5400000]
-        dim: 864 #432 #216 #864 #864 #864 #216 #432 #864
+        dim: 864 #864 #432 #216 #864 #864 #864 #216 #432 #864
       target_variable_range:
         freeboard: [ 0, 2 ]
         thickness: [ 0, 10 ]
