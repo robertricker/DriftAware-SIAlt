@@ -28,7 +28,13 @@ class DriftAwareProcessor:
         target_sensors = ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']
         
         if sit_clim is not None:
-            sit = compute_apply_flag(sit, sic_product, sit_clim, self.target_var, self.sensor, crs=self.out_epsg)
+            sit = compute_apply_flag(
+                sit, sic_product, sit_clim, self.target_var, self.sensor, crs=self.out_epsg,
+                use_rfb=getattr(self, 'use_rfb', False),
+                rfb_col=getattr(self, 'rfb_col', 'radar_freeboard'),
+                rfb_sigma_col=getattr(self, 'rfb_sigma_col', None),
+                rfb_scale=getattr(self, 'rfb_scale', 1/0.42)
+            )
            
         if 'icesat2' in self.sensor:
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])

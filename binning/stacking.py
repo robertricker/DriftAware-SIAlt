@@ -157,7 +157,14 @@ def stack_proc(config, direct, grid):
         day_range = range(stk_opt['t_length'] - 1, -1, d_sgn)
 
     # initialize drift aware processor
-    processor = DriftAwareProcessor(sit_product, master=master, scheme=scheme, grid=grid)
+    miz_cfg = stk_opt.get('miz_filter', {})
+    processor = DriftAwareProcessor(
+        sit_product, master=master, scheme=scheme, grid=grid,
+        use_rfb=miz_cfg.get('use_rfb', False),
+        rfb_col=miz_cfg.get('rfb_col', 'radar_freeboard'),
+        rfb_sigma_col=miz_cfg.get('rfb_sigma_col', None),
+        rfb_scale=miz_cfg.get('rfb_scale', 1/0.42)
+    )
 
     # for each day we want to stack
     for i in day_range:

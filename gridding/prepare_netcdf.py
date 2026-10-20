@@ -20,9 +20,14 @@ class PrepareNetcdf:
         self.target_var = config["options"]["target_variable"]
         self.add_variables = config['options'].get('add_variable',
                                                   config['options']['proc_step_options']['gridding'].get('add_variables', []))
-        self.hist_n_bins = config['options']['proc_step_options']['stacking']['hist']['n_bins']
-        self.hist_range = config['options']['proc_step_options']['stacking']['hist']['range'][
-            "freeboard" if "freeboard" in self.target_var else "thickness"]
+        self.hist_cfg = config['options']['proc_step_options']['stacking']['hist']
+        self.hist_range = self.hist_cfg['range']["freeboard" if "freeboard" in self.target_var else "thickness"]
+        self.hist_n_bins = self.hist_cfg['n_bins']
+        adaptive_cfg = self.hist_cfg.get('adaptive_bins', {}).get("freeboard" if "freeboard" in self.target_var else "thickness")
+        if self.hist_cfg.get('adaptive', False) and adaptive_cfg is not None:
+            from gridding import gridding_lib
+            hist_edges = gridding_lib.create_adaptive_bins(self.hist_range, **adaptive_cfg)
+            self.hist_n_bins = len(hist_edges) - 1
         self.mode = config['options']['proc_step_options']['gridding']["mode"]
         self.crs = pyproj.CRS.from_epsg(int(config['options']['out_epsg'].split(":")[1]))
         self.sid_product = config['options']['ice_conc_product']
@@ -86,13 +91,26 @@ class PrepareNetcdf:
 
     def add_histogram(self, xarray):
         if self.netcdf_config['variables'][self.mode]['histogram']:
-            bin_size = (self.hist_range[1] - self.hist_range[0]) / self.hist_n_bins
-            hist_bins = np.arange(self.hist_range[0] + bin_size / 2, self.hist_range[1] + bin_size / 2, bin_size)
-            hist_arr = xr.concat([xarray[str(i) + '_sum'] for i in range(self.hist_n_bins)], dim='hist_bins').values
-            xarray = xarray.assign_coords(hist_bins=("hist_bins", hist_bins))
-            xarray[self.target_var + '_hist'] = (['time', 'yc', 'xc', 'hist_bins'],
-                                                 np.transpose(hist_arr, (1, 2, 3, 0)))
-        xarray = xarray.drop_vars([str(i) + '_sum' for i in range(self.hist_n_bins)])
+            hist_var_name = self.target_var + '_hist'
+            if self.hist_cfg.get('adaptive', False):
+                adaptive_cfg = self.hist_cfg.get('adaptive_bins', {}).get("freeboard" if "freeboard" in self.target_var else "thickness")
+                if adaptive_cfg is not None:
+                    from gridding import gridding_lib
+                    edges = gridding_lib.create_adaptive_bins(self.hist_range, **adaptive_cfg)
+                    hist_bins = 0.5 * (edges[:-1] + edges[1:])
+                    bin_cols = [str(i) + '_sum' for i in range(self.hist_n_bins)]
+                    hist_arr = xr.concat([xarray[col] for col in bin_cols if col in xarray], dim='hist_bins').values
+                    xarray = xarray.assign_coords(hist_bins=("hist_bins", hist_bins[:hist_arr.shape[-1]]))
+                    xarray[hist_var_name] = (['time', 'yc', 'xc', 'hist_bins'], np.transpose(hist_arr, (1, 2, 3, 0)))
+            else:
+                bin_size = (self.hist_range[1] - self.hist_range[0]) / self.hist_n_bins
+                hist_bins = np.arange(self.hist_range[0] + bin_size / 2, self.hist_range[1] + bin_size / 2, bin_size)
+                hist_arr = xr.concat([xarray[str(i) + '_sum'] for i in range(self.hist_n_bins)], dim='hist_bins').values
+                xarray = xarray.assign_coords(hist_bins=("hist_bins", hist_bins))
+                xarray[hist_var_name] = (['time', 'yc', 'xc', 'hist_bins'], np.transpose(hist_arr, (1, 2, 3, 0)))
+        temp_sum_cols = [c for c in xarray.data_vars if c.endswith('_sum') and c[:-4].isdigit()]
+        if temp_sum_cols:
+            xarray = xarray.drop_vars(temp_sum_cols)
         return xarray
 
     def add_region_flag(self, xarray):

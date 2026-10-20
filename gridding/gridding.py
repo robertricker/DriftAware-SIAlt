@@ -60,9 +60,19 @@ def process_file(config, file_list, grid, region_grid):
     stk_opt = config['options']['proc_step_options']['stacking']
     grd_opt = config['options']['proc_step_options']['gridding']
     # declare histogram options
-    hist_n_bins = stk_opt['hist']['n_bins']
-    hist_range = stk_opt['hist']['range']["freeboard" if "freeboard" in target_var else "thickness"]
-    hist_bin_size = (hist_range[1] - hist_range[0]) / hist_n_bins
+    hist_cfg = stk_opt['hist']
+    target_hist_key = "freeboard" if "freeboard" in target_var else "thickness"
+    hist_range = hist_cfg['range'][target_hist_key]
+    hist_bin_cfg = hist_cfg.get('adaptive_bins', {}).get(target_hist_key)
+    if hist_cfg.get('adaptive', False) and hist_bin_cfg is not None:
+        hist_bin_edges = gridding_lib.create_adaptive_bins(hist_range, **hist_bin_cfg)
+        hist_n_bins = len(hist_bin_edges) - 1
+        hist_bins_spec = hist_bin_cfg
+        hist_bin_size = None
+    else:
+        hist_n_bins = hist_cfg['n_bins']
+        hist_bins_spec = hist_n_bins
+        hist_bin_size = (hist_range[1] - hist_range[0]) / hist_n_bins
 
     # declare gridding options
     gridding_mode = grd_opt['mode']
@@ -128,12 +138,19 @@ def process_file(config, file_list, grid, region_grid):
     time_center = datetime.datetime.strptime(
         re.split('-', os.path.basename(file))[-2], '%Y%m%d') + datetime.timedelta(hours=12)
     # extract histogram
+    if isinstance(hist_bins_spec, dict):
+        hist_bin_edges = gridding_lib.create_adaptive_bins(hist_range, **hist_bins_spec)
+        hist_n_bins_count = len(hist_bin_edges) - 1
+    else:
+        hist_n_bins_count = hist_n_bins
+        hist_bin_edges = None
     data_hist = data[target_var + '_hist'].str.split(expand=True).astype(int)
-    data_hist.columns = np.arange(hist_n_bins).astype(str)
+    data_hist.columns = np.arange(hist_n_bins_count).astype(str)
     data_hist = gpd.GeoDataFrame(pd.concat([data_hist, data.geometry, data.dt_days], axis=1))
 
     # add modal value to main data frame
-    data[target_var + '_mode'] = gridding_lib.modal_var(data_hist, hist_n_bins, hist_bin_size, hist_range)
+    # mode is intentionally not used here: the histogram is kept in bin-by-bin form
+    # and later rebuilt as target_var_hist by PrepareNetcdf.add_histogram().
 
     merged = gpd.sjoin(data, grid, how='left', predicate='within')
     merged_hist = gpd.sjoin(data_hist, grid, how='left', predicate='within')
@@ -147,9 +164,9 @@ def process_file(config, file_list, grid, region_grid):
     tmp_hist = gpd.GeoDataFrame(tmp_hist)
 
     tmp_hist_grid = gridding_lib.grid_data(tmp_hist, grid,
-                                           np.arange(hist_n_bins).astype('str').tolist(),
-                                           np.arange(hist_n_bins).astype('str').tolist(),
-                                           hist_n_bins,
+                                           np.arange(hist_n_bins_count).astype('str').tolist(),
+                                           np.arange(hist_n_bins_count).astype('str').tolist(),
+                                           hist_bins_spec,
                                            hist_range,
                                            fill_nan=True,
                                            agg_mode=['sum'])
@@ -191,6 +208,8 @@ def process_file(config, file_list, grid, region_grid):
     
     master[target_var + '_std'] = gridding_lib.grid_data(
         data, grid, [target_var], [target_var], fill_nan=True, agg_mode=['std'])[target_var + '_std']
+    master[target_var + '_mad'] = gridding_lib.grid_data(
+            data, grid, [target_var], [target_var], fill_nan=True, agg_mode=['mad'])[target_var + '_mad']
     master = master.join(tmp_hist_grid.drop(columns=['geometry']))
     centroidseries = master['geometry'].centroid
     master['xc'], master['yc'] = round(centroidseries.x), round(centroidseries.y)

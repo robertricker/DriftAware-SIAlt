@@ -136,8 +136,14 @@ def binning_proc(config, direct, grid):
     out_epsg = config["options"]["out_epsg"]
     # declare binning processing options
     stk_opt = config['options']['proc_step_options']['binning']
-    hist_n_bins = stk_opt['hist']['n_bins']
-    hist_range = stk_opt['hist']['range']["freeboard" if "freeboard" in target_var else "thickness"]
+    hist_cfg = stk_opt['hist']
+    target_hist_key = "freeboard" if "freeboard" in target_var else "thickness"
+    hist_range = hist_cfg['range'][target_hist_key]
+    hist_bin_cfg = hist_cfg.get('adaptive_bins', {}).get(target_hist_key)
+    if hist_cfg.get('adaptive', False) and hist_bin_cfg is not None:
+        hist_n_bins = hist_bin_cfg
+    else:
+        hist_n_bins = hist_cfg['n_bins']
     # define data structure
     stack = StackStructure(sensor, stk_opt['t_window'], stk_opt['t_length'])
     master, scheme = stack.get_master(), stack.get_scheme()

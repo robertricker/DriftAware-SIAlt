@@ -116,8 +116,14 @@ def stack_proc(config, direct, grid):
     out_epsg = config["options"]["out_epsg"]
     # declare stacking processing options
     stk_opt = config['options']['proc_step_options']['stacking']
-    hist_n_bins = stk_opt['hist']['n_bins']
-    hist_range = stk_opt['hist']['range']["freeboard" if "freeboard" in target_var else "thickness"]
+    hist_cfg = stk_opt['hist']
+    target_hist_key = "freeboard" if "freeboard" in target_var else "thickness"
+    hist_range = hist_cfg['range'][target_hist_key]
+    hist_bin_cfg = hist_cfg.get('adaptive_bins', {}).get(target_hist_key)
+    if hist_cfg.get('adaptive', False) and hist_bin_cfg is not None:
+        hist_n_bins = hist_bin_cfg
+    else:
+        hist_n_bins = hist_cfg['n_bins']
     # define data structure
     stack = StackStructure(sensor, stk_opt['t_window'], stk_opt['t_length'])
     master, scheme = stack.get_master(), stack.get_scheme()
@@ -166,7 +172,15 @@ def stack_proc(config, direct, grid):
         day_range = range(stk_opt['t_length'] - 1, -1, d_sgn)
 
     # initialize drift aware processor
-    processor = DriftAwareProcessor(sit_product, master=master, scheme=scheme, grid=grid)
+    miz_cfg = stk_opt.get('miz_filter', {})
+    processor = DriftAwareProcessor(
+        sit_product, master=master, scheme=scheme, grid=grid,
+        use_reference=miz_cfg.get('use_reference', miz_cfg.get('use_rfb', False)),
+        reference_var=miz_cfg.get('reference_var', miz_cfg.get('rfb_col', 'radar_freeboard')),
+        reference_sigma_var=miz_cfg.get('reference_sigma_var', miz_cfg.get('rfb_sigma_col', None)),
+        reference_scale=miz_cfg.get('reference_scale', miz_cfg.get('rfb_scale', 1/0.42)),
+        reference_dir=miz_cfg.get('reference_dir', miz_cfg.get('auxiliary_rfb_dir'))
+    )
 
     # for each day we want to stack
     for i in day_range:
@@ -195,36 +209,71 @@ def stack_proc(config, direct, grid):
             sit_product.get_product(sensor_k)
             sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
 
-            #if ICESAT-2, then we need to filter out the total freeboard (snow depth purposes)
-            if (len(sensor_k) == 1) and (sensor_k[0] == 'icesat2'):
-                if 'tFB_clim' in config['auxiliary']:
+            # MIZ filtering configuration: default is historical climatology,
+            # but a generic reference field can be selected via config and used instead.
+            miz_cfg = stk_opt.get('miz_filter', {})
+            miz_mode = miz_cfg.get('mode') if miz_cfg.get('enabled', True) else None
+            if miz_mode == 'reference':
+                ref_dir = miz_cfg.get('reference_dir')
+                ref_var = miz_cfg.get('reference_var', 'radar_freeboard')
+                ref_sigma_var = miz_cfg.get('reference_sigma_var')
+                ref_scale = miz_cfg.get('reference_scale', 1)
+                if ref_dir:
+                    from data_handler.filter_miz import compute_apply_flag_reference
+                    sit_product.product = compute_apply_flag_reference(
+                        sit_product.product,
+                        sic_product,
+                        target_var,
+                        sensor_k[0],
+                        crs=out_epsg,
+                        reference_var=ref_var,
+                        reference_dir=ref_dir,
+                        reference_sigma_var=ref_sigma_var,
+                        reference_scale=ref_scale,
+                        reference_date=t0,
+                    )
+                    logger.info(f"Reference field used for MIZ filtering: {ref_var} from {ref_dir}")
+                else:
+                    logger.warning('MIZ filter mode is reference but no reference_dir was provided. Falling back to climatology.')
+                    miz_mode = 'climatology'
 
+            if miz_mode == 'climatology':
+                if target_var == 'total_freeboard' and 'tFB_clim' in config['auxiliary']:
                     sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='tFB_clim',
-                                                            out_epsg=out_epsg)
+                                                                out_epsg=out_epsg)
                     logger.info(f"Climatology is used to filter out MIZ outliers from : {config['auxiliary']['tFB_clim']}")
                     sit_clim_product.get_file_list(config['auxiliary']['tFB_clim'])
                     sit_clim_product.get_file_dates()
-                    
                     sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
-
                     sit_clim_product.sit_clim = sit_clim_product.get_tFB_clim(sit_clim_product.target_files)
-                #keep only the total freeboard with quality flag <= 2
-                sit_product.product = sit_product.product[(sit_product.product['total_freeboard_quality_flag'] <= 4) & (sit_product.product['total_freeboard_quality_flag'] >= 0)]
-                #sit_product.product = compute_apply_flag(sit_product, sic_product, sit_clim_product)    
-            elif (sensor_k[0] != 'icesat2') and (target_var == 'sea_ice_thickness'):
-                if 'SIT_clim' in config['auxiliary']:
 
+                elif (target_var == 'sea_ice_thickness') and ('SIT_clim' in config['auxiliary']):
                     sit_clim_product = SeaIceThicknessClimProducts(hem=hem, product_id='sit_clim',
-                                                            out_epsg=out_epsg)
+                                                                out_epsg=out_epsg)
                     logger.info(f"Climatology is used to filter out MIZ outliers from : {config['auxiliary']['SIT_clim']}")
                     sit_clim_product.get_file_list(config['auxiliary']['sit_clim'])
                     sit_clim_product.get_file_dates()
-                    
                     sit_clim_product.target_files = sit_clim_product.get_target_files(t0, t1)
-
                     sit_clim_product.sit_clim = sit_clim_product.get_SIT_clim(sit_clim_product.target_files)
-                
-            processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim = sit_clim_product if 'sit_clim_product' in locals() else None)
+
+                if 'sit_clim_product' in locals():
+                    sit_product.product = compute_apply_flag(
+                        sit_product.product,
+                        sic_product,
+                        sit_clim_product,
+                        target_var,
+                        sensor_k[0],
+                        crs=out_epsg,
+                    )
+                #keep only the total freeboard with quality flag <= 2
+                if target_var == 'total_freeboard':
+                    sit_product.product = sit_product.product[(sit_product.product['total_freeboard_quality_flag'] <= 4) & (sit_product.product['total_freeboard_quality_flag'] >= 0)]
+
+            # old branch retained but not hardcoded on icesat2; the config is the selector.
+            if 'sit_clim_product' in locals() and miz_mode == 'climatology':
+                processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim=sit_clim_product)
+            else:
+                processor.baseline_proc(sic_product, hist_n_bins, hist_range, sit_clim=None)
         
         # The sea ice concentration is taken at t1 check data after beeing advected
         sic_product.target_files = sic_product.get_target_files(t0 + d_sgn * dt1d, t1 + d_sgn * dt1d)

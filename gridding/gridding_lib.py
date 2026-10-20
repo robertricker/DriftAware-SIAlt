@@ -40,6 +40,52 @@ def define_grid(bounds, n_cells, epsg, grid_type='rectangular'):
         raise ValueError("Invalid grid_type. Use 'rectangular' or 'circular'.")
 
 
+def create_adaptive_bins(hist_range, fine_start=None, fine_step=0.1, fine_max=2.0, coarse_min=None, coarse_step=0.5):
+    """
+    Create adaptive bin edges: fine resolution below fine_max, coarse above.
+
+    Parameters:
+    -----------
+    hist_range : tuple
+        (min, max) of the histogram range
+    fine_start : float or None
+        lower bound of the fine-resolution segment; defaults to hist_range[0]
+    fine_step : float
+        resolution for small values
+    fine_max : float
+        threshold above which to switch to coarse resolution
+    coarse_min : float or None
+        lower bound of the coarse-resolution segment; defaults to fine_max
+    coarse_step : float
+        resolution for large values
+
+    Returns:
+    --------
+    array
+        bin edges array
+    """
+    start = hist_range[0] if fine_start is None else fine_start
+    stop = hist_range[1]
+    coarse_min = fine_max if coarse_min is None else coarse_min
+
+    edges = []
+
+    if start < fine_max:
+        edges.extend(np.arange(start, min(fine_max, stop), fine_step))
+
+    if stop > coarse_min:
+        edges.extend(np.arange(max(coarse_min, start), stop, coarse_step))
+
+    edges = np.unique(np.asarray(edges, dtype=float))
+    if not edges.size or edges[-1] < stop:
+        edges = np.append(edges, stop)
+    elif edges[-1] > stop:
+        edges = edges[edges <= stop]
+        edges = np.append(edges, stop)
+
+    return edges
+
+
 def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_nan=False, agg_mode=None, weight_var=None):
     if agg_mode is None:
         agg_mode = ['mean', 'std']
@@ -125,6 +171,10 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
         dissolve_std = merged.dissolve(by='index_right', aggfunc=np.std)
         for i in range(0, len(var)):
             tmp_grid.loc[dissolve_std.index, var_str[i] + '_std'] = dissolve_std[var[i]].values
+    if 'mad' in agg_mode:
+        dissolve_mad = merged.dissolve(by='index_right', aggfunc=lambda x: np.median(np.abs(x - np.median(x))))
+        for i in range(0, len(var)):
+            tmp_grid.loc[dissolve_mad.index, var_str[i] + '_mad'] = dissolve_mad[var[i]].values
     if 'sum' in agg_mode:
         dissolve_sum = merged.dissolve(by='index_right', aggfunc=np.sum)
         for i in range(0, len(var)):
@@ -142,12 +192,21 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
         dissolve_hist = merged.dissolve(by='index_right', aggfunc=np.mean)
         dissolve_hist.reset_index(inplace=True)
         dissolve_hist[var[0]] = ''
+        
+        # Determine bin edges: adaptive or uniform
+        if isinstance(hist_n_bins, dict):
+            # Adaptive bins from dict with parameters
+            bins_to_use = create_adaptive_bins(hist_range, **hist_n_bins)
+        else:
+            # Uniform bins (backward compatibility)
+            bins_to_use = hist_n_bins
+        
         for i in range(0, len(var)):
             for j in dissolve_hist.index_right.unique():
                 tmp = merged[merged.index_right == j].drop(['index_right', 'geometry'], axis=1).reset_index(drop=True)
+                # Note: range is ignored when bins is an array
                 tmp_hist = np.histogram(np.array(tmp[var[i]]),
-                                        bins=hist_n_bins,
-                                        range=(hist_range[0], hist_range[1]))[0]
+                                        bins=bins_to_use)[0]
                 dissolve_hist[var[i]][dissolve_hist.index[dissolve_hist.index_right == j][0]] = ' '.join(
                     map(str, tmp_hist))
 
@@ -162,7 +221,19 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
     return tmp_grid
 
 
-def modal_var(df, n_bins, bin_size, hist_range):
+def modal_var(df, n_bins, bin_size, hist_range, hist_bins=None):
+    if hist_bins is not None:
+        if isinstance(hist_bins, dict):
+            hist_bins = create_adaptive_bins(hist_range, **hist_bins)
+        if isinstance(hist_bins, (list, tuple, np.ndarray)):
+            edges = np.asarray(hist_bins, dtype=float)
+            centers = 0.5 * (edges[:-1] + edges[1:])
+            if centers.size > 0:
+                id_mode = df.iloc[:, :len(centers)].idxmax(axis=1)
+                idx = id_mode.astype(int)
+                idx = np.clip(idx, 0, len(centers) - 1)
+                return centers[idx.to_numpy()]
+
     bin_center = np.arange(hist_range[0] + bin_size / 2, hist_range[1] + bin_size / 2, bin_size)
     id_mode = df.loc[:, '0':str(n_bins-1)].idxmax(axis=1)
     return bin_center[np.array(id_mode.astype(int))]
