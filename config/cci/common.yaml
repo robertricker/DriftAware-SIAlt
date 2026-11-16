@@ -2,8 +2,8 @@
 # {version}, {sensor}, and {hemisphere} are expanded when loaded.
 base_dir: "/Volumes/Files/Forskningsdata/600/60090/105517-CCI+SeaIce"
 
-# Output paths below turn 1.1 into v1.1.
-version: 1.1
+# Drift-aware algorithm/product version; output paths use v2.0.
+version: 2.0
 
 # Supported sensors: ers2, envisat, cryosat2, sentinel3a, sentinel3b, icesat2.
 input_dir:

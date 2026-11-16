@@ -72,6 +72,10 @@ All relative input, output, auxiliary, and logging paths are resolved from
 `{hemisphere}` placeholders in paths are expanded while loading the
 configuration; multiple sensors are joined with underscores.
 
+The shared `version` setting identifies the drift-aware algorithm/product
+version, currently `2.0`. It sets output directories (`v2.0`), filename suffixes
+(`fv2.0`), and the gridded NetCDF `product_version` attribute.
+
 Supported sensor and target-variable combinations are:
 
 - `ers2`, `envisat`, `cryosat2`, `sentinel3a`, `sentinel3b`: `sea_ice_thickness`,
@@ -272,9 +276,9 @@ sensor observation-count columns ending in `_cnt` are stored as integers.
 Product filenames place the processing mode immediately after the product level:
 
 ```text
-ESACCI-SEAICE-L2P-DA-SITHICK-SIRAL_CRYOSAT2-NH-20211001-fv1.1.csv
-ESACCI-SEAICE-L3C-DA-SITHICK-SIRAL_CRYOSAT2-NH_25KM_EASE2-20211001-fv1.1.nc
-ESACCI-SEAICE-L4-DA-SIVOL-SIRAL_CRYOSAT2-NH_25KM_EASE2-20211001-fv1.1.nc
+ESACCI-SEAICE-L2P-DA-SITHICK-SIRAL_CRYOSAT2-NH-20211001-fv2.0.csv
+ESACCI-SEAICE-L3C-DA-SITHICK-SIRAL_CRYOSAT2-NH_25KM_EASE2-20211001-fv2.0.nc
+ESACCI-SEAICE-L4-DA-SIVOL-SIRAL_CRYOSAT2-NH_25KM_EASE2-20211001-fv2.0.nc
 ```
 
 Optional processing is controlled explicitly. For example:
