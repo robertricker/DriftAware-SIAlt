@@ -74,7 +74,7 @@ configuration; multiple sensors are joined with underscores.
 
 Supported sensor and target-variable combinations are:
 
-- `envisat`, `cryosat2`, `sentinel3a`, `sentinel3b`: `sea_ice_thickness`,
+- `ers2`, `envisat`, `cryosat2`, `sentinel3a`, `sentinel3b`: `sea_ice_thickness`,
   `sea_ice_freeboard`, or `radar_freeboard`.
 - `icesat2`: `total_freeboard` or `sea_ice_thickness`.
 
@@ -125,6 +125,7 @@ remote URL remain local-only. For example:
 ```yaml
 remote_dir:
   altimetry:
+    ers2: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/ers2"
     cryosat2: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/cryosat2"
     sentinel3a: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/sentinel3a"
     sentinel3b: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/sentinel3b"
@@ -193,10 +194,11 @@ Count weighting is evaluated separately in every output grid cell. When
 CryoSat-2 and Sentinel-3 observations are both available, half of the nominal
 weight is assigned to CryoSat-2 and half to the Sentinel-3 family. The
 Sentinel-3 share is divided equally between Sentinel-3A and Sentinel-3B when
-both are present. Missing missions are ignored and the available shares are
-renormalized. Individual trajectory parcels are weighted by the sum of these
-mission shares multiplied by the square root of their corresponding observation
-counts.
+both are present. ERS-2 and Envisat each form an additional independent mission
+family, with the nominal weight divided equally among the families present.
+Missing missions are ignored and the available shares are renormalized.
+Individual trajectory parcels are weighted by the sum of these mission shares
+multiplied by the square root of their corresponding observation counts.
 
 Time-distance weighting is available as an alternative:
 

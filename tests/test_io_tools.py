@@ -1,7 +1,33 @@
+import datetime
+
 import geopandas as gpd
 from shapely.geometry import MultiPoint
 
-from driftaware_sialt.io_tools import read_dasit_csv, write_dasit_csv
+from driftaware_sialt.io_tools import (
+    make_csv_filename,
+    read_dasit_csv,
+    write_dasit_csv,
+)
+
+
+def test_ers2_trajectory_filename_uses_ra_instrument_name():
+    config = {
+        "version": "1.1",
+        "options": {
+            "sensor": ["ers2"],
+            "target_variable": "sea_ice_thickness",
+            "hemisphere": "nh",
+        },
+        "stacking": {"filename_prefix": "ESACCI-SEAICE"},
+    }
+
+    result = make_csv_filename(
+        config, datetime.datetime(2002, 11, 29), "f")
+
+    assert result == (
+        "ESACCI-SEAICE-L2P-DA_F-SITHICK-RA_ERS2-NH-"
+        "20021129-fv1.1.csv"
+    )
 
 
 def test_trajectory_csv_uses_reduced_precision_without_mutating_input(tmp_path):

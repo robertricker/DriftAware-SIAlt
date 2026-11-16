@@ -28,9 +28,13 @@ variables:
       - "drift_unc"
       - "ohf"
       - "t2m"
+      - "ers2"
+      - "envisat"
       - "sentinel3a"
       - "sentinel3b"
       - "cryosat2"
+      - "ers2_cnt"
+      - "envisat_cnt"
       - "sentinel3a_cnt"
       - "sentinel3b_cnt"
       - "cryosat2_cnt"
@@ -63,9 +67,13 @@ variables:
       - "sea_ice_displacement_uncertainty"
       - "model_ocean_heat_flux"
       - "model_air_temperature"
+      - "ers2_frac"
+      - "envisat_frac"
       - "sentinel3a_frac"
       - "sentinel3b_frac"
       - "cryosat2_frac"
+      - "ers2_cnt"
+      - "envisat_cnt"
       - "sentinel3a_cnt"
       - "sentinel3b_cnt"
       - "cryosat2_cnt"
@@ -87,9 +95,13 @@ variables:
       - "shear"
       - "divergence"
       - "snow_depth"
+      - "ers2"
+      - "envisat"
       - "sentinel3a"
       - "sentinel3b"
       - "cryosat2"
+      - "ers2_cnt"
+      - "envisat_cnt"
       - "sentinel3a_cnt"
       - "sentinel3b_cnt"
       - "cryosat2_cnt"
@@ -106,9 +118,13 @@ variables:
       - "shear"
       - "divergence"
       - "snow_depth"
+      - "ers2_frac"
+      - "envisat_frac"
       - "sentinel3a_frac"
       - "sentinel3b_frac"
       - "cryosat2_frac"
+      - "ers2_cnt"
+      - "envisat_cnt"
       - "sentinel3a_cnt"
       - "sentinel3b_cnt"
       - "cryosat2_cnt"
@@ -373,6 +389,24 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: "Negative values indicate acquisition before the target time; positive values indicate acquisition after it."
 
+  ers2_frac:
+    long_name: "fractional contribution of ERS-2 observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
+    valid_max: 1.0
+    comment: "Fraction of contributing observations associated with ERS-2."
+
+  envisat_frac:
+    long_name: "fractional contribution of Envisat observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
+    valid_max: 1.0
+    comment: "Fraction of contributing observations associated with Envisat."
+
   sentinel3a_frac:
     long_name: "fractional contribution of Sentinel-3A observations"
     coordinates: "time longitude latitude"
@@ -399,6 +433,22 @@ variable_attributes:
     valid_min: 0.0
     valid_max: 1.0
     comment: "Fraction of contributing observations associated with CryoSat-2."
+
+  ers2_cnt:
+    long_name: "number of contributing ERS-2 observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
+    comment: ""
+
+  envisat_cnt:
+    long_name: "number of contributing Envisat observations"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    valid_min: 0.0
+    comment: ""
 
   sentinel3a_cnt:
     long_name: "number of contributing Sentinel-3A observations"

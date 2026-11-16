@@ -4,7 +4,7 @@ stage: visualization
 
 visualization:
   # Empty searches recursively; otherwise use a subdirectory or absolute path.
-  sub_dir: "sea_ice_thickness-nh-16fr-epsg6931_177_15-2026-07-31_09-46-57"
+  sub_dir: "/Volumes/Files/Forskningsdata/600/60090/105517-CCI+SeaIce/output_data/v1.1/l3c/cryosat2_sentinel3a_sentinel3b/sea_ice_thickness-nh-16fr-epsg6931_177_15-2026-08-04_08-29-25"
 
   # Must exist in the NetCDF file; supported presets are listed in README.md.
   variable: sea_ice_thickness

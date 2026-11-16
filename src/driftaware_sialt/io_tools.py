@@ -222,6 +222,7 @@ def make_csv_filename(config, t0, direct):
         "total_freeboard": "TFB"}
     var = var_map.get(config['options']['target_variable'])
     instr_map = {
+        "ers2": "RA_ERS2",
         "envisat": "RA2_ENVISAT",
         "cryosat2": "SIRAL_CRYOSAT2",
         "sentinel3a": "SRAL_SENTINEL3A",

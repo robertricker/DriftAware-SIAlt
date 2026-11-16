@@ -254,12 +254,16 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
         master = gridding_lib.grid_data(data, grid, var, var_rename, fill_nan=True, agg_mode=['mean'])
 
     
-    if 'cryosat2_cnt' in merged.columns:
-        master['cryosat2_cnt'] = gridding_lib.grid_data(data, grid, ['cryosat2_cnt'], ['cryosat2_cnt'], fill_nan=True, agg_mode=['sum'])['cryosat2_cnt_sum']
-    if 'sentinel3a_cnt' in merged.columns:
-        master['sentinel3a_cnt'] = gridding_lib.grid_data(data, grid, ['sentinel3a_cnt'], ['sentinel3a_cnt'], fill_nan=True, agg_mode=['sum'])['sentinel3a_cnt_sum']
-    if 'sentinel3b_cnt' in merged.columns:
-        master['sentinel3b_cnt'] = gridding_lib.grid_data(data, grid, ['sentinel3b_cnt'], ['sentinel3b_cnt'], fill_nan=True, agg_mode=['sum'])['sentinel3b_cnt_sum']
+    for sensor_name in config['options']['sensor']:
+        count_var = sensor_name + '_cnt'
+        if count_var in merged.columns:
+            master[count_var] = gridding_lib.grid_data(
+                data,
+                grid,
+                [count_var],
+                [count_var],
+                fill_nan=True,
+                agg_mode=['sum'])[count_var + '_sum']
     
     master[target_var + '_std'] = gridding_lib.grid_data(
         data, grid, [target_var], [target_var], fill_nan=True, agg_mode=['std'])[target_var + '_std']

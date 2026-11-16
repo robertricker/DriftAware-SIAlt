@@ -7,6 +7,7 @@ from loguru import logger
 import datetime
 from numbers import Real
 from driftaware_sialt.filters.marginal_ice_zone import compute_apply_flag
+from driftaware_sialt.products.sea_ice_thickness import CCI_L2P_SENSORS
 
 
 def grid_parcel_uncertainty(data, grid, source_unc_var, parcel_unc_var):
@@ -84,7 +85,7 @@ class DriftAwareProcessor:
             ]
         source_unc_var = self.target_var + '_l2_unc'
         parcel_unc_var = self.target_var + '_parcel_unc'
-        target_sensors = ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']
+        target_sensors = CCI_L2P_SENSORS
         
         if sit_clim is not None:
             sit = compute_apply_flag(sit, sic_product, sit_clim, self.target_var, available_sensors, crs=self.out_epsg)
@@ -225,7 +226,7 @@ class DriftAwareProcessor:
         return tmp_grid
 
     def drift_aware_proc(self, sid_product, sic_product, t2m_product, ohf_product, t_window_length, direct, day0, thermo_model):
-        target_sensors = ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']
+        target_sensors = CCI_L2P_SENSORS
 
         if 'icesat2' in self.sensor:
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
@@ -269,7 +270,7 @@ class DriftAwareProcessor:
 
     def concat_gdfs(self, gdf_array_index, row_lim):
         gdf_list = []
-        target_sensors = ['cryosat2', 'sentinel3a', 'sentinel3b', 'envisat']
+        target_sensors = CCI_L2P_SENSORS
         for j in range(0, row_lim + 1):
             if 'icesat2' in self.sensor:
                 beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])

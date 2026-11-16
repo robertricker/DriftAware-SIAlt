@@ -49,43 +49,57 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
         merged['weight'] = 1
         if not weight_var or weight_var=='':
              weight_var = 'dt_days'
-        # The following condition is only configured for the case of Sentinel3a, Sentinel3b and Cryosat2 are used using as 'sentinel3a_sentinel3b_cryosat2'
-        if (weight_var == 'counts') & ('sentinel3a_cnt' in merged.columns) & ('sentinel3b_cnt' in merged.columns) & ('cryosat2_cnt' in merged.columns):
-            # Count observations per mission in each output cell and distribute
-            # half the weight to CryoSat-2 and half to the available Sentinel-3
-            # missions. If only one family is present, it receives full weight.
+        if weight_var == 'counts':
+            count_columns = [
+                column for column in merged.columns
+                if column.endswith('_cnt')]
+            if not count_columns:
+                raise ValueError(
+                    "count weighting requires sensor columns ending in '_cnt'")
+
             counts = merged.dissolve(
                 by='index_right',
-                aggfunc={'sentinel3a_cnt': 'sum',
-                         'sentinel3b_cnt': 'sum',
-                         'cryosat2_cnt': 'sum'})
-            has_cs2 = counts['cryosat2_cnt'] > 0
-            has_s3a = counts['sentinel3a_cnt'] > 0
-            has_s3b = counts['sentinel3b_cnt'] > 0
-            n_s3 = has_s3a.astype(int) + has_s3b.astype(int)
-            has_s3 = n_s3 > 0
+                aggfunc={column: 'sum' for column in count_columns})
+            sentinel_columns = [
+                column for column in ('sentinel3a_cnt', 'sentinel3b_cnt')
+                if column in count_columns]
+            mission_groups = [
+                [column] for column in count_columns
+                if column not in sentinel_columns]
+            if sentinel_columns:
+                mission_groups.append(sentinel_columns)
 
-            counts['q_cs2'] = 0.0
-            counts.loc[has_cs2 & ~has_s3, 'q_cs2'] = 1.0
-            counts.loc[has_cs2 & has_s3, 'q_cs2'] = 0.5
+            group_states = []
+            number_of_groups = pd.Series(0, index=counts.index, dtype=int)
+            for group in mission_groups:
+                active_missions = counts[group].gt(0)
+                active_count = active_missions.sum(axis=1)
+                group_active = active_count.gt(0)
+                number_of_groups += group_active.astype(int)
+                group_states.append(
+                    (group, active_missions, active_count, group_active))
 
-            sentinel_share = pd.Series(0.0, index=counts.index)
-            sentinel_share.loc[has_s3 & ~has_cs2] = 1.0
-            sentinel_share.loc[has_s3 & has_cs2] = 0.5
-            counts['q_s3a'] = 0.0
-            counts['q_s3b'] = 0.0
-            counts.loc[has_s3a, 'q_s3a'] = (
-                sentinel_share.loc[has_s3a] / n_s3.loc[has_s3a])
-            counts.loc[has_s3b, 'q_s3b'] = (
-                sentinel_share.loc[has_s3b] / n_s3.loc[has_s3b])
+            share_columns = []
+            for group, active_missions, active_count, group_active in group_states:
+                group_share = pd.Series(0.0, index=counts.index)
+                group_share.loc[group_active] = (
+                    1.0 / number_of_groups.loc[group_active])
+                for column in group:
+                    share_column = '_share_' + column
+                    share_columns.append(share_column)
+                    counts[share_column] = 0.0
+                    mission_active = active_missions[column]
+                    counts.loc[mission_active, share_column] = (
+                        group_share.loc[mission_active]
+                        / active_count.loc[mission_active])
 
             merged = merged.merge(
-                counts[['q_s3a', 'q_s3b', 'q_cs2']],
+                counts[share_columns],
                 left_on='index_right', right_index=True, how='left')
-            merged['weight'] = (
-                merged['q_cs2'] * np.sqrt(merged['cryosat2_cnt'])
-                + merged['q_s3a'] * np.sqrt(merged['sentinel3a_cnt'])
-                + merged['q_s3b'] * np.sqrt(merged['sentinel3b_cnt']))
+            merged['weight'] = sum(
+                merged['_share_' + column]
+                * np.sqrt(merged[column].clip(lower=0))
+                for column in count_columns)
             
         else :
             weight_vars = (

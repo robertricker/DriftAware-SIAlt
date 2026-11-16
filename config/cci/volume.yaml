@@ -1,0 +1,20 @@
+extends: common.yaml
+
+stage: volume
+
+volume:
+  # Run directory below output_dir.gridded_data, or an absolute directory.
+  gridded_data_dir: "test"
+
+  # Empty uses sea_ice_concentration already stored in the gridded files.
+  # Set a configured concentration product ID, e.g. osi430, to read it externally.
+  ice_conc_product:
+
+  # Density functions from Fons et al. (2022); numeric constants are also accepted.
+  sea_ice_density: ice_fons_2022
+  snow_density: snow_fons_2022
+
+  # Interpolate missing thickness and snow depth where concentration exceeds
+  # this threshold. The threshold may be a fraction or percent.
+  interp_missing_sit: true
+  sic_interp_threshold: 15

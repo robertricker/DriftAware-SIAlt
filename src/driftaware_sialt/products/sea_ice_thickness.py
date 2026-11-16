@@ -11,6 +11,7 @@ from astropy.time import Time
 
 
 CCI_L2P_SENSORS = frozenset({
+    'ers2',
     'envisat',
     'cryosat2',
     'sentinel3a',
@@ -43,6 +44,9 @@ class SeaIceThicknessMultiProducts:
             ('sentinel3b', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
             ('sentinel3b', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
             ('sentinel3b', 'radar_freeboard'): self.cci_l2p_to_gdf,
+            ('ers2', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
+            ('ers2', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
+            ('ers2', 'radar_freeboard'): self.cci_l2p_to_gdf,
             ('envisat', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
             ('envisat', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
             ('envisat', 'radar_freeboard'): self.cci_l2p_to_gdf
@@ -119,6 +123,26 @@ class SeaIceThicknessMultiProducts:
                 'radar_freeboard': {
                     'hem_nh': '-nh-',
                     'hem_sh': '-sh-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
+                }
+            },
+            'ers2': {
+                'sea_ice_thickness': {
+                    'hem_nh': '-NH-',
+                    'hem_sh': '-SH-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
+                },
+                'sea_ice_freeboard': {
+                    'hem_nh': '-NH-',
+                    'hem_sh': '-SH-',
+                    'date_str': '{8}',
+                    'date_pt': '%Y%m%d'
+                },
+                'radar_freeboard': {
+                    'hem_nh': '-NH-',
+                    'hem_sh': '-SH-',
                     'date_str': '{8}',
                     'date_pt': '%Y%m%d'
                 }

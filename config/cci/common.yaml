@@ -5,61 +5,63 @@ base_dir: "/Volumes/Files/Forskningsdata/600/60090/105517-CCI+SeaIce"
 # Output paths below turn 1.1 into v1.1.
 version: 1.1
 
-# Supported sensors: envisat, cryosat2, sentinel3a, sentinel3b, icesat2.
+# Supported sensors: ers2, envisat, cryosat2, sentinel3a, sentinel3b, icesat2.
 input_dir:
   # Optional shared daily CCI files; when enabled, replaces the CCI mission paths below.
   # options.sensor still selects individual missions using the platform variable.
   # multi-mission: "input_data/altimetry/l2p/{hemisphere}/multi-mission"
-  envisat: "input/altimetry/l2p/{hemisphere}/envisat"
-  cryosat2: "input/altimetry/l2p/{hemisphere}/cryosat2"
-  sentinel3a: "input/altimetry/l2p/{hemisphere}/sentinel3a"
-  sentinel3b: "input/altimetry/l2p/{hemisphere}/sentinel3b"
+  ers2: "input_data/altimetry/l2p/{hemisphere}/ers2"
+  envisat: "input_data/altimetry/l2p/{hemisphere}/envisat"
+  cryosat2: "input_data/altimetry/l2p/{hemisphere}/cryosat2"
+  sentinel3a: "input_data/altimetry/l2p/{hemisphere}/sentinel3a"
+  sentinel3b: "input_data/altimetry/l2p/{hemisphere}/sentinel3b"
   icesat2:
-    total_freeboard: "input/icesat2/ATL10.005"
-    sea_ice_thickness: "input/icesat2/is2sitdata"
+    total_freeboard: "input_data/icesat2/ATL10.005"
+    sea_ice_thickness: "input_data/icesat2/ATL11.005"
 
 # Run-specific subdirectories are created automatically.
 output_dir:
-  trajectories: "output/v{version}/trajectories/{sensor}"
-  gridded_data: "output/v{version}/l3c/{sensor}"
-  volume: "output/v{version}/volume/{sensor}"
+  trajectories: "output_data/v{version}/trajectories/{sensor}"
+  gridded_data: "output_data/v{version}/l3c/{sensor}"
+  volume: "output_data/v{version}/volume/{sensor}"
   visu: "visualization/v{version}/{sensor}"
 
 # Product keys selected under options must have a directory here.
 auxiliary:
   # Supported readers: osi450, osi430, c3s.
   ice_conc:
-    osi450: "input/ice_conc/osi450"
-    osi430: "input/ice_conc/osi430"
-    # c3s: "input/ice_conc/c3s"
+    osi450: "input_data/ice_conc/osi450"
+    osi430: "input_data/ice_conc/osi430"
+    # c3s: "input_data/ice_conc/c3s"
 
   # Supported readers: osi455, osi435, osi405.
   ice_drift:
-    osi455: "input/ice_drift/osi455"
-    osi435: "input/ice_drift/osi435"
-    osi405: "input/ice_drift/osi405"
+    osi455: "input_data/ice_drift/osi455"
+    osi435: "input_data/ice_drift/osi435"
+    osi405: "input_data/ice_drift/osi405"
 
   reg_mask:
-    nh: "input/auxiliary/region_mask/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc"
-    sh: "input/auxiliary/region_mask/NSIDC-0780_SeaIceRegions_EASE2-S12.5km_v1.0.nc"
+    nh: "input_data/auxiliary/region_mask/NSIDC-0780_SeaIceRegions_EASE2-N12.5km_v1.0.nc"
+    sh: "input_data/auxiliary/region_mask/NSIDC-0780_SeaIceRegions_EASE2-S12.5km_v1.0.nc"
 
   # ERA5 is currently the supported air-temperature product.
   t2m:
     era5:
-      nh: "input/auxiliary/air_temperature/ERA5/nh"
-      sh: "input/auxiliary/air_temperature/ERA5/sh"
+      nh: "input_data/auxiliary/air_temperature/ERA5/nh"
+      sh: "input_data/auxiliary/air_temperature/ERA5/sh"
 
   ohf:
-    sose: "input/auxiliary/ocean_heat_flux/SOSE/OHF_compute/iter156/5DAY/DAILY"
+    sose: "input_data/auxiliary/ocean_heat_flux/SOSE/OHF_compute/iter156/5DAY/DAILY"
 
   # Keep the shapefile's .shx, .dbf, and .prj files beside the .shp file.
-  land_mask: "input/auxiliary/land_mask/ne_50m_land.shp"
+  land_mask: "input_data/auxiliary/land_mask/ne_50m_land.shp"
 
 # Remote URLs are not resolved relative to base_dir.
 remote_dir:
   altimetry:
     # Optional shared repository URL, paired with input_dir.multi-mission.
     # multi-mission: "<shared CCI L2P repository URL>"
+    ers2: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/ers2"
     envisat: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/envisat"
     cryosat2: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/cryosat2"
     sentinel3a: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/sentinel3a"

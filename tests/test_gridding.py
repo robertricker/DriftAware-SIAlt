@@ -32,6 +32,28 @@ def test_count_weighting_uses_available_missions_per_grid_cell():
     assert result.iloc[1]['value'] == pytest.approx(4.0)
 
 
+def test_count_weighting_supports_ers2():
+    grid = gpd.GeoDataFrame(
+        geometry=[box(0, 0, 10, 10)], crs='EPSG:6931')
+    data = gpd.GeoDataFrame(
+        {
+            'value': [0.0, 10.0],
+            'ers2_cnt': [1.0, 9.0],
+        },
+        geometry=[Point(2, 2), Point(4, 4)],
+        crs=grid.crs)
+
+    result = grid_data(
+        data,
+        grid,
+        ['value', 'ers2_cnt'],
+        ['value', 'ers2_cnt'],
+        agg_mode=['weighted_mean'],
+        weight_var='counts')
+
+    assert result.iloc[0]['value'] == pytest.approx(7.5)
+
+
 @pytest.mark.parametrize('weight_var', ['dt_days', ['dt_days'], None])
 def test_dt_days_weighting_is_symmetric_and_favours_day_zero(weight_var):
     grid = gpd.GeoDataFrame(
