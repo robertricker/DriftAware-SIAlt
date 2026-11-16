@@ -22,6 +22,8 @@ from driftaware_sialt.products.sea_ice_thickness import (
     SeaIceThicknessMultiProducts,
 )
 
+from driftaware_sialt.stacking.periods import year_stacking_period
+
 
 ONE_DAY = dt.timedelta(days=1)
 TIMEOUT_SECONDS = 60
@@ -102,9 +104,13 @@ def _stacking_periods(config: Mapping) -> List[Tuple[dt.datetime, int]]:
     if length == "season":
         return [(start, _season_length(start, hemisphere))]
 
+    if length == "year":
+        period = year_stacking_period(start, stacking["t_window"], hemisphere)
+        return [(period.start, period.length)]
+
     if length != "all":
         raise ValueError(
-            "stacking.t_length must be an integer, 'season', or 'all'")
+            "stacking.t_length must be an integer, 'season', 'year', or 'all'")
 
     sensors = config["options"]["sensor"]
     file_index = SeaIceThicknessMultiProducts(

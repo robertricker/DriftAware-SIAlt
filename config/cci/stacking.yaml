@@ -11,7 +11,8 @@ stacking:
   # First target date, formatted YYYY-MM-DD HH:MM:SS.
   t_start: 2018-10-01 00:00:00
 
-  # Integer days, "season", or "all" for every available season.
+  # Integer days, "season", "year" (SH only), or "all" for every available season.
+  # "year": output t_start through Dec 31; process t_window - 1 extra days per side.
   t_length: 12
 
   # Maximum stacking/advection window in days. Default is 16.

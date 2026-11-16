@@ -7,6 +7,7 @@ import os
 import re
 import multiprocessing as mp
 import json
+from copy import deepcopy
 from numbers import Real
 from loguru import logger
 from shapely.geometry import MultiPoint
@@ -20,6 +21,7 @@ from driftaware_sialt.products.sea_ice_thickness import SeaIceThicknessMultiProd
 from driftaware_sialt.products.sea_ice_thickness_climatology import SeaIceThicknessClimProducts
 from driftaware_sialt.products.selection import select_product
 from driftaware_sialt.stacking.stack_structure import StackStructure
+from driftaware_sialt.stacking.periods import year_stacking_period
 from driftaware_sialt.stacking.drift_aware_processor import DriftAwareProcessor
 from driftaware_sialt.stacking.drift_aware_uncertainties import get_neighbor_dyn_range
 from driftaware_sialt.stacking.interpolate_growth import interpolate_growth, get_land_area_correction
@@ -129,7 +131,7 @@ def merge_direction_stacks(config, grid, growth_cell_width, cell_width, list_f, 
         data, os.path.join(csv_dir, outfile), config, source_products)
 
 
-def process_direction(config, direct, grid):
+def process_direction(config, direct, grid, output_days=None):
     init_logger(config)
     m = 0
     dt1d = datetime.timedelta(days=1)
@@ -362,6 +364,16 @@ def process_direction(config, direct, grid):
             if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
                 m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, ohf_product, stk_opt['t_window'], d_sgn, day_range[0], thermo_model)
 
+        if output_days is not None and i not in output_days:
+            # Advection above has passed these observations to the next day.
+            # Discard the buffer row without serializing a non-target date.
+            if 'icesat2' in sensor:
+                for beam in master:
+                    del master[beam][i]
+            else:
+                del master[i]
+            continue
+
         gdf_final = processor.concat_gdfs(i, m)
         gdf_final[target_var+'_drift_unc'] = np.sqrt(gdf_final[target_var+'_drift_unc'])
         gdf_final = gdf_final.drop(columns=['xu', 'yu'])
@@ -391,6 +403,14 @@ def process_direction(config, direct, grid):
 
 
 def run(config):
+    year_period = None
+    if config['stacking']['t_length'] == 'year':
+        year_period = year_stacking_period(
+            config['stacking']['t_start'], config['stacking']['t_window'],
+            config['options']['hemisphere'])
+        # Keep the user's target dates intact when expanding the working range.
+        config = deepcopy(config)
+
     sensor = config["options"]["sensor"]
     stk_opt = config['stacking']
     multiproc = stk_opt['multiproc']
@@ -432,8 +452,18 @@ def run(config):
     for yr in years:
         config['output_dir']['trajectories'] = create_out_dir(config, csv_dir, cell_width)
         stk_opt['t_start'] = stk_opt['t_start'].replace(year=yr)
+        output_days = None
 
-        if t_length in ['season', 'all']:
+        if t_length == 'year':
+            stk_opt['t_start'] = year_period.start
+            stk_opt['t_length'] = year_period.length
+            output_days = year_period.output_days
+            logger.info(
+                f"Year outputs: {stk_opt['t_start'] + datetime.timedelta(days=output_days.start):%Y-%m-%d} "
+                f"through {stk_opt['t_start'] + datetime.timedelta(days=output_days.stop - 1):%Y-%m-%d}; "
+                f"padded processing: {stk_opt['t_start']:%Y-%m-%d} "
+                f"through {stk_opt['t_start'] + datetime.timedelta(days=stk_opt['t_length'] - 1):%Y-%m-%d}")
+        elif t_length in ['season', 'all']:
             if config["options"]["hemisphere"] == 'nh':
                 stk_opt['t_length'] = (
                         datetime.datetime(stk_opt['t_start'].year + 1, 5, 1, 0, 0) - stk_opt['t_start']).days
@@ -445,27 +475,29 @@ def run(config):
             logger.info('start multiprocessing')
             pool = mp.Pool(2)
             for mode in stk_opt['mode']:
-                pool.apply_async(process_direction, args=(config, mode, grid))
+                pool.apply_async(
+                    process_direction, args=(config, mode, grid, output_days))
             pool.close()
             pool.join()
         else:
             for mode in stk_opt['mode']:
-                process_direction(config, mode, grid)
+                process_direction(config, mode, grid, output_days)
 
         logger.info('start merging forward and reverse stacks')
 
         list_f = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_F-*.csv')))
         list_r = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_R-*.csv')))
+        merge_days = output_days if output_days is not None else range(stk_opt['t_length'])
         if multiproc:
             pool = mp.Pool(stk_opt['num_cpus'])
-            for j in range(stk_opt['t_length']):
+            for j in merge_days:
                 pool.apply_async(
                     merge_direction_stacks, args=(
                         config, growth_grid, growth_cell_width, cell_width, list_f, list_r, j))
             pool.close()
             pool.join()
         else:
-            for j in range(stk_opt['t_length']):
+            for j in merge_days:
                 merge_direction_stacks(
                     config, growth_grid, growth_cell_width, cell_width,
                     list_f, list_r, j)

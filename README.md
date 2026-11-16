@@ -117,10 +117,22 @@ placed in `YYYY/MM` subdirectories and become visible to the existing recursive
 readers. A partial transfer is never exposed as an input file.
 
 Stacking direction `f` means forward, `r` means reverse, and `fr` runs and merges
-both directions. `t_length` accepts an integer number of days, `season`, or
-`all`. A season ends on 1 May in the Northern Hemisphere and 1 November in the
+both directions. `t_length` accepts an integer number of days, `season`, `year`,
+or `all`. A season ends on 1 May in the Northern Hemisphere and 1 November in the
 Southern Hemisphere; `all` processes that season for every year available from
-any configured sensor, starting with the year in `t_start`. Grid bounds use
+any configured sensor, starting with the year in `t_start`.
+
+For the Southern Hemisphere, `t_length: year` outputs from `t_start` through
+31 December of that year. Processing includes `t_window - 1` extra days before
+`t_start` and after 31 December so boundary outputs have the full temporal window
+when supporting inputs are available. Input synchronization includes these buffer
+dates, but no trajectory CSVs are written for them. For example, starting on
+1 January 2018 with `t_window: 5` processes 28 December 2017 through 4 January
+2019 and outputs only 1 January through 31 December 2018. Use `mode: fr` for both
+past and future observations. The `season`, `all`, and integer modes retain their
+existing date ranges without this padding.
+
+Grid bounds use
 `[xmin, ymin, xmax, ymax]` in metres in `options.out_epsg`; `dim` is the number
 of cells along each axis.
 
