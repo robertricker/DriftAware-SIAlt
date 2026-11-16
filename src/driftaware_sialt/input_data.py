@@ -19,9 +19,10 @@ from driftaware_sialt.products.sea_ice_concentration import (
 )
 from driftaware_sialt.products.sea_ice_drift import SeaIceDriftProducts
 from driftaware_sialt.products.sea_ice_thickness import (
+    MULTI_MISSION_SOURCE,
     SeaIceThicknessMultiProducts,
+    altimetry_source,
 )
-
 from driftaware_sialt.stacking.periods import year_stacking_period
 
 
@@ -437,6 +438,13 @@ def _altimetry_spec(
     target_variable: str,
     hemisphere: str,
 ) -> ProductFileSpec:
+    if sensor == MULTI_MISSION_SOURCE:
+        return ProductFileSpec(
+            product_id=sensor,
+            hemisphere_token=f'-{hemisphere}-',
+            date_str='{8}',
+            date_pattern='%Y%m%d',
+        )
     product = SeaIceThicknessMultiProducts(
         hem=hemisphere,
         sensor=[sensor],
@@ -456,7 +464,7 @@ def sync_required_input_data(config: Mapping) -> InputDataReport:
 
     This is a download-only sync: local files that are not present remotely are
     retained. Auxiliary products are limited to the configured priority lists,
-    and altimetry is limited to ``options.sensor``.
+    and altimetry sources follow ``options.sensor`` and ``input_dir``.
     """
     if config.get("stage") != "stacking":
         return InputDataReport()
@@ -499,7 +507,10 @@ def sync_required_input_data(config: Mapping) -> InputDataReport:
             )
 
     altimetry_remote = remote.get("altimetry", {})
-    for sensor in options["sensor"]:
+    sources = dict.fromkeys(
+        altimetry_source(sensor, config["input_dir"])
+        for sensor in options["sensor"])
+    for sensor in sources:
         local_directory = config["input_dir"][sensor]
         if isinstance(local_directory, Mapping):
             # No plain FTP repository is currently configured for ICESat-2.

@@ -281,4 +281,4 @@ class DriftAwareProcessor:
                 if len(self.master[gdf_array_index][j]) != 0:
                     gdf_list.append(self.master[gdf_array_index][j])
                     del self.master[gdf_array_index][j]
-        return pd.concat(gdf_list).reset_index(drop=True)
+        return pd.concat(gdf_list).reset_index(drop=True) if gdf_list else pd.DataFrame()

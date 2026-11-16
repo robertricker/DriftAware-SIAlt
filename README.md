@@ -83,6 +83,31 @@ paths must point to the corresponding hemisphere. Additional source variables,
 such as `snow_depth`, are listed under `options.add_variable`; use `[]` when none
 are required.
 
+Both mission-specific CCI L2P files and shared daily files containing a
+per-observation `platform` variable are supported. Existing configurations
+continue to use their mission-specific input paths. To use shared files, add:
+
+```yaml
+input_dir:
+  multi-mission: "input_data/altimetry/l2p/{hemisphere}/multi-mission"
+options:
+  sensor: [cryosat2, sentinel3a, sentinel3b]
+```
+
+When configured, `multi-mission` supplies all selected CCI missions instead of
+their individual directories; ICESat-2 retains its separate input paths. Each
+shared file is read once per processing date and observations are selected using
+the `platform` variable's `flag_values` and `flag_meanings`. Mission labels and
+counts are retained for stacking and weighting. Shared files must include these
+platform flags. To return to mission-specific directories, remove or comment out
+`input_dir.multi-mission`.
+
+For downloads, optionally configure `remote_dir.altimetry.multi-mission` with the
+shared repository URL. Synchronization downloads each daily file once regardless
+of the number of selected missions. Without that URL the shared source remains
+local-only; its remote contents are downloaded as complete files and mission
+selection occurs when reading them.
+
 Sea-ice concentration and drift products are listed in priority order. The first
 exact match is selected. When no exact match exists, the closest file from any
 configured product is used if it is no more than seven days away. Supported

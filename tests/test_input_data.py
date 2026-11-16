@@ -65,6 +65,49 @@ def test_required_input_dates_follow_stacking_direction(tmp_path):
     ]
 
 
+def test_shared_altimetry_is_synchronized_once_for_all_selected_missions(tmp_path, monkeypatch):
+    config = _config(tmp_path)
+    config['options']['sensor'] = ['cryosat2', 'sentinel3a', 'sentinel3b']
+    config['input_dir']['multi-mission'] = str(tmp_path / 'shared')
+    config['remote_dir']['altimetry']['multi-mission'] = 'ftp://example.test/shared'
+    config['remote_dir']['ice_conc'] = {}
+    config['remote_dir']['ice_drift'] = {}
+    filename = 'ESACCI-SEAICE-L2P-SITHICK-NH-20211001-fv5p0.nc'
+    listed, downloaded = [], []
+
+    def listing(url, timeout):
+        listed.append(url)
+        return [url + '/' + filename] if url.endswith('/2021/10') else []
+
+    def download(url, destination, timeout):
+        downloaded.append(url)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(b'fixture')
+
+    monkeypatch.setattr(input_data, '_list_ftp_directory', listing)
+    monkeypatch.setattr(input_data, '_download_file', download)
+    report = input_data.sync_required_input_data(config)
+
+    assert len(downloaded) == 1
+    assert len(listed) == len(set(listed))
+    assert all('/shared/' in url for url in listed)
+    assert [key for key in report.products if key.startswith('altimetry.')] == ['altimetry.multi-mission']
+    assert report.downloaded == [tmp_path / 'shared/2021/10' / filename]
+    second = input_data.sync_required_input_data(config)
+    assert second.downloaded == []
+    assert second.products['altimetry.multi-mission'].already_local == 1
+
+
+def test_shared_local_only_source_does_not_use_legacy_remote(tmp_path):
+    config = _config(tmp_path)
+    config['input_dir'] = {'multi-mission': str(tmp_path / 'shared')}
+    config['remote_dir']['ice_conc'] = {}
+    config['remote_dir']['ice_drift'] = {}
+    report = input_data.sync_required_input_data(config)
+    assert not report.products['altimetry.multi-mission'].remote_configured
+    assert report.downloaded == []
+
+
 def test_every_missing_remote_file_in_date_range_is_downloaded(
     tmp_path,
     monkeypatch,

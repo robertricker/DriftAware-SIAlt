@@ -273,13 +273,17 @@ def process_direction(config, direct, grid, output_days=None):
             for sensor_name in sensor_k
         }
         # Build the baseline so the line that corresponds to the actual time, without any advection needed
-        
+        if sensor_k and sic_product:
+            sit_product.get_product(sensor_k)
+            present = set(sit_product.product['sensor'])
+            sensor_k = [name for name in sensor_k if name in present]
+            empty_lists = [name for name in sensor if name not in present]
+
         if not sensor_k:
             logger.warning(t0.strftime("%Y%m%d") + ': Missing sea ice thickness files for: ' + str(empty_lists) + '. Skipping this date.')
         if sensor_k and sic_product:
             logger.info(t0.strftime("%Y%m%d") + ': altimetry files (n): ' + str(file_counts))
             logger.info(t0.strftime("%Y%m%d") + ': ice_conc file day0: ' + os.path.basename(sic_product.target_files))
-            sit_product.get_product(sensor_k)
             sic_product.ice_conc = sic_product.get_ice_concentration(sic_product.target_files)
 
             #if ICESAT-2, then we need to filter out the total freeboard (snow depth purposes)
@@ -375,6 +379,9 @@ def process_direction(config, direct, grid, output_days=None):
             continue
 
         gdf_final = processor.concat_gdfs(i, m)
+        if gdf_final.empty:
+            logger.warning(t0.strftime('%Y%m%d') + ': No usable observations in the stack. Skipping output.')
+            continue
         gdf_final[target_var+'_drift_unc'] = np.sqrt(gdf_final[target_var+'_drift_unc'])
         gdf_final = gdf_final.drop(columns=['xu', 'yu'])
         gdf_final["geometry"] = gdf_final["geometry"].apply(lambda gdf: MultiPoint(gdf))

@@ -7,6 +7,9 @@ version: 1.1
 
 # Supported sensors: envisat, cryosat2, sentinel3a, sentinel3b, icesat2.
 input_dir:
+  # Optional shared daily CCI files; when enabled, replaces the CCI mission paths below.
+  # options.sensor still selects individual missions using the platform variable.
+  # multi-mission: "input_data/altimetry/l2p/{hemisphere}/multi-mission"
   envisat: "input/altimetry/l2p/{hemisphere}/envisat"
   cryosat2: "input/altimetry/l2p/{hemisphere}/cryosat2"
   sentinel3a: "input/altimetry/l2p/{hemisphere}/sentinel3a"
@@ -55,6 +58,8 @@ auxiliary:
 # Remote URLs are not resolved relative to base_dir.
 remote_dir:
   altimetry:
+    # Optional shared repository URL, paired with input_dir.multi-mission.
+    # multi-mission: "<shared CCI L2P repository URL>"
     envisat: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/envisat"
     cryosat2: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/cryosat2"
     sentinel3a: "ftp://ftp.awi.de/sea_ice/projects/cci/crdp/v4p0/l2p_release/{hemisphere}/sentinel3a"

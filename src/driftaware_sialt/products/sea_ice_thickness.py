@@ -10,6 +10,22 @@ import os
 from astropy.time import Time
 
 
+CCI_L2P_SENSORS = frozenset({
+    'envisat',
+    'cryosat2',
+    'sentinel3a',
+    'sentinel3b',
+})
+MULTI_MISSION_SOURCE = 'multi-mission'
+
+
+def altimetry_source(sensor, directories):
+    """Select the shared CCI repository when explicitly configured."""
+    if sensor in CCI_L2P_SENSORS and directories.get(MULTI_MISSION_SOURCE):
+        return MULTI_MISSION_SOURCE
+    return sensor
+
+
 class SeaIceThicknessMultiProducts:
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -134,6 +150,8 @@ class SeaIceThicknessMultiProducts:
         self.target_files = {key: None for key in self.config}
         self.product_dict = {key: None for key in self.config}
         self.product = None
+        self._cci_file_cache = {}
+        self._shared_files = set()
 
     @staticmethod
     def read_atl10(filename, attributes=False):
@@ -355,7 +373,21 @@ class SeaIceThicknessMultiProducts:
         return gdf_final.reset_index(drop=True)
 
     def cci_l2p_to_gdf(self, sens):
-        with netCDF4.Dataset(self.target_files[sens][0]) as data:
+        frames = []
+        for filename in dict.fromkeys(map(os.path.realpath, self.target_files[sens])):
+            if filename not in self._cci_file_cache:
+                self._cci_file_cache[filename] = self._read_cci_l2p(filename)
+            frame = self._cci_file_cache[filename]
+            if 'platform' in frame:
+                frame = frame.loc[frame['platform'] == sens]
+            frames.append(frame)
+        return pd.concat(frames, ignore_index=True)
+
+    def _read_cci_l2p(self, filename):
+        """Read and project a daily file once, preserving observation platforms."""
+        with netCDF4.Dataset(filename) as data:
+            if filename in self._shared_files and 'platform' not in data.variables:
+                raise ValueError(f'multi-mission file has no platform variable: {filename}')
             latitude_field = "lat" if "lat" in data.variables else "latitude"
             longitude_field = "lon" if "lon" in data.variables else "longitude"
             keep = np.ma.filled(data["flag_miz"][:] != 2, True)
@@ -378,17 +410,41 @@ class SeaIceThicknessMultiProducts:
                 'snow_depth': selected_values("snow_depth"),
                 'time': selected_values("time")
             }
+            if 'platform' in data.variables:
+                platform = data['platform']
+                if not all(name in platform.ncattrs() for name in ('flag_values', 'flag_meanings')):
+                    raise ValueError(f'platform requires flag_values and flag_meanings: {filename}')
+                values = np.atleast_1d(platform.flag_values)
+                meanings = platform.flag_meanings.lower().split()
+                if len(values) != len(meanings) or len(set(values)) != len(values):
+                    raise ValueError(f'invalid platform flag metadata: {filename}')
+                flags = np.ma.asarray(platform[:])
+                names = pd.Series(np.ma.getdata(flags)).map(dict(zip(values, meanings)))
+                names.loc[np.ma.getmaskarray(flags)] = None
+                d['platform'] = names.to_numpy()[keep]
         df = pd.DataFrame(data=d)
         df = df.dropna(subset=[self.target_var])
         gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs=4326)
         return gdf.to_crs(self.out_epsg)
 
     def get_file_list(self, directory):
+        repositories = {}
+        self._shared_files = set()
         for sens in self.sensor:
             hem = self.config[sens][self.target_var]['hem_' + self.hem]
+            source = altimetry_source(sens, directory)
             if sens != 'icesat2':
-                file_list = [file_path for file_path in glob.iglob(os.path.join(directory[sens], "**", "*"), recursive=True)
-                            if hem.lower() in os.path.basename(file_path.lower()) ]
+                root = directory[source]
+                if root not in repositories:
+                    repositories[root] = sorted({
+                        os.path.realpath(path): path
+                        for path in glob.iglob(os.path.join(root, '**', '*'), recursive=True)
+                        if os.path.isfile(path) and path.lower().endswith('.nc')
+                        and hem.lower() in os.path.basename(path).lower()
+                    }.values())
+                file_list = repositories[root]
+                if source == MULTI_MISSION_SOURCE:
+                    self._shared_files.update(map(os.path.realpath, file_list))
             else:
                 file_list = [file_path for file_path in glob.iglob(os.path.join(directory[sens][self.target_var], "**", "*"), recursive=True)
                             if hem.lower() in os.path.basename(file_path.lower()) ]
@@ -401,13 +457,14 @@ class SeaIceThicknessMultiProducts:
             date_pt = config['date_pt']
 
             dates = [
-                datetime.datetime.strptime(re.search(r'\d' + date_str, file).group(), date_pt)
+                datetime.datetime.strptime(re.search(r'\d' + date_str, os.path.basename(file)).group(), date_pt)
                 for file in self.file_list[sens]
                 ]
         #test if it requires to be unique
             self.file_dates[sens] = dates
 
     def get_target_files(self, t0, t1):
+        self._cci_file_cache.clear()
         for sens in self.sensor:
             dates = self.file_dates[sens]
             file_list = self.file_list[sens]
@@ -417,6 +474,7 @@ class SeaIceThicknessMultiProducts:
         # Products are date-scoped.  Do not retain a mission loaded for an
         # earlier date when that mission has no file in the current interval.
         self.product_dict = {key: None for key in self.config}
+        self._cci_file_cache.clear()
         for sens in sensor:
             key = (sens, self.target_var)
             product_temp = self.function_map[key](sens)
@@ -432,6 +490,7 @@ class SeaIceThicknessMultiProducts:
         for sens in sensor:
             product[sens] = product[sens].fillna(0)
         self.product = product
+        self._cci_file_cache.clear()
         
 
         
