@@ -195,8 +195,10 @@ def test_stacking_handles_a_day_without_any_selected_platform(tmp_path, monkeypa
         'input_dir': {'multi-mission': str(root)},
         'output_dir': {'trajectories': str(output)},
         'auxiliary': {'ice_conc': {}, 'ice_drift': {}},
+        'run': {'output_start': '2020-04-01', 'output_end': '2020-04-02',
+                'processing_start': '2020-04-01', 'processing_end': '2020-04-02'},
         'stacking': {
-            't_start': dt.datetime(2020, 4, 1), 't_length': 2, 't_window': 1,
+            't_window': 1,
             'mode': 'f', 'filename_prefix': 'ESACCI-SEAICE',
             'hist': {'n_bins': 10, 'range': {'thickness': [0, 10]}},
             'thermo_change': {'enabled': False},

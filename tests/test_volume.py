@@ -21,7 +21,7 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_volume_configuration_resolves_required_settings():
-    config = load_config(ROOT / "config/cci/volume.yaml")
+    config = load_config(ROOT / "config/cci/volume.yaml", hemisphere='nh', sensors=['cryosat2'])
 
     assert config["stage"] == "volume"
     assert Path(config["output_dir"]["volume"]).is_absolute()

@@ -21,7 +21,7 @@ from driftaware_sialt.products.sea_ice_thickness import SeaIceThicknessMultiProd
 from driftaware_sialt.products.sea_ice_thickness_climatology import SeaIceThicknessClimProducts
 from driftaware_sialt.products.selection import select_product
 from driftaware_sialt.stacking.stack_structure import StackStructure
-from driftaware_sialt.stacking.periods import year_stacking_period
+from driftaware_sialt.stacking.periods import RunPeriod
 from driftaware_sialt.stacking.drift_aware_processor import DriftAwareProcessor
 from driftaware_sialt.stacking.drift_aware_uncertainties import get_neighbor_dyn_range
 from driftaware_sialt.stacking.interpolate_growth import interpolate_growth, get_land_area_correction
@@ -70,7 +70,7 @@ def merge_direction_stacks(config, grid, growth_cell_width, cell_width, list_f, 
     csv_dir = config['output_dir']['trajectories']
     out_epsg = config['options']['out_epsg']
     stk_opt = config['stacking']
-    start_date = stk_opt['t_start']
+    start_date = RunPeriod.from_config(config).start
     growth_range = stk_opt['growth_estimation']['growth_range']["freeboard" if "free" in target_var else "thickness"]
     min_n_tps = stk_opt['growth_estimation']['min_n_tiepoints']
     cday = start_date + datetime.timedelta(days=j)
@@ -143,10 +143,11 @@ def process_direction(config, direct, grid, output_days=None):
     out_epsg = config["options"]["out_epsg"]
     # declare stacking processing options
     stk_opt = config['stacking']
+    period = RunPeriod.from_config(config)
     hist_n_bins = stk_opt['hist']['n_bins']
     hist_range = stk_opt['hist']['range']["freeboard" if "freeboard" in target_var else "thickness"]
     # define data structure
-    stack = StackStructure(sensor, stk_opt['t_window'], stk_opt['t_length'])
+    stack = StackStructure(sensor, stk_opt['t_window'], period.length)
     master, scheme = stack.get_master(), stack.get_scheme()
 
     # initialize data objects
@@ -241,12 +242,12 @@ def process_direction(config, direct, grid, output_days=None):
         d_sgn = 1
         d_sgn_drift = 1
         d_sgn_t2m = 0
-        day_range = range(0, stk_opt['t_length'], d_sgn)
+        day_range = range(0, period.length, d_sgn)
     else:
         d_sgn = -1
         d_sgn_drift = 0
         d_sgn_t2m = -1
-        day_range = range(stk_opt['t_length'] - 1, -1, d_sgn)
+        day_range = range(period.length - 1, -1, d_sgn)
 
     # initialize drift aware processor
     processor = DriftAwareProcessor(sit_product, master=master, scheme=scheme, grid=grid)
@@ -256,8 +257,8 @@ def process_direction(config, direct, grid, output_days=None):
 
         processor.i = i 
         sit_clim_product = None
-        t0 = stk_opt['t_start'] + datetime.timedelta(days=i) 
-        t1 = stk_opt['t_start'] + datetime.timedelta(days=i + 1) 
+        t0 = period.start + datetime.timedelta(days=i)
+        t1 = period.start + datetime.timedelta(days=i + 1)
         sit_product.get_target_files(t0, t1) 
 
         sic_product = select_aux_product(
@@ -365,7 +366,7 @@ def process_direction(config, direct, grid, output_days=None):
                         os.path.basename(ohf_product.target_files))
                 
             # check if the date is still in the range
-            if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < stk_opt['t_length'] - 1):
+            if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < period.length - 1):
                 m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, ohf_product, stk_opt['t_window'], d_sgn, day_range[0], thermo_model)
 
         if output_days is not None and i not in output_days:
@@ -410,14 +411,8 @@ def process_direction(config, direct, grid, output_days=None):
 
 
 def run(config):
-    year_period = None
-    if config['stacking']['t_length'] == 'year':
-        year_period = year_stacking_period(
-            config['stacking']['t_start'], config['stacking']['t_window'],
-            config['options']['hemisphere'])
-        # Keep the user's target dates intact when expanding the working range.
-        config = deepcopy(config)
-
+    config = deepcopy(config)
+    period = RunPeriod.from_config(config)
     sensor = config["options"]["sensor"]
     stk_opt = config['stacking']
     multiproc = stk_opt['multiproc']
@@ -436,75 +431,30 @@ def run(config):
 
     logger.info('grid cell width of the stacking parcel grid: ' + str(cell_width) + ' m')
 
-    if stk_opt['t_length'] == 'all':
-        file_index = SeaIceThicknessMultiProducts(
-            hem=config['options']['hemisphere'],
-            sensor=sensor,
-            target_var=config['options']['target_variable'])
-        file_index.get_file_list(config['input_dir'])
-        file_index.get_file_dates()
-        years = sorted({
-            date.year
-            for sens in sensor
-            for date in file_index.file_dates[sens]
-            if date.year >= stk_opt['t_start'].year
-        })
-        if not years:
-            raise FileNotFoundError(
-                'no altimetry files found for t_length=all')
+    config['output_dir']['trajectories'] = create_out_dir(config, csv_dir, cell_width)
+    logger.info(f'Outputs: {period.output_start} through {period.output_end}; '
+                f'processing: {period.processing_start} through {period.processing_end}')
+    if multiproc:
+        with mp.Pool(min(2, stk_opt['num_cpus'])) as pool:
+            tasks = [pool.apply_async(process_direction, (config, mode, grid, period.output_days))
+                     for mode in stk_opt['mode']]
+            for task in tasks:
+                task.get()
     else:
-        years = [stk_opt['t_start'].year]
+        for mode in stk_opt['mode']:
+            process_direction(config, mode, grid, period.output_days)
 
-    t_length = stk_opt['t_length']
-    for yr in years:
-        config['output_dir']['trajectories'] = create_out_dir(config, csv_dir, cell_width)
-        stk_opt['t_start'] = stk_opt['t_start'].replace(year=yr)
-        output_days = None
-
-        if t_length == 'year':
-            stk_opt['t_start'] = year_period.start
-            stk_opt['t_length'] = year_period.length
-            output_days = year_period.output_days
-            logger.info(
-                f"Year outputs: {stk_opt['t_start'] + datetime.timedelta(days=output_days.start):%Y-%m-%d} "
-                f"through {stk_opt['t_start'] + datetime.timedelta(days=output_days.stop - 1):%Y-%m-%d}; "
-                f"padded processing: {stk_opt['t_start']:%Y-%m-%d} "
-                f"through {stk_opt['t_start'] + datetime.timedelta(days=stk_opt['t_length'] - 1):%Y-%m-%d}")
-        elif t_length in ['season', 'all']:
-            if config["options"]["hemisphere"] == 'nh':
-                stk_opt['t_length'] = (
-                        datetime.datetime(stk_opt['t_start'].year + 1, 5, 1, 0, 0) - stk_opt['t_start']).days
-            elif config["options"]["hemisphere"] == 'sh':
-                stk_opt['t_length'] = (
-                        datetime.datetime(stk_opt['t_start'].year, 11, 1, 0, 0) - stk_opt['t_start']).days
-
-        if multiproc:
-            logger.info('start multiprocessing')
-            pool = mp.Pool(2)
-            for mode in stk_opt['mode']:
-                pool.apply_async(
-                    process_direction, args=(config, mode, grid, output_days))
-            pool.close()
-            pool.join()
-        else:
-            for mode in stk_opt['mode']:
-                process_direction(config, mode, grid, output_days)
-
-        logger.info('start merging forward and reverse stacks')
-
-        list_f = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_F-*.csv')))
-        list_r = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], f'*_R-*.csv')))
-        merge_days = output_days if output_days is not None else range(stk_opt['t_length'])
-        if multiproc:
-            pool = mp.Pool(stk_opt['num_cpus'])
-            for j in merge_days:
-                pool.apply_async(
-                    merge_direction_stacks, args=(
-                        config, growth_grid, growth_cell_width, cell_width, list_f, list_r, j))
-            pool.close()
-            pool.join()
-        else:
-            for j in merge_days:
-                merge_direction_stacks(
-                    config, growth_grid, growth_cell_width, cell_width,
-                    list_f, list_r, j)
+    logger.info('start merging forward and reverse stacks')
+    list_f = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], '*_F-*.csv')))
+    list_r = sorted(glob.glob(os.path.join(config['output_dir']['trajectories'], '*_R-*.csv')))
+    if multiproc:
+        with mp.Pool(stk_opt['num_cpus']) as pool:
+            tasks = [pool.apply_async(merge_direction_stacks, (
+                config, growth_grid, growth_cell_width, cell_width, list_f, list_r, j))
+                for j in period.output_days]
+            for task in tasks:
+                task.get()
+    else:
+        for j in period.output_days:
+            merge_direction_stacks(config, growth_grid, growth_cell_width, cell_width,
+                                   list_f, list_r, j)

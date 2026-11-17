@@ -42,10 +42,11 @@ Configuration is split by responsibility:
 ```text
 config/
 └── cci/
-    ├── common.yaml          # repositories, products, sensor, target, hemisphere
+    ├── common.yaml          # repositories, target variable, auxiliary products
     ├── stacking.yaml        # drift-aware trajectory processing
     ├── gridding.yaml        # trajectory-to-NetCDF processing
-    └── visualization.yaml   # plots and optional GIF generation
+    ├── visualization.yaml   # plots and optional GIF generation
+    └── volume.yaml          # volume and mass calculation
 ```
 
 Each stage file inherits `common.yaml` through its relative `extends` entry. The
@@ -62,8 +63,11 @@ stacking:
   t_window: 16
 ```
 
-The shared `options` block in `common.yaml` now contains only scientific options
-used across stages; it no longer contains `proc_step` or `proc_step_options`.
+YAML files contain paths and scientific settings. Hemisphere, sensors, and dates
+are selected on the command line. NH automatically uses EPSG:6931 and SH uses
+EPSG:6932. Remove `sensor`, `hemisphere`, and `out_epsg` from the shared template,
+and remove the obsolete `stacking.t_start`, `stacking.t_length`, and
+`gridding.csv_dir` settings from existing HPC configuration copies.
 
 ### Configuration reference
 
@@ -82,7 +86,7 @@ Supported sensor and target-variable combinations are:
   `sea_ice_freeboard`, or `radar_freeboard`.
 - `icesat2`: `total_freeboard` or `sea_ice_thickness`.
 
-Use hemisphere `nh` with `EPSG:6931`, and `sh` with `EPSG:6932`. Altimetry input
+Select hemisphere with `--hemisphere nh` or `--hemisphere sh`. Altimetry input
 paths must point to the corresponding hemisphere. Additional source variables,
 such as `snow_depth`, are listed under `options.add_variable`; use `[]` when none
 are required.
@@ -94,9 +98,9 @@ continue to use their mission-specific input paths. To use shared files, add:
 ```yaml
 input_dir:
   multi-mission: "input_data/altimetry/l2p/{hemisphere}/multi-mission"
-options:
-  sensor: [cryosat2, sentinel3a, sentinel3b]
 ```
+
+Select the actual missions with `--sensors cryosat2 sentinel3a sentinel3b`.
 
 When configured, `multi-mission` supplies all selected CCI missions instead of
 their individual directories; ICESat-2 retains its separate input paths. Each
@@ -119,11 +123,11 @@ concentration readers are `osi450`, `osi430`, and `c3s`; supported drift readers
 are `osi455`, `osi435`, and `osi405`.
 
 The separate `driftaware syncdata` command inventories every remote file in the
-date span implied by `t_start`, `t_length`, and `mode`, then downloads files
+planned processing dates, including any SH annual padding, then downloads files
 whose names are absent from the corresponding local repository. Synchronization
 does not run automatically as part of stacking. Concentration and drift
 synchronization is limited to the products selected in their priority lists.
-Altimetry synchronization is limited to `options.sensor`. Products without a
+Altimetry synchronization follows `--sensors`. Products without a
 remote URL remain local-only. For example:
 
 ```yaml
@@ -147,20 +151,21 @@ placed in `YYYY/MM` subdirectories and become visible to the existing recursive
 readers. A partial transfer is never exposed as an input file.
 
 Stacking direction `f` means forward, `r` means reverse, and `fr` runs and merges
-both directions. `t_length` accepts an integer number of days, `season`, `year`,
-or `all`. A season ends on 1 May in the Northern Hemisphere and 1 November in the
-Southern Hemisphere; `all` processes that season for every year available from
-any configured sensor, starting with the year in `t_start`.
+both directions. `t_window` includes acquisition lag zero. Processing dates and
+output dates are planned once and stored separately in each run snapshot:
 
-For the Southern Hemisphere, `t_length: year` outputs from `t_start` through
-31 December of that year. Processing includes `t_window - 1` extra days before
-`t_start` and after 31 December so boundary outputs have the full temporal window
-when supporting inputs are available. Input synchronization includes these buffer
-dates, but no trajectory CSVs are written for them. For example, starting on
-1 January 2018 with `t_window: 5` processes 28 December 2017 through 4 January
-2019 and outputs only 1 January through 31 December 2018. Use `mode: fr` for both
-past and future observations. The `season`, `all`, and integer modes retain their
-existing date ranges without this padding.
+| Selection | Output dates | Automatic padding |
+| --- | --- | --- |
+| NH `--years 2018:2023` | Six winters: October 2018–April 2024 | None |
+| SH `--years 2018:2024` | Seven January–December calendar years | Yes |
+| `--start YYYY-MM-DD --end YYYY-MM-DD` | One continuous inclusive interval | None, for either hemisphere |
+
+For SH annual runs, `fr` adds `t_window - 1` processing days on both sides;
+`f` adds them before and `r` after. With `t_window: 16`, SH 2018 therefore
+processes 17 December 2017–15 January 2019 but writes only 2018 target dates.
+Full boundary coverage requires the supporting inputs. Missing observations can
+still produce partial stacks. There is no implicit selection of all available
+years and no `season`, `year`, or `all` date mode.
 
 Grid bounds use
 `[xmin, ymin, xmax, ymax]` in metres in `options.out_epsg`; `dim` is the number
@@ -183,9 +188,8 @@ temperature and a constant ocean heat flux in W m-2. It requires `snow_depth`.
 Ocean-heat-flux reanalysis input is not implemented.
 
 Gridding mode `da` places values at their advected target location; `cv` places
-them at the original acquisition location. `gridding.csv_dir` accepts a
-run-directory name below `output_dir.trajectories`, an absolute directory, or
-`all` for recursive input. With weighting disabled, ordinary means are used.
+them at the original acquisition location. Select completed stacking inputs with
+`--source-run` or `--source-batch`. With weighting disabled, ordinary means are used.
 Enable count weighting with:
 
 ```yaml
@@ -227,21 +231,126 @@ deformation, shear, divergence, model air temperature, and model ocean heat
 flux. The selected variable must exist in the input NetCDF files. GIF generation
 requires the ImageMagick `convert` command.
 
-Synchronize the date-dependent inputs separately, then run the stages:
+## Local and HPC workflow
+
+Preview the plan first. `--dry-run` prints output and processing dates, selected
+repositories, proposed output directories, and local file coverage; it creates
+no directories or snapshots and does not submit jobs or download inputs.
+Altimetry coverage is based on file dates, not successful per-observation QC.
+Concentration/drift checks account for the existing seven-day fallback;
+temperature and ocean-heat-flux contents are checked during processing.
 
 ```bash
-driftaware syncdata config/cci/stacking.yaml
-driftaware stacking config/cci/stacking.yaml
-driftaware gridding config/cci/gridding.yaml
-driftaware visualization config/cci/visualization.yaml
-driftaware volume config/cci/volume.yaml
+driftaware stacking config/cci/stacking.yaml \
+  --hemisphere sh --sensors cryosat2 sentinel3a sentinel3b \
+  --years 2018:2024 --dry-run
 ```
 
-The equivalent module synchronization invocation is:
+Synchronize inputs separately if needed, then run locally. Local annual runs are
+sequential; within-run parallelism follows the YAML settings.
 
 ```bash
-python -m driftaware_sialt syncdata config/cci/stacking.yaml
+driftaware syncdata config/cci/stacking.yaml \
+  --hemisphere sh --sensors cryosat2 sentinel3a sentinel3b --years 2018:2024
+
+driftaware stacking config/cci/stacking.yaml \
+  --hemisphere sh --sensors cryosat2 sentinel3a sentinel3b --years 2018:2024
 ```
+
+For exact dates, replace `--years` with `--start 2018-03-01 --end 2020-09-30`.
+Both endpoints are included and no automatic padding is added. A single year
+can be written as `--years 2018`. Year ranges include both endpoints.
+
+On the HPC, use a scientific configuration copy with cluster paths and submit
+the same selection through the provided SLURM template. Activate the Python
+environment on the submission host too, since the helper runs before `sbatch`:
+
+```bash
+module load Python/3.10.4-GCCcore-11.3.0
+source /cluster/projects/105517-CCI+SeaIce/envs/driftaware/bin/activate
+cd /cluster/projects/105517-CCI+SeaIce/software/DriftAware-SIAlt
+
+driftaware submit stacking config/cci_hpc/stacking.yaml \
+  --hemisphere sh --sensors cryosat2 sentinel3a sentinel3b \
+  --years 2018:2024 \
+  --slurm-script scripts/slurm/hpc_daware_stacking_template.sh
+```
+
+The submission helper resolves all settings and writes every snapshot **before**
+calling `sbatch`. Each annual job receives its own snapshot as the script's `$1`:
+
+```bash
+srun driftaware stacking "$1"
+```
+
+One independent SLURM job is submitted per year; the scheduler controls when
+they run. The templates retain resource and environment settings. The helper
+assigns unique job names and puts SLURM stdout/stderr inside each run directory.
+`--dry-run` also works with `submit` without requiring a SLURM installation.
+The helper never submits automatically after a preview.
+
+Your directory hierarchy is retained. Run names include hemisphere, scientific
+parameters, output dates, timestamp, and a unique ID:
+
+```text
+output_data/v2.0/trajectories/cryosat2_sentinel3a_sentinel3b/
+  sea_ice_thickness-sh-16fr-epsg6932_141-20180101-20181231-<timestamp>-<id>/
+    config_resolved.yaml
+    status.yaml
+    execution.lock
+    processing.log
+    <trajectory CSV files>
+  batches/
+    stacking-sh-2018-2024-<batch-id>.yaml
+```
+
+The command prints the full batch-manifest path. The manifest lists exact run
+directories, snapshots, and SLURM job IDs where applicable. Snapshots contain
+fully resolved paths and scientific settings, planned dates, and the software
+Git commit when available. Workers do not reread inherited configuration files
+or apply padding again. Snapshots freeze configuration, not software or input
+data; avoid changing the shared editable checkout while jobs use it.
+
+After stacking completes, grid the exact batch, without repeating hemisphere,
+sensors, or years:
+
+```bash
+driftaware gridding config/cci/gridding.yaml \
+  --source-batch /path/printed/by/stacking/batches/stacking-sh-2018-2024-ID.yaml
+
+# Or submit gridding on the HPC:
+driftaware submit gridding config/cci_hpc/gridding.yaml \
+  --source-batch /path/printed/by/stacking/batches/stacking-sh-2018-2024-ID.yaml \
+  --slurm-script scripts/slurm/hpc_daware_gridding_template.sh
+```
+
+Use `--source-run /path/to/annual/trajectory/run` to grid one completed run.
+Gridding requires successful stacking status and a matching snapshot. It creates
+its own snapshots, manifest, logs, and run directories below
+`output_dir.gridded_data`; optional `YYYY/MM` organization stays **inside** each
+gridding run. The templates execute `srun driftaware gridding "$1"`.
+
+Status is `prepared`, `running`, `completed`, or `failed`. Exceptions, including
+child-process failures, propagate to the job and prevent successful status.
+Completing a run means processing finished and produced final outputs; it does
+not imply every requested day had usable observations. Failed or already-run
+snapshots are not reused: submit a fresh run to keep partial outputs separate.
+If submission stops partway through, the manifest retains IDs of jobs already
+submitted. No jobs are canceled automatically.
+
+Old date modes and the old recursive gridding directory selector were removed.
+Existing mission-specific L2P inputs remain supported. Pre-workflow trajectory
+directories without snapshots/status are not accepted by `--source-run`.
+
+Visualization and volume retain their stage configuration, with mission and
+hemisphere selection supplied explicitly:
+
+```bash
+driftaware visualization config/cci/visualization.yaml --hemisphere nh --sensors cryosat2
+driftaware volume config/cci/volume.yaml --hemisphere nh --sensors cryosat2
+```
+
+All commands also work as `python -m driftaware_sialt ...`.
 
 Volume calculation operates on an existing gridded run. Select its directory
 below `output_dir.gridded_data` in `volume.yaml`:

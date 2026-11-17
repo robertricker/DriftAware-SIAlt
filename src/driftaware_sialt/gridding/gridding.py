@@ -296,14 +296,11 @@ def gridding(config):
     hemisphere = config['options']['hemisphere']
     grd_opt = config['gridding']
     netcdf_bounds = grd_opt['netcdf_grid']['bounds']
-    if grd_opt['csv_dir'] == "all":
-        file_list = sorted([os.path.join(root, file)
-                            for root, _, files in os.walk(config['output_dir']['trajectories'])
-                            for file in files
-                            if file.endswith('.csv')])
-    else:
-        csv_dir = os.path.join(config['output_dir']['trajectories'], grd_opt['csv_dir'])
-        file_list = sorted(glob.glob(os.path.join(csv_dir,'*.csv')))
+    csv_dir = config['run']['source_run']
+    file_list = sorted(glob.glob(os.path.join(csv_dir, '*.csv')))
+    if config['run']['source_stack']['stacking']['mode'] == 'fr':
+        file_list = [file for file in file_list
+                     if '_F-' not in os.path.basename(file) and '_R-' not in os.path.basename(file)]
 
     if not file_list:
         raise FileNotFoundError('no trajectory CSV files found for gridding')
@@ -325,38 +322,23 @@ def gridding(config):
         config['options']['out_epsg'],
         hemisphere)
 
-    date_pattern = re.compile(r"\b(20\d{6})\b")
-
-    grouped_files = []
-
-    while file_list:
-        file = file_list.pop(0)  
-        match = date_pattern.search(file)
-        
-        if match:
-            date = match.group(1)
-            sublist = [file]  
-            
-            remaining_files = []
-            for other_file in file_list:
-                if date_pattern.search(other_file) and date_pattern.search(other_file).group(1) == date:
-                    sublist.append(other_file)
-                else:
-                    remaining_files.append(other_file)
-
-            grouped_files.append(sublist)
-            file_list = remaining_files
+    date_pattern = re.compile(r'-(\d{8})-')
+    groups = {}
+    for file in file_list:
+        match = date_pattern.search(os.path.basename(file))
+        if not match:
+            raise ValueError(f'trajectory filename has no target date: {file}')
+        groups.setdefault(match.group(1), []).append(file)
+    grouped_files = [groups[date] for date in sorted(groups)]
 
     if grd_opt['multiproc']:
         logger.info('start multiprocessing')
-        pool = mp.Pool(grd_opt['num_cpus'])
-        for i in range(len(grouped_files)):
-            pool.apply_async(
-                process_file,
-                args=(config, grouped_files[i], grid, region_grid,
-                      region_metadata, source_stack))
-        pool.close()
-        pool.join()
+        with mp.Pool(grd_opt['num_cpus']) as pool:
+            tasks = [pool.apply_async(process_file, (
+                config, files, grid, region_grid, region_metadata, source_stack))
+                for files in grouped_files]
+            for task in tasks:
+                task.get()
     else:
         for i in range(len(grouped_files)):
             process_file(
@@ -365,4 +347,4 @@ def gridding(config):
 
     if grd_opt["organize_files"]:
         organize_files_by_date(config['output_dir']['gridded_data'],
-                               os.path.dirname(config['output_dir']['gridded_data']))
+                               config['output_dir']['gridded_data'])

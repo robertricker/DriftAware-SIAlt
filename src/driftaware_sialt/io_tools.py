@@ -89,6 +89,11 @@ def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg, hemisphere):
 
 
 def create_out_dir(config, parent_directory, cell_width, source_stack=None):
+    planned = config.get('run', {}).get('directory')
+    if planned:
+        if not os.path.isdir(planned):
+            raise FileNotFoundError(f'planned run directory does not exist: {planned}')
+        return os.path.join(planned, '')
     target_variable = config["options"]["target_variable"]
     hem = config["options"]["hemisphere"]
     stage = config['stage']

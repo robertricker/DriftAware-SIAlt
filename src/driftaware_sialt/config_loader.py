@@ -45,14 +45,11 @@ def _normalize(config):
     if isinstance(options.get("sensor"), str):
         options["sensor"] = [options["sensor"]]
 
-    # Promote the old monolithic structure when loading legacy configuration files.
-    legacy_step = options.pop("proc_step", None)
-    legacy_stage_options = options.pop("proc_step_options", {})
-    config.setdefault("stage", legacy_step)
-    for name, settings in legacy_stage_options.items():
-        config.setdefault(name, settings)
-
     stage = config["stage"]
+    if stage in ('stacking', 'gridding'):
+        workers = config[stage]['parallel']['workers']
+        if not isinstance(workers, int) or isinstance(workers, bool) or workers < 1:
+            raise ValueError('parallel.workers must be a positive integer')
 
     if stage == "stacking":
         stacking = config["stacking"]
@@ -127,6 +124,19 @@ def _resolve_paths(config):
     return config
 
 
-def load_config(config_file):
+def load_config(config_file, *, hemisphere=None, sensors=None):
     """Load, merge, normalize, and resolve a stage configuration."""
-    return _resolve_paths(_normalize(_load_yaml(config_file)))
+    config = _load_yaml(config_file)
+    options = config.setdefault('options', {})
+    if hemisphere is not None:
+        options['hemisphere'] = hemisphere
+    if sensors is not None:
+        options['sensor'] = list(sensors)
+    if options.get('hemisphere') not in ('nh', 'sh') or not options.get('sensor'):
+        raise ValueError('provide --hemisphere and --sensors')
+    options['out_epsg'] = 'EPSG:6931' if options['hemisphere'] == 'nh' else 'EPSG:6932'
+    if any(name in config.get('stacking', {}) for name in ('t_start', 't_length')):
+        raise ValueError('t_start/t_length were removed; use --years or --start/--end')
+    if 'csv_dir' in config.get('gridding', {}):
+        raise ValueError('gridding.csv_dir was removed; use --source-run or --source-batch')
+    return _resolve_paths(_normalize(config))

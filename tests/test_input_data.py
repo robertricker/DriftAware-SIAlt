@@ -36,9 +36,13 @@ def _config(tmp_path, *, mode="f", length=1):
             "ice_drift_products": ["osi405"],
         },
         "stacking": {
-            "t_start": dt.datetime(2021, 10, 1),
-            "t_length": length,
             "mode": mode,
+        },
+        "run": {
+            "output_start": "2021-10-01",
+            "output_end": (dt.date(2021, 10, 1) + dt.timedelta(days=length - 1)).isoformat(),
+            "processing_start": "2021-10-01",
+            "processing_end": (dt.date(2021, 10, 1) + dt.timedelta(days=length - 1)).isoformat(),
         },
     }
 

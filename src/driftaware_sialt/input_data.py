@@ -8,7 +8,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, Sequence, Set, Tuple
+from typing import Dict, Iterable, List, Mapping, Sequence, Set
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 from urllib.request import urlopen
 
@@ -23,7 +23,7 @@ from driftaware_sialt.products.sea_ice_thickness import (
     SeaIceThicknessMultiProducts,
     altimetry_source,
 )
-from driftaware_sialt.stacking.periods import year_stacking_period
+from driftaware_sialt.stacking.periods import RunPeriod
 
 
 ONE_DAY = dt.timedelta(days=1)
@@ -68,77 +68,6 @@ class InputDataReport:
     downloaded: List[Path] = field(default_factory=list)
 
 
-def _as_datetime(value) -> dt.datetime:
-    if isinstance(value, dt.datetime):
-        return value
-    if isinstance(value, dt.date):
-        return dt.datetime.combine(value, dt.time())
-    return dt.datetime.fromisoformat(str(value))
-
-
-def _season_length(start: dt.datetime, hemisphere: str) -> int:
-    if hemisphere == "nh":
-        end = dt.datetime(start.year + 1, 5, 1)
-    elif hemisphere == "sh":
-        end = dt.datetime(start.year, 11, 1)
-    else:
-        raise ValueError(f"unsupported hemisphere: {hemisphere}")
-    length = (end - start).days
-    if length <= 0:
-        raise ValueError(
-            f"stacking season starting at {start:%Y-%m-%d} has no days")
-    return length
-
-
-def _stacking_periods(config: Mapping) -> List[Tuple[dt.datetime, int]]:
-    """Return stacking start dates and lengths without mutating the config."""
-    stacking = config["stacking"]
-    start = _as_datetime(stacking["t_start"])
-    length = stacking["t_length"]
-    hemisphere = config["options"]["hemisphere"]
-
-    if isinstance(length, int) and not isinstance(length, bool):
-        if length <= 0:
-            raise ValueError("stacking.t_length must be greater than zero")
-        return [(start, length)]
-
-    if length == "season":
-        return [(start, _season_length(start, hemisphere))]
-
-    if length == "year":
-        period = year_stacking_period(start, stacking["t_window"], hemisphere)
-        return [(period.start, period.length)]
-
-    if length != "all":
-        raise ValueError(
-            "stacking.t_length must be an integer, 'season', 'year', or 'all'")
-
-    sensors = config["options"]["sensor"]
-    file_index = SeaIceThicknessMultiProducts(
-        hem=hemisphere,
-        sensor=sensors,
-        target_var=config["options"]["target_variable"],
-    )
-    file_index.get_file_list(config["input_dir"])
-    file_index.get_file_dates()
-    years = sorted({
-        date.year
-        for sensor in sensors
-        for date in file_index.file_dates[sensor]
-        if date.year >= start.year
-    })
-    if not years:
-        raise FileNotFoundError(
-            "no altimetry files found for stacking.t_length=all")
-
-    periods = []
-    for year in years:
-        period_start = start.replace(year=year)
-        periods.append(
-            (period_start, _season_length(period_start, hemisphere)))
-    return periods
-
-
 def required_input_dates(config: Mapping) -> Dict[str, List[dt.datetime]]:
     """Calculate the dates requested from each input family by stacking."""
     mode = str(config["stacking"]["mode"]).lower()
@@ -149,16 +78,17 @@ def required_input_dates(config: Mapping) -> Dict[str, List[dt.datetime]]:
     altimetry = set()
     concentration = set()
     drift = set()
-    for start, length in _stacking_periods(config):
-        run_dates = {start + index * ONE_DAY for index in range(length)}
-        altimetry.update(run_dates)
-        concentration.update(run_dates)
-        if "f" in directions:
-            concentration.update(date + ONE_DAY for date in run_dates)
-            drift.update(date + ONE_DAY for date in run_dates)
-        if "r" in directions:
-            concentration.update(date - ONE_DAY for date in run_dates)
-            drift.update(run_dates)
+    period = RunPeriod.from_config(config)
+    start, length = period.start, period.length
+    run_dates = {start + index * ONE_DAY for index in range(length)}
+    altimetry.update(run_dates)
+    concentration.update(run_dates)
+    if "f" in directions:
+        concentration.update(date + ONE_DAY for date in run_dates)
+        drift.update(date + ONE_DAY for date in run_dates)
+    if "r" in directions:
+        concentration.update(date - ONE_DAY for date in run_dates)
+        drift.update(run_dates)
 
     return {
         "altimetry": sorted(altimetry),

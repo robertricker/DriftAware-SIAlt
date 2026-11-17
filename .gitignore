@@ -10,3 +10,11 @@ slurm-*.out
 /config/
 /scripts/
 /notebooks/
+
+# Maintain submission templates; keep other local utility scripts ignored.
+!/scripts/
+/scripts/*
+!/scripts/slurm/
+/scripts/slurm/*
+!/scripts/slurm/hpc_daware_stacking_template.sh
+!/scripts/slurm/hpc_daware_gridding_template.sh

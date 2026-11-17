@@ -8,7 +8,7 @@ version: 2.0
 # Supported sensors: ers2, envisat, cryosat2, sentinel3a, sentinel3b, icesat2.
 input_dir:
   # Optional shared daily CCI files; when enabled, replaces the CCI mission paths below.
-  # options.sensor still selects individual missions using the platform variable.
+  # --sensors selects individual missions using the platform variable.
   # multi-mission: "input_data/altimetry/l2p/{hemisphere}/multi-mission"
   ers2: "input_data/altimetry/l2p/{hemisphere}/ers2"
   envisat: "input_data/altimetry/l2p/{hemisphere}/envisat"
@@ -76,18 +76,11 @@ remote_dir:
 logging: "logging"
 
 options:
-  # One or more supported sensors, e.g. [cryosat2, sentinel3a, sentinel3b].
-  sensor: [cryosat2]
-
   # Options depend on sensor; see the configuration reference in README.md.
   target_variable: sea_ice_thickness
 
   # Additional source variables to retain; use [] for none.
   add_variable: [snow_depth]
-
-  # nh uses EPSG:6931; sh uses EPSG:6932.
-  hemisphere: nh
-  out_epsg: "EPSG:6931"
 
   # Priority ordered; the temporal fallback is limited to seven days.
   ice_conc_products: [osi450, osi430]
