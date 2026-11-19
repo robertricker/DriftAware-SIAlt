@@ -6,9 +6,10 @@ base_dir: "/Volumes/Files/Forskningsdata/600/60090/105517-CCI+SeaIce"
 version: 2.0
 
 # Supported sensors: ers2, envisat, cryosat2, sentinel3a, sentinel3b, icesat2.
+# --sensors multi-mission selects all supported CCI platforms in the shared files below.
 input_dir:
   # Optional shared daily CCI files; when enabled, replaces the CCI mission paths below.
-  # --sensors selects individual missions using the platform variable.
+  # --sensors selects individual missions, or multi-mission for all supported CCI platforms.
   # multi-mission: "input_data/altimetry/l2p/{hemisphere}/multi-mission"
   ers2: "input_data/altimetry/l2p/{hemisphere}/ers2"
   envisat: "input_data/altimetry/l2p/{hemisphere}/envisat"

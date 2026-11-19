@@ -1,4 +1,5 @@
 import datetime as dt
+from pathlib import Path
 
 import geopandas as gpd
 import netCDF4
@@ -11,6 +12,7 @@ from driftaware_sialt.config_loader import load_config
 from driftaware_sialt.io_tools import read_dasit_csv
 from driftaware_sialt.products.sea_ice_thickness import SeaIceThicknessMultiProducts
 from driftaware_sialt.stacking.drift_aware_processor import grid_mission_fractions
+from driftaware_sialt import cli, workflow
 
 
 def _write_l2p(path, platforms=None, *, bad_metadata=False, legacy_coords=False):
@@ -53,6 +55,90 @@ def _read_day(products, directories, day=dt.datetime(2020, 4, 1)):
     products.get_target_files(day, day + dt.timedelta(days=1))
     products.get_product([s for s in products.sensor if products.target_files[s]])
     return products.product
+
+
+def _shared_config(files):
+    config = workflow.read_yaml(files['common'])
+    config['input_dir'] = {'multi-mission': 'input/{hemisphere}/multi-mission'}
+    workflow._write_yaml(files['common'], config)
+    return workflow.stacking_configs(files['stacking'], hemisphere='nh',
+                                     sensors=['multi-mission'], years='2020')[0]
+
+
+def test_all_platforms_selection_tracks_daily_missions(workflow_configs, monkeypatch):
+    config = _shared_config(workflow_configs)
+    root = workflow_configs['common'].parent / 'input/nh/multi-mission'
+    first = root / 'ESACCI-SEAICE-L2P-SITHICK-NH-20200401-fv5p0.nc'
+    second = root / 'ESACCI-SEAICE-L2P-SITHICK-NH-20200402-fv5p0.nc'
+    _write_l2p(first, [1, 2, 13, 24, 35])
+    with netCDF4.Dataset(first, 'a') as ds:
+        ds['platform'].flag_values = [1, 2, 13, 24, 35]
+        ds['platform'].flag_meanings = 'ers2 envisat cryosat2 sentinel3a sentinel3b'
+    _write_l2p(second, [24, 24])
+    products = _products(config['options']['sensor'])
+    reads = []
+    original = products._read_cci_l2p
+
+    def read(path):
+        reads.append(path)
+        return original(path)
+
+    monkeypatch.setattr(products, '_read_cci_l2p', read)
+    data = _read_day(products, config['input_dir'])
+    assert reads == [str(first)]
+    assert data.sensor.value_counts().to_dict() == {
+        'ers2': 1, 'envisat': 1, 'cryosat2': 1, 'sentinel3a': 1, 'sentinel3b': 1}
+    products.get_target_files(dt.datetime(2020, 4, 2), dt.datetime(2020, 4, 3))
+    products.get_product(products.sensor)
+    assert reads == [str(first), str(second)]
+    assert products.product.sensor.tolist() == ['sentinel3a', 'sentinel3a']
+    for sensor in ('ers2', 'envisat', 'cryosat2', 'sentinel3b'):
+        assert products.product[sensor].sum() == 0
+
+
+def test_multi_mission_selection_survives_snapshots_and_gridding(workflow_configs, monkeypatch):
+    config = _shared_config(workflow_configs)
+    assert config['options']['sensor_selection'] == 'multi-mission'
+    assert 'icesat2' not in config['options']['sensor']
+    assert config['output_dir']['trajectories'].endswith('/multi-mission')
+    _, batch = workflow.prepare_batch([config], 'local')
+    source = batch['runs'][0]
+    monkeypatch.setattr(workflow, 'init_logger', lambda c: None)
+    workflow.execute_snapshot(source['snapshot'], lambda c: (
+        Path(c['run']['directory']) / 'final.csv').write_text('fixture'))
+    # Gridding does not require the original input repository to be configured.
+    common = workflow.read_yaml(workflow_configs['common'])
+    common['input_dir'] = {}
+    workflow._write_yaml(workflow_configs['common'], common)
+    grid, = workflow.gridding_configs(workflow_configs['gridding'], source_run=source['directory'])
+    assert grid['options']['sensor'] == config['options']['sensor']
+    assert grid['options']['sensor_selection'] == 'multi-mission'
+    assert grid['output_dir']['gridded_data'].endswith('/multi-mission')
+    _, grid_batch = workflow.prepare_batch([grid], 'slurm')
+    assert workflow.read_snapshot(grid_batch['runs'][0]['snapshot']) == grid
+
+
+@pytest.mark.parametrize('sensors', [['multi-mission', 'cryosat2'],
+                                   ['multi-mission', 'icesat2'], ['multi-mission', 'multi-mission']])
+def test_multi_mission_cannot_be_combined_with_other_selections(workflow_configs, sensors):
+    with pytest.raises(ValueError, match='selected alone'):
+        workflow.stacking_configs(workflow_configs['stacking'], hemisphere='nh',
+                                 sensors=sensors, years='2020')
+
+
+def test_multi_mission_requires_shared_input(workflow_configs):
+    with pytest.raises(ValueError, match='requires input_dir.multi-mission'):
+        workflow.stacking_configs(workflow_configs['stacking'], hemisphere='nh',
+                                 sensors=['multi-mission'], years='2020')
+
+
+def test_multi_mission_cli_previews_without_creating_runs(workflow_configs, tmp_path, capsys):
+    _shared_config(workflow_configs)
+    before = set(tmp_path.rglob('*'))
+    assert cli.main(['stacking', str(workflow_configs['stacking']), '--hemisphere', 'nh',
+                     '--sensors', 'multi-mission', '--years', '2020', '--dry-run']) == 0
+    assert before == set(tmp_path.rglob('*'))
+    assert '/trajectories/multi-mission/' in capsys.readouterr().out
 
 
 @pytest.mark.parametrize('target', ['sea_ice_thickness', 'sea_ice_freeboard', 'radar_freeboard'])
@@ -177,7 +263,10 @@ def test_shared_directory_resolves_config_placeholders(tmp_path):
     assert config['options']['sensor'] == ['cryosat2', 'sentinel3a']
 
 
-def test_stacking_handles_a_day_without_any_selected_platform(tmp_path, monkeypatch):
+@pytest.mark.parametrize('multi_mission', [False, True])
+def test_stacking_handles_a_day_without_any_selected_platform(
+    tmp_path, monkeypatch, workflow_configs, multi_mission,
+):
     root = tmp_path / 'shared'
     _write_l2p(root / 'ESACCI-SEAICE-L2P-SITHICK-NH-20200401-fv5p0.nc', [24, 35])
     _write_l2p(root / 'ESACCI-SEAICE-L2P-SITHICK-NH-20200402-fv5p0.nc', [13, 13])
@@ -204,6 +293,9 @@ def test_stacking_handles_a_day_without_any_selected_platform(tmp_path, monkeypa
             'thermo_change': {'enabled': False},
         },
     }
+    if multi_mission:
+        planned = _shared_config(workflow_configs)
+        config['options']['sensor'] = planned['options']['sensor']
 
     class Concentration:
         product_id = 'concentration'
@@ -229,7 +321,13 @@ def test_stacking_handles_a_day_without_any_selected_platform(tmp_path, monkeypa
     pipeline.process_direction(config, 'f', grid)
 
     files = list(output.glob('*.csv'))
-    assert len(files) == 1
-    assert '20200402' in files[0].name
-    result = read_dasit_csv(files[0])
+    assert len(files) == (2 if multi_mission else 1)
+    second, = [path for path in files if '20200402' in path.name]
+    result = read_dasit_csv(second)
     assert result.cryosat2_cnt.tolist() == [2]
+    if multi_mission:
+        first, = [path for path in files if '20200401' in path.name]
+        data = read_dasit_csv(first)
+        assert data.sentinel3a_cnt.tolist() == data.sentinel3b_cnt.tolist() == [1]
+        assert data.cryosat2_cnt.tolist() == data.ers2_cnt.tolist() == data.envisat_cnt.tolist() == [0]
+        assert result.sentinel3a_cnt.tolist() == result.sentinel3b_cnt.tolist() == [0]

@@ -66,7 +66,7 @@ def _add_run_arguments(parser, stage):
         sources.add_argument('--source-batch', help='Manifest from a completed stacking batch.')
     else:
         parser.add_argument('--hemisphere', choices=('nh', 'sh'))
-        parser.add_argument('--sensors', nargs='+', help='Mission names, e.g. cryosat2 sentinel3a sentinel3b.')
+        parser.add_argument('--sensors', nargs='+', help='Mission names, or multi-mission for all supported CCI platforms.')
         if stage in ('stacking', 'syncdata'):
             dates = parser.add_mutually_exclusive_group()
             dates.add_argument('--years', help='YYYY or inclusive YYYY:YYYY; NH uses winter starting years.')

@@ -109,6 +109,7 @@ def _name_run(config):
 
 def stacking_configs(config_file, *, hemisphere, sensors, years=None, start=None, end=None):
     config = load_config(config_file, hemisphere=hemisphere, sensors=sensors)
+    sensors = config['options']['sensor']
     if config['stage'] != 'stacking':
         raise ValueError('stacking/syncdata requires stage: stacking')
     if len(set(sensors)) != len(sensors):
@@ -175,7 +176,8 @@ def gridding_configs(config_file, *, source_run=None, source_batch=None):
     configs = []
     for source in source_snapshots(source_run=source_run, source_batch=source_batch):
         options = source['options']
-        config = load_config(config_file, hemisphere=options['hemisphere'], sensors=options['sensor'])
+        selection = ['multi-mission'] if options.get('sensor_selection') == 'multi-mission' else options['sensor']
+        config = load_config(config_file, hemisphere=options['hemisphere'], sensors=selection)
         if config['stage'] != 'gridding':
             raise ValueError('gridding requires stage: gridding')
         config['options']['target_variable'] = options['target_variable']

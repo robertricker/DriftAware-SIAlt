@@ -44,6 +44,15 @@ def _normalize(config):
     options = config["options"]
     if isinstance(options.get("sensor"), str):
         options["sensor"] = [options["sensor"]]
+    options.pop('sensor_selection', None)
+    if 'multi-mission' in options['sensor']:
+        from driftaware_sialt.products.sea_ice_thickness import CCI_L2P_SENSORS
+        if options['sensor'] != ['multi-mission']:
+            raise ValueError('multi-mission must be selected alone')
+        if config['stage'] == 'stacking' and not config.get('input_dir', {}).get('multi-mission'):
+            raise ValueError('--sensors multi-mission requires input_dir.multi-mission')
+        options['sensor'] = sorted(CCI_L2P_SENSORS)
+        options['sensor_selection'] = 'multi-mission'
 
     stage = config["stage"]
     if stage in ('stacking', 'gridding'):
@@ -89,7 +98,7 @@ def _normalize(config):
 
 def _resolve_paths(config):
     sensors = config["options"]["sensor"]
-    sensor_name = "_".join(sensors)
+    sensor_name = config['options'].get('sensor_selection', "_".join(sensors))
     version = config["version"]
     hemisphere = config["options"]["hemisphere"]
 

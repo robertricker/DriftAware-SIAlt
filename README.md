@@ -74,7 +74,8 @@ and remove the obsolete `stacking.t_start`, `stacking.t_length`, and
 All relative input, output, auxiliary, and logging paths are resolved from
 `base_dir`. Absolute paths are accepted. `{version}`, `{sensor}`, and
 `{hemisphere}` placeholders in paths are expanded while loading the
-configuration; multiple sensors are joined with underscores.
+configuration; multiple sensors are joined with underscores. The `multi-mission`
+selection uses `multi-mission` as its output directory name.
 
 The shared `version` setting identifies the drift-aware algorithm/product
 version, currently `2.0`. It sets output directories (`v2.0`), filename suffixes
@@ -100,7 +101,21 @@ input_dir:
   multi-mission: "input_data/altimetry/l2p/{hemisphere}/multi-mission"
 ```
 
-Select the actual missions with `--sensors cryosat2 sentinel3a sentinel3b`.
+Select individual missions with `--sensors cryosat2 sentinel3a sentinel3b`, or
+use all supported CCI platforms available each day:
+
+```bash
+driftaware stacking config/cci/stacking.yaml \
+  --hemisphere sh --sensors multi-mission --years 2018:2024
+```
+
+`multi-mission` must be selected alone and requires `input_dir.multi-mission` for
+stacking/synchronization. It includes ERS-2, Envisat, CryoSat-2, Sentinel-3A and
+Sentinel-3B wherever present in each file's `platform` variable. ICESat-2 remains
+separate. Absent missions contribute zero counts. Snapshots record both the
+`multi-mission` selection and the resolved mission list; gridding inherits these
+from `--source-run` or `--source-batch` and writes under `l3c/multi-mission`.
+The same selection works with `submit stacking` and `syncdata`.
 
 When configured, `multi-mission` supplies all selected CCI missions instead of
 their individual directories; ICESat-2 retains its separate input paths. Each
