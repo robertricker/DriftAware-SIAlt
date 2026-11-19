@@ -36,7 +36,7 @@ def download_dtu_day(date, cache_dir):
     return directory / f'{stem}.vrt', base
 
 
-def build_sar_mosaic(date, cache_dir, *, days=5, resolution=2000, extent=None):
+def build_sar_mosaic(date, cache_dir, *, days=2, resolution=2000, extent=None):
     """Return an EPSG:6931 display mosaic, preferring the closest daily image.
 
     Ties prefer the earlier day. Invalid pixels stay empty; no temporal average
