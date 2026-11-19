@@ -62,12 +62,19 @@ def read_snapshot(path, stage=None):
         raise ValueError(f'invalid snapshot stage: {path}')
     if stage is not None and config['stage'] != stage:
         raise ValueError(f'{stage} requires a {stage} snapshot: {path}')
-    period = RunPeriod.from_config(config)
+    period = output_period(config) if config.get('legacy_import') else RunPeriod.from_config(config)
     if Path(config['run']['directory']).resolve() != path.parent:
         raise ValueError(f'snapshot directory does not match its location: {path}')
     if not config['run'].get('id') or not period.length:
         raise ValueError(f'incomplete run snapshot: {path}')
     return config
+
+
+def output_period(config):
+    """Gridding needs observed output dates, not historical input/padding dates."""
+    run = config['run']
+    return RunPeriod.from_config({'run': dict(
+        run, processing_start=run['output_start'], processing_end=run['output_end'])})
 
 
 def _name_run(config):
@@ -147,6 +154,9 @@ def source_snapshots(*, source_run=None, source_batch=None):
             raise ValueError(f'stacking run has not completed successfully: {path.parent}')
         if not _output_files(source):
             raise ValueError(f'completed stacking run has no trajectory files: {path.parent}')
+        if source.get('legacy_import'):
+            from driftaware_sialt.legacy import verify_import
+            verify_import(source)
         snapshots.append(source)
     return snapshots
 
@@ -171,10 +181,7 @@ def gridding_configs(config_file, *, source_run=None, source_batch=None):
         config['options']['target_variable'] = options['target_variable']
         config['options']['add_variable'] = options.get('add_variable', [])
         config['config_source'] = str(Path(config_file).resolve())
-        period = RunPeriod.from_config(source)
-        # Gridding consumes final target-date CSVs, not the stacking buffers.
-        config['run'] = RunPeriod(period.output_start, period.output_end,
-                                  period.output_start, period.output_end).to_dict()
+        config['run'] = output_period(source).to_dict()
         config['run']['source_run'] = source['run']['directory']
         # Include the small source settings needed for naming; the original
         # immutable snapshot remains the authoritative record of the input run.
@@ -267,6 +274,8 @@ def prepare_batch(configs, execution):
 
 def execute_snapshot(path, run_stage):
     config = read_snapshot(path)
+    if config.get('legacy_import'):
+        raise ValueError('legacy registrations are gridding sources only; they cannot rerun stacking')
     directory = Path(config['run']['directory'])
     # Claim this output directory once, including after failures. Re-running
     # should create a fresh run, never mix a partial run with new results.

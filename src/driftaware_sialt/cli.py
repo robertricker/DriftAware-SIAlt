@@ -77,6 +77,10 @@ def _add_run_arguments(parser, stage):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='Plan, run, or submit DriftAware-SIAlt processing.')
     commands = parser.add_subparsers(dest='command', required=True)
+    register = commands.add_parser('register-trajectories', help='Register finished pre-snapshot CSV runs for gridding.')
+    register.add_argument('source', help='One legacy run directory or a parent containing run directories.')
+    register.add_argument('--completed', action='store_true', help='Confirm that the selected legacy runs have finished.')
+    register.add_argument('--dry-run', action='store_true', help='Inspect and validate without writing metadata.')
     for stage in (*PROCESSING_STAGES, 'syncdata'):
         _add_run_arguments(commands.add_parser(stage), stage)
     submit = commands.add_parser('submit', help='Freeze configurations and submit independent SLURM jobs.')
@@ -92,6 +96,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     """Parse a synchronization or processing command and execute it."""
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == 'register-trajectories':
+        from driftaware_sialt.legacy import register_trajectories
+        try:
+            register_trajectories(args.source, completed=args.completed, dry_run=args.dry_run)
+        except (ValueError, OSError) as error:
+            parser.error(str(error))
+        return 0
     start_time = time.time()
     command = args.command
     stage = args.stage if command == 'submit' else command
@@ -106,6 +117,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 'hemisphere', 'sensors', 'years', 'start', 'end', 'source_run', 'source_batch')):
             parser.error('a frozen snapshot cannot be overridden')
         config = workflow.read_snapshot(args.config_file, stage)
+        if config.get('legacy_import'):
+            parser.error('legacy registrations are gridding sources; use --source-run or --source-batch')
         if args.dry_run:
             workflow.preview([config])
         else:

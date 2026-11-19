@@ -339,8 +339,32 @@ If submission stops partway through, the manifest retains IDs of jobs already
 submitted. No jobs are canceled automatically.
 
 Old date modes and the old recursive gridding directory selector were removed.
-Existing mission-specific L2P inputs remain supported. Pre-workflow trajectory
-directories without snapshots/status are not accepted by `--source-run`.
+Existing mission-specific L2P inputs remain supported. Finished pre-workflow
+trajectory directories can be registered once for gridding:
+
+```bash
+# Inspect one old run, or a parent containing multiple old run directories:
+driftaware register-trajectories /path/to/trajectories/cryosat2_sentinel3a_sentinel3b --dry-run
+
+# Only after confirming those runs have finished:
+driftaware register-trajectories /path/to/trajectories/cryosat2_sentinel3a_sentinel3b --completed
+```
+
+Registration validates the final CSV filenames and JSON metadata, checks column
+schemas and nonempty first records, and leaves the CSVs untouched. It writes
+`config_resolved.yaml` and `status.yaml` inside each existing run, and prints
+separate NH/SH batch-manifest paths for `--source-batch`. Empty directories are
+skipped; incomplete directional outputs and mixed/inconsistent metadata are
+rejected. CRS-only CSV headers cannot reconstruct histogram settings and are
+not registered automatically.
+
+These are **gridding-only reconstructed records**, not historical full runtime
+configurations. Original processing/padding dates and software commit are null,
+unknown settings are listed, and completion is explicitly an operator-confirmed
+legacy import, not a recovered SLURM outcome. Registered stacking snapshots
+cannot be executed. A file inventory detects subsequently changed/added/removed
+CSVs before gridding. Re-registering unchanged runs preserves their metadata and
+creates a fresh batch manifest; existing snapshot/status files are never replaced.
 
 Visualization and volume retain their stage configuration, with mission and
 hemisphere selection supplied explicitly:
