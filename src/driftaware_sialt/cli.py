@@ -69,7 +69,10 @@ def _add_run_arguments(parser, stage):
         parser.add_argument('--sensors', nargs='+', help='Mission names, or multi-mission for all supported CCI platforms.')
         if stage in ('stacking', 'syncdata'):
             dates = parser.add_mutually_exclusive_group()
-            dates.add_argument('--years', help='YYYY or inclusive YYYY:YYYY; NH uses winter starting years.')
+            dates.add_argument('--years', help=(
+                'YYYY or YYYY:YYYY. NH ranges run from October of the first year '
+                'through April of the last; a single year starts one winter. '
+                'SH ranges include both calendar years.'))
             dates.add_argument('--start', help='First output date, YYYY-MM-DD (no automatic padding).')
             parser.add_argument('--end', help='Last output date, inclusive; required with --start.')
 

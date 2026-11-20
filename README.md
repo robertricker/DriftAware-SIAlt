@@ -198,7 +198,7 @@ output dates are planned once and stored separately in each run snapshot:
 
 | Selection | Output dates | Automatic padding |
 | --- | --- | --- |
-| NH `--years 2018:2023` | Six winters: October 2018–April 2024 | None |
+| NH `--years 2020:2024` | Four winters: October 2020–April 2024, skipping summers | None |
 | SH `--years 2018:2024` | Seven January–December calendar years | Yes |
 | `--start YYYY-MM-DD --end YYYY-MM-DD` | One continuous inclusive interval | None, for either hemisphere |
 
@@ -300,8 +300,12 @@ driftaware stacking config/cci/stacking.yaml \
 ```
 
 For exact dates, replace `--years` with `--start 2018-03-01 --end 2020-09-30`.
-Both endpoints are included and no automatic padding is added. A single year
-can be written as `--years 2018`. Year ranges include both endpoints.
+Both endpoints are included and no automatic padding is added. For NH,
+`--years 2020:2024` schedules four winters, starting in October 2020 and ending
+in April 2024. Each winter gets its own run; summers are skipped. A single
+NH year, `--years 2020`, schedules October 2020–April 2021. NH ranges require
+different starting and ending years. For SH, ranges include both calendar years,
+and `--years 2020` schedules January–December 2020.
 
 On the HPC, use a scientific configuration copy with cluster paths and submit
 the same selection through the provided SLURM template. Activate the Python

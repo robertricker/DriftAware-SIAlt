@@ -81,7 +81,12 @@ def test_submit_requires_slurm_before_creating_output_dirs(workflow_configs, tmp
     assert before == set(tmp_path.rglob('*'))
 
 
-def test_submit_command_freezes_and_submits_every_year(workflow_configs, tmp_path, monkeypatch):
+@pytest.mark.parametrize('hemisphere, count, first_date, last_date', [
+    ('sh', 7, '2018-01-01', '2024-12-31'),
+    ('nh', 6, '2018-10-01', '2024-04-30'),
+])
+def test_submit_command_freezes_and_submits_every_year(
+        workflow_configs, tmp_path, monkeypatch, hemisphere, count, first_date, last_date):
     script = tmp_path / 'script.sh'
     script.write_text('srun driftaware stacking "$1"\n')
     monkeypatch.setattr(cli.shutil, 'which', lambda name: '/usr/bin/sbatch')
@@ -94,9 +99,13 @@ def test_submit_command_freezes_and_submits_every_year(workflow_configs, tmp_pat
             submitted.append(entry)
 
     monkeypatch.setattr(workflow, 'submit_batch', submit)
-    assert cli.main(['submit', 'stacking', *_args(
-        workflow_configs['stacking'], '--years', '2018:2024', '--slurm-script', str(script))]) == 0
-    assert len(submitted) == 7
+    assert cli.main(['submit', 'stacking', str(workflow_configs['stacking']),
+                     '--hemisphere', hemisphere, '--sensors', 'cryosat2',
+                     '--years', '2018:2024', '--slurm-script', str(script)]) == 0
+    assert len(submitted) == count
+    snapshots = [workflow.read_snapshot(entry['snapshot']) for entry in submitted]
+    assert snapshots[0]['run']['output_start'] == first_date
+    assert snapshots[-1]['run']['output_end'] == last_date
 
 
 def test_gridding_cli_uses_completed_source_batch(workflow_configs, monkeypatch, tmp_path):

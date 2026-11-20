@@ -25,12 +25,22 @@ def test_sh_year_padding_and_sync_dates(year, days, window, mode):
     assert dates['altimetry'][-1].date() == period.processing_end
 
 
-def test_nh_years_are_unpadded_winter_starting_years():
-    periods = plan_periods('nh', 16, 'fr', years='2018:2023')
-    assert len(periods) == 6
-    assert periods[0].output_start == dt.date(2018, 10, 1)
-    assert periods[-1].output_end == dt.date(2024, 4, 30)
+@pytest.mark.parametrize('years, first, last', [
+    ('2020:2024', 2020, 2024),
+    ('2020:2021', 2020, 2021),
+    ('2020', 2020, 2021),
+])
+def test_nh_years_are_unpadded_october_to_april_winters(years, first, last):
+    periods = plan_periods('nh', 16, 'fr', years=years)
+    assert [(p.output_start, p.output_end) for p in periods] == [
+        (dt.date(year, 10, 1), dt.date(year + 1, 4, 30))
+        for year in range(first, last)]
     assert all(p.output_start == p.processing_start and p.output_end == p.processing_end for p in periods)
+
+
+def test_nh_same_year_range_is_rejected():
+    with pytest.raises(ValueError, match='use YYYY for one winter'):
+        plan_periods('nh', 16, 'fr', years='2020:2020')
 
 
 @pytest.mark.parametrize('hemisphere', ['nh', 'sh'])

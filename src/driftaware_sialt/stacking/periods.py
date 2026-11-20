@@ -49,7 +49,7 @@ class RunPeriod:
 
 
 def plan_periods(hemisphere, window, mode, *, years=None, start=None, end=None):
-    """Expand years or explicit inclusive dates; pad only SH annual runs."""
+    """Plan NH October-to-April winters or SH calendar years; pad only SH years."""
     if hemisphere not in ('nh', 'sh'):
         raise ValueError('hemisphere must be nh or sh')
     if not isinstance(window, int) or isinstance(window, bool) or window < 1:
@@ -60,11 +60,15 @@ def plan_periods(hemisphere, window, mode, *, years=None, start=None, end=None):
         if start is not None or end is not None:
             raise ValueError('--years cannot be combined with --start/--end')
         if not re.fullmatch(r'\d{4}(?::\d{4})?', str(years)):
-            raise ValueError('--years must be YYYY or YYYY:YYYY (inclusive)')
+            raise ValueError('--years must be YYYY or YYYY:YYYY')
         bounds = [int(value) for value in str(years).split(':')]
         first, last = bounds[0], bounds[-1]
         if not 1 <= first <= last <= 9998:
             raise ValueError('invalid or reversed year range')
+        if hemisphere == 'nh' and len(bounds) == 2:
+            if first == last:
+                raise ValueError('NH year ranges must end after the starting year; use YYYY for one winter')
+            last -= 1  # The range ends in April of the supplied final year.
         dates = [
             (dt.date(year, 10, 1), dt.date(year + 1, 4, 30))
             if hemisphere == 'nh' else (dt.date(year, 1, 1), dt.date(year, 12, 31))

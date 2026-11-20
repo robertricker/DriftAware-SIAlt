@@ -62,7 +62,7 @@ def test_snapshots_are_self_contained_and_padding_is_not_reapplied(workflow_conf
 def test_snapshots_keep_both_hemispheres_and_periods_independent(workflow_configs):
     sh = _plan(workflow_configs, years='2018:2024')
     nh = workflow.stacking_configs(workflow_configs['stacking'], hemisphere='nh',
-                                   sensors=['sentinel3a'], years='2018:2023')
+                                   sensors=['sentinel3a'], years='2018:2024')
     paths = [c['run']['directory'] for c in sh + nh]
     assert len(set(paths)) == 13
     assert all(not Path(path).exists() for path in paths)
