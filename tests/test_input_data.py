@@ -256,5 +256,6 @@ def test_adjacent_archive_month_is_scanned_for_osi405(monkeypatch):
         1,
     )
 
-    assert [file.date.date() for file in files] == [dt.date(2021, 10, 31)]
+    # The file is indexed by its actual end date and covers the requested step.
+    assert [file.date.date() for file in files] == [dt.date(2021, 11, 1)]
     assert any(url.endswith("/2021/11") for url in listed)

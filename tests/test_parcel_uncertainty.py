@@ -133,6 +133,7 @@ def test_drift_correction_passes_constant_ocean_heat_flux_to_model():
         "yu": [0.0],
         "dt_days": [0],
         "t0": [12 * 60 * 60],
+        "time_current": [12 * 60 * 60],
         "geometry": [[Point(0, 0)]],
         "sea_ice_thickness_drift_unc": [0.0],
         "sit_corr_thermo_mod": [1.0],
@@ -153,8 +154,8 @@ def test_drift_correction_passes_constant_ocean_heat_flux_to_model():
         temperature,
         2.0,
         1,
-        thermo_model="winter_2layers")
+        thermo_model="winter_2layers", target_time=36 * 3600.)
 
     assert temperature.received_heat_flux.tolist() == [2.0]
     assert result["ohf"].tolist() == [2.0]
-    assert result["xu"].tolist() == [120.0]
+    assert result["xu"].tolist() == [240.0]

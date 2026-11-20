@@ -24,8 +24,9 @@ def _config(tmp_path):
         "input_dir": {},
         "auxiliary": {"ice_conc": {}, "ice_drift": {}},
         "output_dir": {"trajectories": str(tmp_path)},
-        "run": RunPeriod(dt.date(2020, 12, 30), dt.date(2020, 12, 31),
-                         dt.date(2020, 12, 26), dt.date(2021, 1, 4)).to_dict(),
+        "run": dict(RunPeriod(dt.date(2020, 12, 30), dt.date(2020, 12, 31),
+                              dt.date(2020, 12, 26), dt.date(2021, 1, 4)).to_dict(),
+                    directory=str(tmp_path)),
         "stacking": {
             "t_window": 5, "mode": "fr", "filename_prefix": "ESACCI-SEAICE",
             "multiproc": False, "num_cpus": 2,
@@ -103,11 +104,12 @@ def test_year_boundary_csvs_have_full_lags_and_no_buffer_outputs(
             return np.zeros(len(x)), np.zeros(len(x))
 
     def baseline(processor, *args, **kwargs):
+        timestamp = (processor.parent.date + dt.timedelta(hours=12) - dt.datetime(1970, 1, 1)).total_seconds()
         data = pd.DataFrame({
             processor.target_var: [0.5],
             processor.target_var + "_drift_unc": [0.0],
             "xu": [0.0], "yu": [0.0], "geometry": [[Point(0, 0)]],
-            "t0": [0.0], "dt_days": [0], "divergence": [[0]], "shear": [[0]],
+            "t0": [timestamp], "time_current": [timestamp], "dt_days": [0], "divergence": [[0]], "shear": [[0]],
             "source_date": [processor.parent.date.strftime("%Y-%m-%d")],
             "_ice_conc_products": ["concentration"], "_ice_drift_products": [""],
         })

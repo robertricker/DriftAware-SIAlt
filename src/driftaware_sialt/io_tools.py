@@ -9,7 +9,6 @@ import re
 from shapely.wkt import loads
 from typing import Tuple
 from scipy.interpolate import griddata
-from datetime import datetime
 from loguru import logger
 import sys
 
@@ -88,36 +87,14 @@ def get_sea_ice_regions(file, netcdf_bounds, cell_width, grid_epsg, hemisphere):
     return region, region_metadata
 
 
-def create_out_dir(config, parent_directory, cell_width, source_stack=None):
+def get_run_directory(config):
+    """Return the existing output directory allocated by the snapshot workflow."""
     planned = config.get('run', {}).get('directory')
-    if planned:
-        if not os.path.isdir(planned):
-            raise FileNotFoundError(f'planned run directory does not exist: {planned}')
-        return os.path.join(planned, '')
-    target_variable = config["options"]["target_variable"]
-    hem = config["options"]["hemisphere"]
-    stage = config['stage']
-    if stage == 'gridding':
-        if source_stack is None:
-            source_stack = config['gridding'].get('source_stack')
-        if source_stack is None:
-            raise ValueError('trajectory source metadata is required for gridding')
-        t_window = source_stack['window_days']
-        mode = source_stack['mode']
-    else:
-        t_window = config['stacking']['t_window']
-        mode = config['stacking']['mode']
-    epsg = 'epsg' + config['options']['out_epsg'].split(":")[1]
-    res = "{:.0f}".format(cell_width / 100.0)
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    if stage == 'gridding':
-        dt_days_max = config['gridding']['dt_days_max']
-        sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}_{dt_days_max}-{timestamp}'
-    else:
-        sub_dir_name = f'{target_variable}-{hem}-{t_window}{mode}-{epsg}_{res}-{timestamp}'
-    sub_dir_path = os.path.join(parent_directory, sub_dir_name)
-    os.makedirs(sub_dir_path)
-    return sub_dir_path + '/'
+    if not planned:
+        raise ValueError('processing requires a planned run.directory; use the snapshot workflow')
+    if not os.path.isdir(planned):
+        raise FileNotFoundError(f'planned run directory does not exist: {planned}')
+    return os.path.join(planned, '')
 
 
 def init_logger(config):

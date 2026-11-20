@@ -18,6 +18,7 @@ from driftaware_sialt.products.sea_ice_concentration import (
     SeaIceConcentrationProducts,
 )
 from driftaware_sialt.products.sea_ice_drift import SeaIceDriftProducts
+from driftaware_sialt.products.drift_timing import DRIFT_PRODUCTS, filename_interval
 from driftaware_sialt.products.sea_ice_thickness import (
     MULTI_MISSION_SOURCE,
     SeaIceThicknessMultiProducts,
@@ -110,6 +111,11 @@ def _parse_product_date(
     spec: ProductFileSpec,
     filename: str,
 ) -> dt.datetime | None:
+    if spec.product_id in DRIFT_PRODUCTS:
+        try:
+            return filename_interval(filename, spec.product_id)[1]
+        except ValueError:
+            return None
     match = re.search(r"\d" + spec.date_str, os.path.basename(filename))
     if match is None:
         return None
@@ -235,7 +241,18 @@ def _inventory_remote(
             if spec.hemisphere_token.lower() not in basename.lower():
                 continue
             file_date = _parse_product_date(spec, basename)
-            if file_date is None or file_date.date() not in requested_days:
+            if file_date is None:
+                continue
+            if spec.product_id in DRIFT_PRODUCTS:
+                start, end = filename_interval(basename, spec.product_id)
+                # Requested drift dates denote the ends of noon-to-noon steps.
+                # A 48-hour file may cover either of two required daily steps.
+                covers = any(start <= dt.datetime.combine(day, dt.time(12)) - ONE_DAY
+                             and end >= dt.datetime.combine(day, dt.time(12))
+                             for day in requested_days)
+                if not covers:
+                    continue
+            elif file_date.date() not in requested_days:
                 continue
             files[basename] = RemoteFile(date=file_date, url=url)
     return sorted(files.values(), key=lambda item: (item.date, item.url))

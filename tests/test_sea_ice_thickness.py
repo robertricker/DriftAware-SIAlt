@@ -15,7 +15,7 @@ from driftaware_sialt.products.sea_ice_thickness import (
     "target_variable",
     ["sea_ice_thickness", "sea_ice_freeboard", "radar_freeboard"],
 )
-def test_ers2_uses_cci_l2p_reader(target_variable):
+def test_ers2_uses_l2p_reader(target_variable):
     products = SeaIceThicknessMultiProducts(
         hem="nh",
         sensor=["ers2"],

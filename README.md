@@ -69,6 +69,10 @@ EPSG:6932. Remove `sensor`, `hemisphere`, and `out_epsg` from the shared templat
 and remove the obsolete `stacking.t_start`, `stacking.t_length`, and
 `gridding.csv_dir` settings from existing HPC configuration copies.
 
+Stacking and gridding workers require an existing `run.directory` allocated by
+the snapshot workflow. The normal local and SLURM commands prepare it automatically;
+workers no longer generate a second timestamped output directory.
+
 ### Configuration reference
 
 All relative input, output, auxiliary, and logging paths are resolved from
@@ -131,11 +135,34 @@ of the number of selected missions. Without that URL the shared source remains
 local-only; its remote contents are downloaded as complete files and mission
 selection occurs when reading them.
 
-Sea-ice concentration and drift products are listed in priority order. The first
-exact match is selected. When no exact match exists, the closest file from any
-configured product is used if it is no more than seven days away. Supported
-concentration readers are `osi450`, `osi430`, and `c3s`; supported drift readers
-are `osi455`, `osi435`, and `osi405`.
+Sea-ice concentration and drift products are listed in priority order. Concentration
+uses the first exact date match, or the closest file within seven days. Supported
+concentration readers are `osi450`, `osi430`, and `c3s`.
+
+Drift readers `osi455` and `osi435` normally provide 24-hour displacements;
+`osi405` provides 48-hour displacements. Drift selection prefers native time bounds
+covering the requested noon-to-noon step, then configured product priority and the
+closest interval midpoint (earlier intervals win ties). Without full coverage,
+the closest midpoint within seven days is used, with product priority breaking
+ties. Native intervals, requested intervals, midpoint offsets and fallback flags
+are recorded in the processing log. Synchronization includes 48-hour files that
+cover either required daily step; the dry run uses the same interval selector as
+processing.
+
+The reader decodes CF time units and preserves native bounds. It converts
+displacements and uncertainties to rates using vector observation times, when
+provided, or the native interval. Parcel movement uses the signed elapsed time
+from the observation acquisition time (first step) or previous daily noon position
+to the target day's noon. Product switches and fallback never alter this clock.
+Thus a 48-hour mean velocity can drive a 24-hour step without treating its full
+displacement as a daily displacement. No additional temporal interpolation is
+inferred from the 48-hour product.
+
+Divergence/shear use signed, separate x/y grid spacing and Sobel derivatives with
+linear edge extrapolation. Existing outputs generated with the earlier timing
+and descending-y derivative bugs are not repaired by these code changes. Rebuild
+affected stacks and gridded products into fresh output directories/version paths;
+regridding old trajectories alone cannot correct their positions.
 
 The separate `driftaware syncdata` command inventories every remote file in the
 planned processing dates, including any SH annual padding, then downloads files

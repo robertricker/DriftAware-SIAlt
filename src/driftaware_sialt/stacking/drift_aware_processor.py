@@ -4,10 +4,9 @@ import geopandas as gpd
 import numpy as np
 import sys
 from loguru import logger
-import datetime
 from numbers import Real
 from driftaware_sialt.filters.marginal_ice_zone import compute_apply_flag
-from driftaware_sialt.products.sea_ice_thickness import CCI_L2P_SENSORS
+from driftaware_sialt.products.sea_ice_thickness import L2P_SENSORS
 
 
 def grid_parcel_uncertainty(data, grid, source_unc_var, parcel_unc_var):
@@ -85,7 +84,7 @@ class DriftAwareProcessor:
             ]
         source_unc_var = self.target_var + '_l2_unc'
         parcel_unc_var = self.target_var + '_parcel_unc'
-        target_sensors = CCI_L2P_SENSORS
+        target_sensors = L2P_SENSORS
         
         if sit_clim is not None:
             sit = compute_apply_flag(sit, sic_product, sit_clim, self.target_var, available_sensors, crs=self.out_epsg)
@@ -110,6 +109,7 @@ class DriftAwareProcessor:
                     tmp, self.grid, source_unc_var, parcel_unc_var)
                 tmp_grid[self.add_variable] = add_grid[self.add_variable]
                 tmp_grid['t0'] = add_grid['time']
+                tmp_grid['time_current'] = tmp_grid['t0']
                 tmp_grid['xu'] = tmp_grid.index.get_level_values('x')
                 tmp_grid['yu'] = tmp_grid.index.get_level_values('y')
                 tmp_grid['dt_days'] = 0
@@ -146,6 +146,7 @@ class DriftAwareProcessor:
             tmp_grid[self.sensor] = frac_mission_grid[self.sensor]
             tmp_grid[[s + '_cnt' for s in self.sensor]] = frac_mission_grid[[s + '_sum' for s in self.sensor]]
             tmp_grid['t0'] = add_grid['time']
+            tmp_grid['time_current'] = tmp_grid['t0']
             tmp_grid['xu'] = tmp_grid.index.get_level_values('x')
             tmp_grid['yu'] = tmp_grid.index.get_level_values('y')
             tmp_grid['dt_days'] = 0
@@ -173,8 +174,8 @@ class DriftAwareProcessor:
             logger.error('Sensor does not exist: %s', self.sensor)
             sys.exit()
 
-    def apply_drift_correction(self, j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model=None):
-        # applies drift correction per day (24 h)
+    def apply_drift_correction(self, j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model=None, *, target_time):
+        # The parcel clock is independent of the selected drift file's timestamps.
         dx, dy, dx_dy_unc = sid_product.drift_correction(tmp_grid['xu'].values, tmp_grid['yu'].values)
 
         div, she = sid_product.deformation(tmp_grid['xu'].values, tmp_grid['yu'].values)
@@ -187,29 +188,19 @@ class DriftAwareProcessor:
             tmp_grid['t2m'], thermodyn_growth, thermodyn_corr_sit = t2m_product.thermodyn_growth(thermo_model, tmp_grid['sit_corr_thermo_mod'], tmp_grid['snow_depth'],
                                                 tmp_grid['xu'].values, tmp_grid['yu'].values, direct, tmp_grid['ohf'])
             
-        dt = np.full(len(dx), 24)
-        dt_corr = 0
-        if tmp_grid['dt_days'][0] == 0:
-            dt_corr = (tmp_grid['t0'] - sid_product.ice_drift['time_bnds'][0])
-            dt_corr = dt_corr / datetime.timedelta(hours=1).total_seconds()
-
-        if direct == 1:
-            dt = dt - dt_corr
-            xu = tmp_grid['xu'].values + (dx * dt)
-            yu = tmp_grid['yu'].values + (dy * dt)
-            tt = self.i + direct - j 
-        else:
-            dt = dt + dt_corr
-            xu = tmp_grid['xu'].values - (dx * dt)
-            yu = tmp_grid['yu'].values - (dy * dt)
-            tt = self.i + direct + j
+        dt = (target_time - tmp_grid['time_current'].to_numpy()) / 3600.
+        if direct not in (-1, 1) or not np.isfinite(dt).all() or np.any(direct * dt < 0):
+            raise ValueError('parcel and target times disagree with the advection direction')
+        xu = tmp_grid['xu'].values + dx * dt
+        yu = tmp_grid['yu'].values + dy * dt
 
         new_geom = gpd.GeoDataFrame(
             geometry=gpd.points_from_xy(xu, yu), crs=self.out_epsg)["geometry"].apply(lambda gdf: [gdf])
         tmp_grid["geometry"] = tmp_grid["geometry"] + new_geom
         tmp_grid['xu'], tmp_grid['yu'] = xu, yu
+        tmp_grid['time_current'] = target_time
         tmp_grid[self.target_var+'_drift_unc'] += (dx_dy_unc * dt)**2
-        tmp_grid['dt_days'] = tt - (self.i + direct)
+        tmp_grid['dt_days'] = -direct * j
         tmp_grid['divergence'] = tmp_grid.apply(lambda row: row['divergence'] + [div[row.name]], axis=1)
         tmp_grid['shear'] = tmp_grid.apply(lambda row: row['shear'] + [she[row.name]], axis=1)
         if thermo_model:
@@ -225,8 +216,8 @@ class DriftAwareProcessor:
         tmp_grid = tmp_grid[tmp_grid["ice_conc"] > 0.15].reset_index(drop=True)
         return tmp_grid
 
-    def drift_aware_proc(self, sid_product, sic_product, t2m_product, ohf_product, t_window_length, direct, day0, thermo_model):
-        target_sensors = CCI_L2P_SENSORS
+    def drift_aware_proc(self, sid_product, sic_product, t2m_product, ohf_product, t_window_length, direct, day0, thermo_model, *, target_time):
+        target_sensors = L2P_SENSORS
 
         if 'icesat2' in self.sensor:
             beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])
@@ -241,7 +232,7 @@ class DriftAwareProcessor:
                     if len(self.master[beam][self.i][(j - 1)]) == 0:
                         continue
                     tmp_grid = self.master[beam][self.i][(j - 1)].copy().reset_index(drop=True)
-                    tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model=None)
+                    tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model=None, target_time=target_time)
                     self.master[beam][self.i + direct][j] = tmp_grid
                     self.scheme[(beams == beam).argmax(), self.i + direct, j] = 1
 
@@ -259,7 +250,7 @@ class DriftAwareProcessor:
                 if len(self.master[self.i][(j - 1)]) == 0:
                     continue
                 tmp_grid = self.master[self.i][(j - 1)].copy().reset_index(drop=True)
-                tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model=thermo_model)
+                tmp_grid = self.apply_drift_correction(j, tmp_grid, sid_product, sic_product, t2m_product, ohf_product, direct, thermo_model=thermo_model, target_time=target_time)
                 self.master[(self.i + direct)][j] = tmp_grid
                 self.scheme[self.i + direct, j] = 1
         else:
@@ -270,7 +261,7 @@ class DriftAwareProcessor:
 
     def concat_gdfs(self, gdf_array_index, row_lim):
         gdf_list = []
-        target_sensors = CCI_L2P_SENSORS
+        target_sensors = L2P_SENSORS
         for j in range(0, row_lim + 1):
             if 'icesat2' in self.sensor:
                 beams = np.array(['gt1l', 'gt1r', 'gt2l', 'gt2r', 'gt3l', 'gt3r'])

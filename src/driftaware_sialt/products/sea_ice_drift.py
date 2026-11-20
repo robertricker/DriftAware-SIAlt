@@ -5,7 +5,66 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import distance_transform_edt, sobel
 from driftaware_sialt.products.sea_ice_concentration import SeaIceConcentrationProducts
 from driftaware_sialt.io_tools import transform_coords
+from driftaware_sialt.products.drift_timing import (
+    DRIFT_PRODUCTS, EPOCH, filename_interval, time_bounds, vector_duration)
 import datetime
+
+
+def _velocity_gradient(field, x, y):
+    """Sobel derivatives with signed spacing and linearly extrapolated edges."""
+    spacing = [np.diff(axis) for axis in (x, y)]
+    if any(not len(d) or not np.isfinite(d).all() or d[0] == 0
+           or not np.allclose(d, d[0]) for d in spacing):
+        raise ValueError('drift derivatives require a regular grid with nonzero spacing')
+    padded = np.pad(field, 1, mode='edge')
+    padded[1:-1, 0] = 2 * field[:, 0] - field[:, 1]
+    padded[1:-1, -1] = 2 * field[:, -1] - field[:, -2]
+    padded[0] = 2 * padded[1] - padded[2]
+    padded[-1] = 2 * padded[-2] - padded[-3]
+    return tuple(sobel(padded, axis=axis, mode='nearest')[1:-1, 1:-1] / (8 * d[0])
+                 for axis, d in zip((1, 0), spacing))
+
+
+def select_drift_product(products, start, end, max_time_difference_days=7):
+    """Prefer native interval coverage, then the closest interval midpoint.
+
+    Product priority wins for covering files; temporal fallback prefers the
+    closest midpoint, then product priority. Ties prefer the earlier interval.
+    """
+    if start >= end:
+        raise ValueError('requested drift interval must be increasing')
+    midpoint = start + (end - start) / 2
+    limit = datetime.timedelta(days=max_time_difference_days)
+    exact, nearby = [], []
+    for priority, product in enumerate(products):
+        product.target_files = None
+        for path, (nominal_start, nominal_end) in zip(product.file_list, product.file_intervals):
+            nominal_mid = nominal_start + (nominal_end - nominal_start) / 2
+            if abs(nominal_mid - midpoint) > limit + (nominal_end - nominal_start):
+                continue
+            first, last = product.time_interval(path)
+            centre = first + (last - first) / 2
+            delta = abs(centre - midpoint)
+            candidate = (priority, delta, centre > midpoint, centre, path, product, first, last)
+            if first <= start and last >= end:
+                exact.append(candidate)
+            elif delta <= limit:
+                nearby.append((delta, priority) + candidate[2:])
+    if exact:
+        priority, delta, _, centre, path, product, first, last = min(exact)
+        fallback = False
+    elif nearby:
+        delta, priority, _, centre, path, product, first, last = min(nearby)
+        fallback = True
+    else:
+        return None
+    product.target_files = path
+    product.target_file_date = last
+    product.target_native_interval = (first, last)
+    product.target_requested_interval = (start, end)
+    product.target_time_offset_days = (centre - midpoint).total_seconds() / 86400.
+    product.used_temporal_fallback = fallback
+    return product
 
 
 def _coastal_drift_taper(valid_mask, land_mask):
@@ -41,57 +100,49 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
             'osi435': self.get_ice_drift
         }
 
-        self.config = {
-            'osi405': {
-                'hem_nh': '_nh_',
-                'hem_sh': '_sh_',
-                'date_str': '{12}',
-                'date_pt': '%Y%m%d%H%M',
-                'ref_time': datetime.datetime(1978, 1, 1, 0, 0, 0),
-                'ref_daytime_corr': datetime.timedelta(days=1).total_seconds(),
-                'time_span': 48,
-                'date_offset': datetime.timedelta(days=1)
-            },
-            'osi455': {
-                'hem_nh': '_nh_',
-                'hem_sh': '_sh_',
-                'date_str': '{12}',
-                'date_pt': '%Y%m%d%H%M',
-                'ref_time': datetime.datetime(1978, 1, 1, 0, 0, 0),
-                'ref_daytime_corr': datetime.timedelta(days=0).total_seconds(),
-                'time_span': 24,
-                'date_offset': datetime.timedelta(days=0)
-            },
-            'osi435': {
-                'hem_nh': '_nh_',
-                'hem_sh': '_sh_',
-                'date_str': '{12}',
-                'date_pt': '%Y%m%d%H%M',
-                'ref_time': datetime.datetime(1978, 1, 1, 0, 0, 0),
-                'ref_daytime_corr': datetime.timedelta(days=0).total_seconds(),
-                'time_span': 24,
-                'date_offset': datetime.timedelta(days=0)
-            },
-        }
+        self.config = {name: {
+            'hem_nh': '_nh_', 'hem_sh': '_sh_', 'date_str': '{12}',
+            'date_pt': '%Y%m%d%H%M', 'date_offset': datetime.timedelta(0),
+        } for name in DRIFT_PRODUCTS}
+        self._interval_cache = {}
+
+    def get_file_dates(self):
+        self.file_intervals = [filename_interval(path, self.product_id) for path in self.file_list]
+        self.file_dates = [end for _, end in self.file_intervals]
+
+    def time_interval(self, path):
+        if path not in self._interval_cache:
+            with netCDF4.Dataset(path) as data:
+                bounds = time_bounds(data)
+            self._interval_cache[path] = tuple(EPOCH + datetime.timedelta(seconds=float(t)) for t in bounds)
+        return self._interval_cache[path]
+
+    def get_target_files(self, t0, t1, max_time_difference_days=7):
+        selected = select_drift_product([self], t0, t1, max_time_difference_days)
+        return selected.target_files if selected else None
 
     def get_ice_drift(self, target_files, ice_conc):
-        epoch = datetime.datetime(1970, 1, 1, 0, 0, 0)
-        ref_time = self.config[self.product_id]['ref_time']
         with netCDF4.Dataset(target_files) as data:
-            dx_dy_unc = np.ma.getdata(
-                data.variables['uncert_dX_and_dY'][0, :, :]).flatten()
-            lon0 = np.ma.getdata(data.variables['lon'][:, :]).flatten()
-            lat0 = np.ma.getdata(data.variables['lat'][:, :]).flatten()
-            lon1 = np.ma.getdata(data.variables['lon1'][:, :]).flatten()
-            lat1 = np.ma.getdata(data.variables['lat1'][:, :]).flatten()
-            time_bnds = np.ma.getdata(
-                data.variables['time_bnds'][:]).flatten()
+            def values(name):
+                return np.ma.filled(np.ma.asarray(data[name][:], dtype=float), np.nan).ravel()
+
+            uncertainty = data.variables['uncert_dX_and_dY']
+            units = getattr(uncertainty, 'units', None)
+            if units not in ('km', 'm'):
+                raise ValueError(f'unsupported drift uncertainty units: {units}')
+            dx_dy_unc = values('uncert_dX_and_dY') * (1000. if units == 'km' else 1.)
+            lon0, lat0, lon1, lat1 = [values(name) for name in ('lon', 'lat', 'lon1', 'lat1')]
+            time_bnds = time_bounds(data)
+            duration = np.ma.filled(np.ma.asarray(vector_duration(data, time_bnds)), np.nan)
+            duration = np.broadcast_to(duration.ravel(), lon0.shape)
             status_flag = None
             if getattr(self, 'coastal_taper', False):
                 status_flag = np.ma.getdata(
                     data.variables['status_flag'][0, :, :])
 
-        valid_drift = dx_dy_unc != -1e10
+        valid_drift = (np.isfinite(dx_dy_unc) & (dx_dy_unc >= 0) & np.isfinite(duration)
+                       & (duration > 0) & np.isfinite(lon0) & np.isfinite(lat0)
+                       & np.isfinite(lon1) & np.isfinite(lat1))
         x_all, y_all = transform_coords(
             lon0, lat0, 'epsg:4326', self.out_epsg)
 
@@ -101,11 +152,11 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
             lon1[valid_drift], lat1[valid_drift],
             'epsg:4326', self.out_epsg)
 
-        time_bnds = time_bnds + (ref_time - epoch).total_seconds()
-        time_bnds[0] = time_bnds[0] + self.config[self.product_id]['ref_daytime_corr']
-
-        dx = x1 - x0
-        dy = y1 - y0
+        # Interpolate rates, not mixed 24/48-hour displacement magnitudes.
+        hours = duration[valid_drift] / 3600.
+        dx = (x1 - x0) / hours
+        dy = (y1 - y0) / hours
+        dx_dy_unc[valid_drift] /= hours
 
         coords = np.transpose(np.vstack((x0, y0)))
 
@@ -168,22 +219,14 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
         dy_i[ice_conc == 0] = 0
         dx_dy_unc_i[ice_conc == 0] = 0
 
-        self.ice_drift = {"xc": xc, "yc": yc, "dx": dx_i, "dy": dy_i, "dx_dy_unc": dx_dy_unc_i*1000.0,
+        self.ice_drift = {"xc": xc, "yc": yc, "u": dx_i, "v": dy_i, "velocity_unc": dx_dy_unc_i,
                           "time_bnds": time_bnds}
 
     def drift_correction(self, x, y):
-        """
-        This function interpolates the drift speed on the point (x,y)
-        """
-        time_span = self.config[self.product_id]['time_span']
+        """Interpolate velocity and component uncertainty in metres per hour."""
         xc, yc = self.ice_drift["xc"][0, :], self.ice_drift["yc"][:, 0]
-        dx, dy = self.ice_drift['dx'], self.ice_drift['dy']
-        dx_dy_unc = self.ice_drift['dx_dy_unc']
-        np.ma.getdata(dx)[np.ma.getdata(dx) == -1e+10] = 0
-        np.ma.getdata(dy)[np.ma.getdata(dy) == -1e+10] = 0
-        # infinite values can occure in drift files
-        np.ma.getdata(dx)[np.ma.getdata(dx) == np.inf] = 0
-        np.ma.getdata(dy)[np.ma.getdata(dy) == np.inf] = 0
+        dx, dy = self.ice_drift['u'], self.ice_drift['v']
+        dx_dy_unc = self.ice_drift['velocity_unc']
         # Check if xc and yc are in descending order
         if xc[0] > xc[-1]:
             xc = xc[::-1]
@@ -205,7 +248,7 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
         dx_dy_unc_proj = f_dx_dy_unc((x, y))
 
         # output in m/h
-        return dx_proj.flatten() / time_span, dy_proj.flatten() / time_span, dx_dy_unc_proj / time_span
+        return dx_proj.flatten(), dy_proj.flatten(), dx_dy_unc_proj
 
     def deformation(self, x, y):
         """
@@ -213,19 +256,10 @@ class SeaIceDriftProducts(SeaIceConcentrationProducts):
         the derivatives are computed using a sobel filter see :
         https://tc.copernicus.org/articles/15/2167/2021/tc-15-2167-2021.pdf
         """
-        time_span = self.config[self.product_id]['time_span']
         xc, yc = self.ice_drift["xc"][0, :], self.ice_drift["yc"][:, 0]
-        dx, dy = self.ice_drift['dx'], self.ice_drift['dy']
-        np.ma.getdata(dx)[np.ma.getdata(dx) == -1e+10] = 0
-        np.ma.getdata(dy)[np.ma.getdata(dy) == -1e+10] = 0
-        u, v = dx / (time_span * 3600), dy / (time_span * 3600)  # in m/s
-
-        grid_spacing = abs(xc[1] - xc[0])
-
-        dudx = sobel(u, axis=1, mode='constant') / (grid_spacing * 8)
-        dudy = sobel(u, axis=0, mode='constant') / (grid_spacing * 8)
-        dvdx = sobel(v, axis=1, mode='constant') / (grid_spacing * 8)
-        dvdy = sobel(v, axis=0, mode='constant') / (grid_spacing * 8)
+        u, v = self.ice_drift['u'] / 3600., self.ice_drift['v'] / 3600.
+        dudx, dudy = _velocity_gradient(u, xc, yc)
+        dvdx, dvdy = _velocity_gradient(v, xc, yc)
 
         div = (dudx + dvdy) * 86400.0  # 1/day
         she = np.sqrt((dudx - dvdy)**2 + (dudy + dvdx)**2) * 86400.0  # 1/day

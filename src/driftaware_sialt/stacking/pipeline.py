@@ -16,7 +16,8 @@ from driftaware_sialt.gridding import gridding_lib
 from driftaware_sialt.products.air_temperature import AirTemperatureProducts
 from driftaware_sialt.products.ocean_heat_flux import OceanHeatFluxProducts
 from driftaware_sialt.products.sea_ice_concentration import SeaIceConcentrationProducts
-from driftaware_sialt.products.sea_ice_drift import SeaIceDriftProducts
+from driftaware_sialt.products.sea_ice_drift import SeaIceDriftProducts, select_drift_product
+from driftaware_sialt.products.drift_timing import EPOCH
 from driftaware_sialt.products.sea_ice_thickness import SeaIceThicknessMultiProducts
 from driftaware_sialt.products.sea_ice_thickness_climatology import SeaIceThicknessClimProducts
 from driftaware_sialt.products.selection import select_product
@@ -25,7 +26,7 @@ from driftaware_sialt.stacking.periods import RunPeriod
 from driftaware_sialt.stacking.drift_aware_processor import DriftAwareProcessor
 from driftaware_sialt.stacking.drift_aware_uncertainties import get_neighbor_dyn_range
 from driftaware_sialt.stacking.interpolate_growth import interpolate_growth, get_land_area_correction
-from driftaware_sialt.io_tools import create_out_dir
+from driftaware_sialt.io_tools import get_run_directory
 from driftaware_sialt.io_tools import init_logger
 from driftaware_sialt.io_tools import read_dasit_csv
 from driftaware_sialt.io_tools import make_csv_filename
@@ -48,7 +49,8 @@ def extract_source_products(data, config):
 
 
 def select_aux_product(products, t0, t1, source_name):
-    product = select_product(products, t0, t1)
+    selector = select_drift_product if source_name == 'sea ice drift' else select_product
+    product = selector(products, t0, t1)
     product_ids = [item.product_id for item in products]
     if product is None:
         logger.warning(
@@ -60,6 +62,11 @@ def select_aux_product(products, t0, t1, source_name):
             f"using {product.product_id} from "
             f"{product.target_file_date:%Y%m%d} "
             f"({product.target_time_offset_days:+g} days)")
+    if product is not None and source_name == 'sea ice drift':
+        first, last = product.target_native_interval
+        logger.info(f'Drift {product.product_id}: {product.target_files}; native {first}..{last}; '
+                    f'requested {t0}..{t1}; midpoint offset {product.target_time_offset_days:+g} days; '
+                    f'temporal fallback={product.used_temporal_fallback}')
     return product
 
 
@@ -240,12 +247,10 @@ def process_direction(config, direct, grid, output_days=None):
 
     if direct == 'f':
         d_sgn = 1
-        d_sgn_drift = 1
         d_sgn_t2m = 0
         day_range = range(0, period.length, d_sgn)
     else:
         d_sgn = -1
-        d_sgn_drift = 0
         d_sgn_t2m = -1
         day_range = range(period.length - 1, -1, d_sgn)
 
@@ -325,10 +330,10 @@ def process_direction(config, direct, grid, output_days=None):
         sic_product = select_aux_product(
             sic_products, sic_request_t0, sic_request_t0 + dt1d,
             'sea ice concentration')
-        # The sea ice drift to advect parcel at t0 is the one referenced as t1
-        sid_request_t0 = t0 + d_sgn_drift * dt1d
+        current_time = t0 + datetime.timedelta(hours=12)
+        target_time = current_time + d_sgn * dt1d
         sid_product = select_aux_product(
-            sid_products, sid_request_t0, sid_request_t0 + dt1d,
+            sid_products, min(current_time, target_time), max(current_time, target_time),
             'sea ice drift')
         if thermo_enabled:
             t2m_product.target_files = t2m_product.get_target_files(t0 + d_sgn_t2m * dt1d, t1 + d_sgn_t2m * dt1d)
@@ -367,7 +372,8 @@ def process_direction(config, direct, grid, output_days=None):
                 
             # check if the date is still in the range
             if (d_sgn == -1 and i > 0) or (d_sgn == 1 and i < period.length - 1):
-                m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, ohf_product, stk_opt['t_window'], d_sgn, day_range[0], thermo_model)
+                m = processor.drift_aware_proc(sid_product, sic_product, t2m_product, ohf_product, stk_opt['t_window'], d_sgn, day_range[0], thermo_model,
+                                               target_time=(target_time - EPOCH).total_seconds())
 
         if output_days is not None and i not in output_days:
             # Advection above has passed these observations to the next day.
@@ -385,6 +391,7 @@ def process_direction(config, direct, grid, output_days=None):
             continue
         gdf_final[target_var+'_drift_unc'] = np.sqrt(gdf_final[target_var+'_drift_unc'])
         gdf_final = gdf_final.drop(columns=['xu', 'yu'])
+        gdf_final = gdf_final.drop(columns=['time_current'], errors='ignore')
         gdf_final["geometry"] = gdf_final["geometry"].apply(lambda gdf: MultiPoint(gdf))
         gdf_final = gpd.GeoDataFrame(gdf_final, geometry='geometry')
         gdf_final['divergence'] = gdf_final['divergence'].apply(json.dumps)
@@ -412,15 +419,13 @@ def process_direction(config, direct, grid, output_days=None):
 
 def run(config):
     config = deepcopy(config)
+    config['output_dir']['trajectories'] = get_run_directory(config)
     period = RunPeriod.from_config(config)
-    sensor = config["options"]["sensor"]
     stk_opt = config['stacking']
     multiproc = stk_opt['multiproc']
     parcel_grid_opt = stk_opt['parcel_grid']
     growth_grid_opt = stk_opt['growth_estimation']['growth_grid']
-    csv_dir = config['output_dir']['trajectories']
     get_land_area_correction(config)
-    csv_dir = csv_dir.replace(f'{sensor}', "_".join(sensor))
     grid, cell_width = gridding_lib.define_grid(parcel_grid_opt["bounds"],
                                                 parcel_grid_opt["dim"],
                                                 config['options']['out_epsg'],
@@ -431,7 +436,6 @@ def run(config):
 
     logger.info('grid cell width of the stacking parcel grid: ' + str(cell_width) + ' m')
 
-    config['output_dir']['trajectories'] = create_out_dir(config, csv_dir, cell_width)
     logger.info(f'Outputs: {period.output_start} through {period.output_end}; '
                 f'processing: {period.processing_start} through {period.processing_end}')
     if multiproc:

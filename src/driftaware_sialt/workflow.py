@@ -15,7 +15,7 @@ from driftaware_sialt.io_tools import init_logger
 from driftaware_sialt.input_data import required_input_dates
 from driftaware_sialt.products.sea_ice_thickness import SeaIceThicknessMultiProducts, altimetry_source
 from driftaware_sialt.products.sea_ice_concentration import SeaIceConcentrationProducts
-from driftaware_sialt.products.sea_ice_drift import SeaIceDriftProducts
+from driftaware_sialt.products.sea_ice_drift import SeaIceDriftProducts, select_drift_product
 from driftaware_sialt.stacking.periods import DAY, RunPeriod, plan_periods
 
 
@@ -216,7 +216,8 @@ def preview(configs, *, check_inputs=True):
             directories = config['auxiliary'][family]
             products = cls.load_products(options[key], directories, hem=options['hemisphere'],
                                          out_epsg=options['out_epsg'])
-            auxiliary[family] = sorted({date for product in products for date in product.file_dates})
+            auxiliary[family] = products if family == 'ice_drift' else sorted(
+                {date for product in products for date in product.file_dates})
             print(f'{family} repositories:', {s: directories[s] for s in options[key]})
     for config in configs:
         period = RunPeriod.from_config(config)
@@ -237,7 +238,14 @@ def preview(configs, *, check_inputs=True):
             required = required_input_dates(config)
             for family, indexed in auxiliary.items():
                 missing = 0
+                fallback = 0
                 for date in required[family]:
+                    if family == 'ice_drift':
+                        end = date + dt.timedelta(hours=12)
+                        selected = select_drift_product(indexed, end - DAY, end)
+                        missing += selected is None
+                        fallback += selected is not None and selected.used_temporal_fallback
+                        continue
                     index = bisect_left(indexed, date)
                     nearest = indexed[max(0, index - 1):index + 1]
                     if not any(abs(candidate - date) <= 7 * DAY for candidate in nearest):
@@ -245,6 +253,9 @@ def preview(configs, *, check_inputs=True):
                 if missing:
                     print(f'  Coverage: {family} unavailable for {missing} requested days '
                           '(including the seven-day fallback).')
+                if fallback:
+                    print(f'  Coverage: ice_drift uses temporal fallback for {fallback} requested steps; '
+                          'trajectory times remain unchanged.')
             if config['stacking'].get('thermo_change', {}).get('enabled'):
                 print('  Temperature/ocean heat flux contents are checked during processing.')
 

@@ -77,13 +77,13 @@ def test_all_platforms_selection_tracks_daily_missions(workflow_configs, monkeyp
     _write_l2p(second, [24, 24])
     products = _products(config['options']['sensor'])
     reads = []
-    original = products._read_cci_l2p
+    original = products._read_l2p
 
     def read(path):
         reads.append(path)
         return original(path)
 
-    monkeypatch.setattr(products, '_read_cci_l2p', read)
+    monkeypatch.setattr(products, '_read_l2p', read)
     data = _read_day(products, config['input_dir'])
     assert reads == [str(first)]
     assert data.sensor.value_counts().to_dict() == {
@@ -150,13 +150,13 @@ def test_shared_file_selects_missions_and_is_read_once(tmp_path, monkeypatch, se
     _write_l2p(filename, [13, 24, 35, 13, 24, 35])
     products = _products(sensors, target)
     reads = []
-    original = products._read_cci_l2p
+    original = products._read_l2p
 
     def read(path):
         reads.append(path)
         return original(path)
 
-    monkeypatch.setattr(products, '_read_cci_l2p', read)
+    monkeypatch.setattr(products, '_read_l2p', read)
     result = _read_day(products, {'multi-mission': str(tmp_path)})
 
     assert reads == [str(filename)]

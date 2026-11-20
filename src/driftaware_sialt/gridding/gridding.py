@@ -11,7 +11,7 @@ import sys
 import multiprocessing as mp
 from driftaware_sialt.io_tools import transform_coords
 from driftaware_sialt.io_tools import get_sea_ice_regions
-from driftaware_sialt.io_tools import create_out_dir
+from driftaware_sialt.io_tools import get_run_directory
 from driftaware_sialt.io_tools import read_dasit_csv
 from driftaware_sialt.io_tools import read_dasit_metadata
 from driftaware_sialt.gridding.prepare_netcdf import PrepareNetcdf
@@ -292,7 +292,7 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
 
 
 def gridding(config):
-    sensor = config['options']['sensor']
+    config['output_dir']['gridded_data'] = get_run_directory(config)
     hemisphere = config['options']['hemisphere']
     grd_opt = config['gridding']
     netcdf_bounds = grd_opt['netcdf_grid']['bounds']
@@ -313,8 +313,6 @@ def gridding(config):
         config['options']['out_epsg'],
         grid_type='circular')
 
-    config['output_dir']['gridded_data'] = create_out_dir(
-        config, config['output_dir']['gridded_data'], cell_width, source_stack)
     region_grid, region_metadata = get_sea_ice_regions(
         config['auxiliary']['reg_mask'][hemisphere],
         netcdf_bounds,

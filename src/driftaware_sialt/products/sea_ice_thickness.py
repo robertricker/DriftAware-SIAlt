@@ -10,19 +10,21 @@ import os
 from astropy.time import Time
 
 
-CCI_L2P_SENSORS = frozenset({
-    'ers2',
-    'envisat',
-    'cryosat2',
-    'sentinel3a',
-    'sentinel3b',
-})
+L2P_FORMAT = {
+    'cryosat2': ('-nh-', '-sh-'),
+    'sentinel3a': ('-nh-', '-sh-'),
+    'sentinel3b': ('-nh-', '-sh-'),
+    'ers2': ('-NH-', '-SH-'),
+    'envisat': ('-NH-', '-SH-'),
+}
+L2P_SENSORS = frozenset(L2P_FORMAT)
+L2P_TARGETS = ('sea_ice_thickness', 'sea_ice_freeboard', 'radar_freeboard')
 MULTI_MISSION_SOURCE = 'multi-mission'
 
 
 def altimetry_source(sensor, directories):
-    """Select the shared CCI repository when explicitly configured."""
-    if sensor in CCI_L2P_SENSORS and directories.get(MULTI_MISSION_SOURCE):
+    """Select the shared L2P repository when explicitly configured."""
+    if sensor in L2P_SENSORS and directories.get(MULTI_MISSION_SOURCE):
         return MULTI_MISSION_SOURCE
     return sensor
 
@@ -35,22 +37,11 @@ class SeaIceThicknessMultiProducts:
         self.function_map = {
             ('icesat2', 'total_freeboard'): self.atl10_to_gdf,
             ('icesat2', 'sea_ice_thickness'): self.is2sitdat4_to_gdf,
-            ('cryosat2', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
-            ('cryosat2', 'radar_freeboard'): self.cci_l2p_to_gdf,
-            ('cryosat2', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
-            ('sentinel3a', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
-            ('sentinel3a', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
-            ('sentinel3a', 'radar_freeboard'): self.cci_l2p_to_gdf,
-            ('sentinel3b', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
-            ('sentinel3b', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
-            ('sentinel3b', 'radar_freeboard'): self.cci_l2p_to_gdf,
-            ('ers2', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
-            ('ers2', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
-            ('ers2', 'radar_freeboard'): self.cci_l2p_to_gdf,
-            ('envisat', 'sea_ice_freeboard'): self.cci_l2p_to_gdf,
-            ('envisat', 'sea_ice_thickness'): self.cci_l2p_to_gdf,
-            ('envisat', 'radar_freeboard'): self.cci_l2p_to_gdf
         }
+        self.function_map.update({
+            (sensor, target): self.l2p_to_gdf
+            for sensor in L2P_FORMAT for target in L2P_TARGETS
+        })
 
         self.config = {
             'icesat2': {
@@ -66,115 +57,23 @@ class SeaIceThicknessMultiProducts:
                     'date_str': '{14}',
                     'date_pt': '%Y%m%d%H%M%S'
                 }
-            },
-            'cryosat2': {
-                'sea_ice_thickness': {
-                    'hem_nh': '-nh-',
-                    'hem_sh': '-sh-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'sea_ice_freeboard': {
-                    'hem_nh': '-nh-',
-                    'hem_sh': '-sh-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'radar_freeboard': {
-                    'hem_nh': '-nh-',
-                    'hem_sh': '-sh-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                }
-            },
-            'sentinel3a': {
-                'sea_ice_thickness': {
-                    'hem_nh': '-nh-',
-                    'hem_sh': '-sh-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'sea_ice_freeboard': {
-                    'hem_nh': '-nh-',
-                    'hem_sh': '-sh-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'radar_freeboard': {
-                    'hem_nh': '-nh-',
-                    'hem_sh': '-sh-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                }
-            },
-            'sentinel3b': {
-                'sea_ice_thickness': {
-                    'hem_nh': '-nh-',
-                    'hem_sh': '-sh-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'sea_ice_freeboard': {
-                    'hem_nh': '-nh-',
-                    'hem_sh': '-sh-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'radar_freeboard': {
-                    'hem_nh': '-nh-',
-                    'hem_sh': '-sh-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                }
-            },
-            'ers2': {
-                'sea_ice_thickness': {
-                    'hem_nh': '-NH-',
-                    'hem_sh': '-SH-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'sea_ice_freeboard': {
-                    'hem_nh': '-NH-',
-                    'hem_sh': '-SH-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'radar_freeboard': {
-                    'hem_nh': '-NH-',
-                    'hem_sh': '-SH-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                }
-            },
-            'envisat': {
-                'sea_ice_thickness': {
-                    'hem_nh': '-NH-',
-                    'hem_sh': '-SH-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'sea_ice_freeboard': {
-                    'hem_nh': '-NH-',
-                    'hem_sh': '-SH-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                },
-                'radar_freeboard': {
-                    'hem_nh': '-NH-',
-                    'hem_sh': '-SH-',
-                    'date_str': '{8}',
-                    'date_pt': '%Y%m%d'
-                }
             }
         }
+        self.config.update({
+            sensor: {
+                target: {'hem_nh': north, 'hem_sh': south,
+                         'date_str': '{8}', 'date_pt': '%Y%m%d'}
+                for target in L2P_TARGETS
+            }
+            for sensor, (north, south) in L2P_FORMAT.items()
+        })
 
         self.file_list = {key: None for key in self.config}
         self.file_dates = {key: None for key in self.config}
         self.target_files = {key: None for key in self.config}
         self.product_dict = {key: None for key in self.config}
         self.product = None
-        self._cci_file_cache = {}
+        self._l2p_file_cache = {}
         self._shared_files = set()
 
     @staticmethod
@@ -396,18 +295,18 @@ class SeaIceThicknessMultiProducts:
 
         return gdf_final.reset_index(drop=True)
 
-    def cci_l2p_to_gdf(self, sens):
+    def l2p_to_gdf(self, sens):
         frames = []
         for filename in dict.fromkeys(map(os.path.realpath, self.target_files[sens])):
-            if filename not in self._cci_file_cache:
-                self._cci_file_cache[filename] = self._read_cci_l2p(filename)
-            frame = self._cci_file_cache[filename]
+            if filename not in self._l2p_file_cache:
+                self._l2p_file_cache[filename] = self._read_l2p(filename)
+            frame = self._l2p_file_cache[filename]
             if 'platform' in frame:
                 frame = frame.loc[frame['platform'] == sens]
             frames.append(frame)
         return pd.concat(frames, ignore_index=True)
 
-    def _read_cci_l2p(self, filename):
+    def _read_l2p(self, filename):
         """Read and project a daily file once, preserving observation platforms."""
         with netCDF4.Dataset(filename) as data:
             if filename in self._shared_files and 'platform' not in data.variables:
@@ -488,7 +387,7 @@ class SeaIceThicknessMultiProducts:
             self.file_dates[sens] = dates
 
     def get_target_files(self, t0, t1):
-        self._cci_file_cache.clear()
+        self._l2p_file_cache.clear()
         for sens in self.sensor:
             dates = self.file_dates[sens]
             file_list = self.file_list[sens]
@@ -498,7 +397,7 @@ class SeaIceThicknessMultiProducts:
         # Products are date-scoped.  Do not retain a mission loaded for an
         # earlier date when that mission has no file in the current interval.
         self.product_dict = {key: None for key in self.config}
-        self._cci_file_cache.clear()
+        self._l2p_file_cache.clear()
         for sens in sensor:
             key = (sens, self.target_var)
             product_temp = self.function_map[key](sens)
@@ -514,7 +413,7 @@ class SeaIceThicknessMultiProducts:
         for sens in sensor:
             product[sens] = product[sens].fillna(0)
         self.product = product
-        self._cci_file_cache.clear()
+        self._l2p_file_cache.clear()
         
 
         
