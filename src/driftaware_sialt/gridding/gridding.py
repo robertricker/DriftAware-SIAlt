@@ -16,6 +16,8 @@ from driftaware_sialt.io_tools import read_dasit_csv
 from driftaware_sialt.io_tools import read_dasit_metadata
 from driftaware_sialt.gridding.prepare_netcdf import PrepareNetcdf
 from driftaware_sialt.gridding import gridding_lib
+from driftaware_sialt.gridding.trajectory_diagnostics import (
+    integrate_trajectories, add_trajectory_diagnostics)
 from driftaware_sialt.products.sea_ice_concentration import SeaIceConcentrationProducts
 from driftaware_sialt.products.selection import select_product
 from loguru import logger
@@ -152,7 +154,7 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
         logger.warning(f"No data within the specified dt_days_max of {dt_days_max} days in file: {file}")
         return  
     data['dist_acquisition'] = start_location.distance(target_location) / 1000.0
-    data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in x.split()])
+    data['divergence'] = data['divergence'].apply(lambda x: [float(val) for val in str(x).split()])
     dynamic_tendency_col = f"{target_var}_dynamic_tendency"
     # Handle both old format (without _uncorrected) and new format (with _uncorrected)
     uncorrected_col = f"{target_var}_uncorrected" if f"{target_var}_uncorrected" in data.columns else target_var
@@ -173,7 +175,7 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
                 for value in row[dynamic_tendency_col]],
             axis=1)
 
-    data['shear'] = data['shear'].apply(lambda x: [float(val) for val in x.split()])
+    data['shear'] = data['shear'].apply(lambda x: [float(val) for val in str(x).split()])
 
     if gridding_mode == 'da':
         data["geometry"] = target_location
@@ -232,6 +234,7 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
             data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_drift_unc']**2 +
                                                     data[target_var+'_parcel_unc']**2)
 
+    trajectory_diagnostics = integrate_trajectories(data, time_center)
     data['deformation'] = data.apply(get_deformation, axis=1)
     data['divergence'] = data["divergence"].apply(get_row_mean)
     data['shear'] = data["shear"].apply(get_row_mean)
@@ -276,6 +279,8 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
     master.drop(columns=['geometry'], inplace=True)
     master = xr.Dataset.from_dataframe(master)
     master = master.reindex(yc=list(reversed(master.yc)))
+    master = add_trajectory_diagnostics(
+        master, data, trajectory_diagnostics, grid, is_weight=is_weight, weight_var=weight_var)
     master = add_full_domain_ice_concentration(master, config, time_center)
     master = master.set_coords(("longitude", "latitude"))
     master = prepare_netcdf.add_projection_field(master)

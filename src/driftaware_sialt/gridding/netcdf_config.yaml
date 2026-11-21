@@ -347,6 +347,67 @@ variable_attributes:
     grid_mapping: 'crs'
     comment: "Magnitude calculated from the divergence and shear strain-rate invariants."
 
+  trajectory_interval:
+    long_name: "position of the sampled trajectory interval relative to the reference date"
+    units: "1"
+    comment: "before_reference covers acquisition before the reference noon; after_reference covers acquisition after it, reconstructed backward. Zero-lag observations belong to neither interval."
+
+  trajectory_integrated_divergence:
+    long_name: "mean signed trajectory-integrated divergence from observation to reference time"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    comment: "Integral of divergence with signed elapsed time, estimating ln(A_reference/A_observation) for a material parcel. Backward integration reverses the integral sign, not the physical divergence. Grid-cell means of parcel integrals, not observed cell-area changes. Diagnostic only."
+
+  trajectory_accumulated_opening:
+    long_name: "mean accumulated opening exposure along sampled trajectories"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    comment: "Integral of max(divergence,0) over positive elapsed duration in either tracking direction. Nonnegative; does not quantify new-ice formation. Diagnostic only."
+
+  trajectory_accumulated_convergence:
+    long_name: "mean accumulated convergence exposure along sampled trajectories"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    comment: "Integral of max(-divergence,0) over positive elapsed duration in either tracking direction. Convergence is stored as a positive magnitude; does not quantify ridging. Diagnostic only."
+
+  trajectory_accumulated_shear:
+    long_name: "mean accumulated shear exposure along sampled trajectories"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    comment: "Integral of the nonnegative shear strain-rate invariant over positive elapsed duration. Diagnostic only."
+
+  trajectory_accumulated_deformation:
+    long_name: "mean accumulated total deformation exposure along sampled trajectories"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    comment: "Integral of sqrt(divergence^2+shear^2) over positive elapsed duration, calculated before averaging. Opening and closing do not cancel. This is exposure, not final parcel strain or a thickness correction."
+
+  trajectory_duration:
+    long_name: "mean absolute duration of sampled trajectory intervals"
+    coordinates: "time longitude latitude"
+    units: "days"
+    grid_mapping: 'crs'
+    comment: "Uses actual acquisition time and reference noon, including the first partial-day step. Durations are averaged over the same valid parcel histories as the deformation diagnostics."
+
+  trajectory_sample_count:
+    long_name: "number of valid parcel histories contributing to trajectory diagnostics"
+    coordinates: "time longitude latitude"
+    units: "1"
+    grid_mapping: 'crs'
+    comment: "Unweighted parcel count, not the number of L2P measurements. Counts are separate for before_reference and after_reference. Zero means no valid history; diagnostic means are then missing. Zero-lag observations and histories with missing or negative shear samples are excluded."
+
+  trajectory_mean_deformation_rate:
+    long_name: "mean duration-normalized total deformation exposure along sampled trajectories"
+    coordinates: "time longitude latitude"
+    units: "day-1"
+    grid_mapping: 'crs'
+    comment: "Each parcel's accumulated total deformation divided by its absolute duration, then averaged within the grid cell. Not the ratio of grid-cell mean deformation to mean duration."
+
   divergence:
     standard_name: 'divergence_of_sea_ice_velocity'
     long_name: "mean sea ice velocity divergence sampled along the trajectory"
