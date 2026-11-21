@@ -265,43 +265,29 @@ weight to observations acquired on the target date. Both `dt_days` and
 makes the processing choice clearer. `counts` and `dt_days` are alternative
 weighting modes.
 
-Gridding also writes eight trajectory diagnostics with dimensions
-`(time, trajectory_interval, yc, xc)`. The `trajectory_interval` values are
-`before_reference` (observations before the reference noon) and `after_reference`
-(observations after it, tracked backward). Their histories remain separate:
-future evolution is not treated as deformation preceding the thickness estimate.
+The existing `divergence`, `shear`, and `deformation` fields remain
+`(time, yc, xc)` rates in `day-1`. Each parcel rate is a time-weighted mean over
+its sampled advection interval, using the actual first acquisition-to-noon step
+and one-day subsequent steps. The initialization zero is excluded. Backward
+tracking preserves the physical divergence sign: positive means expansion and
+negative means convergence. Deformation averages `sqrt(divergence² + shear²)`
+at each step, before averaging parcels; opening and closing can cancel in mean
+divergence while still producing positive deformation.
 
-| Diagnostic | Units | Definition for each parcel before gridding |
-| --- | --- | --- |
-| `trajectory_integrated_divergence` | `1` | Divergence integrated with signed observation-to-reference time; logarithmic area change |
-| `trajectory_accumulated_opening` | `1` | Positive divergence integrated over positive elapsed duration |
-| `trajectory_accumulated_convergence` | `1` | Magnitude of negative divergence integrated over positive elapsed duration |
-| `trajectory_accumulated_shear` | `1` | Shear magnitude integrated over positive elapsed duration |
-| `trajectory_accumulated_deformation` | `1` | Integral of `sqrt(divergence² + shear²)` over positive elapsed duration |
-| `trajectory_duration` | days | Absolute acquisition-to-reference duration |
-| `trajectory_sample_count` | `1` | Number of valid parcel histories in the grid cell and interval |
-| `trajectory_mean_deformation_rate` | `day-1` | Accumulated deformation divided by that parcel's duration |
+Zero-lag observations have no sampled rate and do not contribute an artificial
+zero. A rate is missing if its history is incomplete or nonfinite; shear must
+also be nonnegative. Missing rates are excluded from their own spatial weight
+denominators without removing valid thickness observations. A cell with no
+valid rate histories has a missing rate. Inconsistent history lengths or timing
+raise an error. Dynamic and inferred thermodynamic tendencies use the corrected
+divergence mean. Thickness values and their corrections are unchanged.
 
-These diagnostics use the existing CSV histories, acquisition timestamps and
-reference noon, so existing stacks need no rerun to add them. Integration excludes
-the initialization zero and accounts for the first partial-day step; subsequent
-steps last one day. Before-reference divergence has the same sign as chronological
-divergence; after-reference integration reverses its sign. Opening, convergence,
-shear and total exposure remain nonnegative in both directions. Zero-lag
-observations have no sampled interval and are excluded. Histories with nonfinite
-rates or negative shear are also excluded from diagnostics, without removing their
-thickness observations. Missing or inconsistent history lengths/timing raise an
-error rather than silently assigning incorrect durations.
-
-Diagnostic means use the configured gridding weighting policy, normalized within
-each valid interval subset; sample counts are unweighted. An empty subset has
-count zero and missing means. The existing signed mean acquisition offset remains
-separate from absolute duration. Existing rate fields retain their `day-1` units.
-Exposure depends on trajectory duration and the drift product's spatial and
-temporal resolution; it is not a direct estimate of ridging, new-ice production,
-or final parcel strain. Gridded divergence integrals are parcel-history averages;
-exponentiating their mean does not give the mean parcel area ratio. These fields
-are diagnostics only and do not modify thickness or its correction.
+These are trajectory-history means combining observations before and after the
+reference date according to the configured gridding weighting. They are not
+instantaneous target-date deformation or cumulative strain, and depend on the
+drift product's spatial and temporal resolution. Existing stacking CSVs can be
+regridded without rerunning stacking. No additional cumulative diagnostic fields
+or interval dimension are written.
 
 Visualization presets use the current gridded NetCDF variable names. They cover
 sea-ice thickness and its uncertainty/change fields, model thickness and

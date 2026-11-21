@@ -117,10 +117,12 @@ def grid_data(gdf, grid, var, var_str, hist_n_bins=None, hist_range=None, fill_n
         weighted = gpd.GeoDataFrame(pd.concat([merged_drop*merged['weight'].values[:, None], merged[['geometry', 'index_right']]], axis=1), crs=merged.crs, geometry=merged.geometry)
         # sum weighted values
         dissolve_sum = weighted.dissolve(by='index_right', aggfunc=np.sum)
-        # sum the weights
-        weight_sum = merged.dissolve(by='index_right', aggfunc=np.sum)['weight'].values[:, None]
-        # sum weighted values / sum of weights
-        dissolve_weighted_mean = pd.concat([dissolve_sum.drop(dissolve_sum[['geometry']], axis=1)/weight_sum, dissolve_sum[['geometry']]], axis=1)
+        # Each variable needs its own denominator: missing rates must not dilute
+        # the mean or remove otherwise valid thickness observations.
+        weight_sum = merged[var].notna().mul(merged['weight'], axis=0)
+        weight_sum = weight_sum.groupby(merged['index_right']).sum().replace(0, np.nan)
+        dissolve_weighted_mean = pd.concat([
+            dissolve_sum[var] / weight_sum, dissolve_sum[['geometry']]], axis=1)
            
 
         for i in range(0, len(var)):

@@ -16,8 +16,7 @@ from driftaware_sialt.io_tools import read_dasit_csv
 from driftaware_sialt.io_tools import read_dasit_metadata
 from driftaware_sialt.gridding.prepare_netcdf import PrepareNetcdf
 from driftaware_sialt.gridding import gridding_lib
-from driftaware_sialt.gridding.trajectory_diagnostics import (
-    integrate_trajectories, add_trajectory_diagnostics)
+from driftaware_sialt.gridding.deformation import RATE_FIELDS, mean_trajectory_rates
 from driftaware_sialt.products.sea_ice_concentration import SeaIceConcentrationProducts
 from driftaware_sialt.products.selection import select_product
 from loguru import logger
@@ -45,15 +44,6 @@ def organize_files_by_date(source_dir, target_dir):
         os.rmdir(source_dir)
     else:
         logger.info(f"Source directory {source_dir} is not empty and has not been removed.")
-
-
-def get_deformation(row):
-    mean_tot = [np.linalg.norm([a, b]) for a, b in zip(row['shear'], row['divergence'])]
-    return np.mean(mean_tot)
-
-
-def get_row_mean(row):
-    return np.mean(row)
 
 
 def add_full_domain_ice_concentration(dataset, config, time_center):
@@ -158,23 +148,6 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
     dynamic_tendency_col = f"{target_var}_dynamic_tendency"
     # Handle both old format (without _uncorrected) and new format (with _uncorrected)
     uncorrected_col = f"{target_var}_uncorrected" if f"{target_var}_uncorrected" in data.columns else target_var
-    if uncorrected_col in data.columns:
-        data[dynamic_tendency_col] = data.apply(
-            lambda row: [
-                -row[uncorrected_col] * value
-                for value in row["divergence"]],
-            axis=1)
-    else:
-        logger.warning(
-            f"Column '{uncorrected_col}' not found. Skipping dynamic "
-            "tendency computation.")
-    if 'growth_interpolated' in data.columns:
-        data['thermo_change_rate'] = data.apply(
-            lambda row: [
-                row["growth_interpolated"] - value
-                for value in row[dynamic_tendency_col]],
-            axis=1)
-
     data['shear'] = data['shear'].apply(lambda x: [float(val) for val in str(x).split()])
 
     if gridding_mode == 'da':
@@ -234,13 +207,11 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
             data[target_var+'_total_unc'] = np.sqrt(data[target_var+'_drift_unc']**2 +
                                                     data[target_var+'_parcel_unc']**2)
 
-    trajectory_diagnostics = integrate_trajectories(data, time_center)
-    data['deformation'] = data.apply(get_deformation, axis=1)
-    data['divergence'] = data["divergence"].apply(get_row_mean)
-    data['shear'] = data["shear"].apply(get_row_mean)
-    data[dynamic_tendency_col] = data[dynamic_tendency_col].apply(get_row_mean)
-    if 'thermo_change_rate' in data.columns:
-        data['thermo_change_rate'] = data['thermo_change_rate'].apply(get_row_mean)
+    data[list(RATE_FIELDS)] = mean_trajectory_rates(data, time_center)
+    if uncorrected_col in data.columns:
+        data[dynamic_tendency_col] = -data[uncorrected_col] * data['divergence']
+        if 'growth_interpolated' in data.columns:
+            data['thermo_change_rate'] = data['growth_interpolated'] - data[dynamic_tendency_col]
 
     prepare_netcdf = PrepareNetcdf(
         config, file, region_grid, region_metadata, source_stack,
@@ -279,8 +250,6 @@ def process_file(config, file_list, grid, region_grid, region_metadata, source_s
     master.drop(columns=['geometry'], inplace=True)
     master = xr.Dataset.from_dataframe(master)
     master = master.reindex(yc=list(reversed(master.yc)))
-    master = add_trajectory_diagnostics(
-        master, data, trajectory_diagnostics, grid, is_weight=is_weight, weight_var=weight_var)
     master = add_full_domain_ice_concentration(master, config, time_center)
     master = master.set_coords(("longitude", "latitude"))
     master = prepare_netcdf.add_projection_field(master)
